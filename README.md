@@ -71,6 +71,14 @@ dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --labels 
 
 See [M1.7: perception ground truth](docs/M1-7-PERCEPTION-EVALUATION.md). The template is **not automatically labeled**.
 
+## Label screenshots without manually editing JSON (offline)
+
+```bash
+dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotate results/my-run/annotate.html
+```
+
+Open `annotate.html` to click the real mage and visual threats, explicitly mark unknown/absent, and export `labels.json` for the existing offline scorer. No account, internet, game source access or cloud required. See [local annotation guide](docs/M1-8-ANNOTATION-STUDIO.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
@@ -79,6 +87,7 @@ See [M1.7: perception ground truth](docs/M1-7-PERCEPTION-EVALUATION.md). The tem
 - [Offline multi-run cohort reports](docs/M1-5-COHORT-REPORTS.md)
 - [Local session replay (M1.6)](docs/M1-6-LOCAL-REPLAY.md)
 - [Human-labeled perception quality (M1.7)](docs/M1-7-PERCEPTION-EVALUATION.md)
+- [Local annotation studio (M1.8)](docs/M1-8-ANNOTATION-STUDIO.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
