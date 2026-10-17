@@ -42,11 +42,22 @@ Requires **.NET 10**, Playwright Chromium and **Tesseract OCR** installed locall
 
 All screenshots and JSONL decisions are kept in local ignored results/ directories. No required cloud API, telemetry service or paid AI model. See [M1 visual baseline](docs/M1-VISUAL-BASELINE.md) for limitations and setup.
 
+## Compare multiple independent runs (local)
+
+Use the new offline `Argus.Reporter` to compare folders containing real `summary.json` files:
+
+```bash
+dotnet run --project src/Argus.Reporter -- --runs results/experiments --output results/cohorts/demo
+```
+
+Reports include coverage and uncertainty, never invented win rates. See [M1.5 cohort analysis](docs/M1-5-COHORT-REPORTS.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
 - [Multi-game adapters, permissions and desktop roadmap](docs/GAME_ADAPTERS.md)
 - [Scene-relative movement evidence](docs/M1-4-SCENE-MOTION.md)
+- [Offline multi-run cohort reports](docs/M1-5-COHORT-REPORTS.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
