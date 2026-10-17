@@ -90,6 +90,8 @@ jobs:
           dotnet run --project src/Argus.Persona.Tool --configuration Release --no-build -- \
             --run artifacts/m1-live --movement-keys w,a,s,d --seed 42
           test -s artifacts/m1-live/persona-shadow.jsonl
+          test -s artifacts/m1-live/persona-contrast.json
+          test -s artifacts/m1-live/persona-contrast.md
           python3 - <<'PY'
           from pathlib import Path
           import json
@@ -97,6 +99,19 @@ jobs:
           assert len(rows) > 0
           assert len(rows[0]["candidates"]) == 3
           assert all(row["note"].startswith("SHADOW ONLY") for row in rows)
+          report = json.loads(Path("artifacts/m1-live/persona-contrast.json").read_text())
+          assert report["totalFrames"] == len(rows)
+          assert 0 <= report["gameplayFramesWithCandidateLocationsUnknown"] <= report["gameplayFrames"]
+          assert len(report["personas"]) == 3
+          assert len(report["pairs"]) == 3
+          for pair in report["pairs"]:
+              assert 0 <= pair["bothMovingFrames"] <= pair["bothProposedFrames"] <= len(rows)
+              assert 0 <= pair["differentDirections"] <= pair["bothMovingFrames"]
+              assert 0 <= pair["differentFullActions"] <= pair["bothProposedFrames"]
+              if pair["bothMovingFrames"] == 0:
+                  assert pair["directionDifferenceRate"] is None
+              else:
+                  assert abs(pair["directionDifferenceRate"] - pair["differentDirections"] / pair["bothMovingFrames"]) < 1e-8
           PY
       - name: Show visual evidence report
         if: always()
