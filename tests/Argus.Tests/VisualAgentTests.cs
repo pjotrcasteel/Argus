@@ -124,6 +124,20 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_VisibleResultOverlay_StopsWithoutSendingMovement()
+    {
+        var profile = new VisualGameProfile { TerminalScreenCues = ["THE ARCANE ATLAS"] };
+        var agent = new VisualGameAgent(
+            new FakeTextReader([new VisibleText("THE ARCANE ATLAS AWAKENS", 70, 200, 250, 30, 97)]), profile);
+        var frame = new FrameObservation(DateTimeOffset.UtcNow, 390, 844, []);
+
+        var action = await agent.DecideAsync(frame, TestContext.CancellationToken);
+
+        Assert.IsNull(action);
+        Assert.AreEqual("terminal", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
     public void ParseTsv_LineWords_CombinesTextAndBoundingBoxes()
     {
         const string tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
