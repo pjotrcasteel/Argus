@@ -54,9 +54,21 @@ try
     if (labels.Frames[0].Player.State != "visible" || labels.Frames[0].Threats.Centers?.Count != 1)
         throw new InvalidDataException("Downloaded JSON did not preserve the two human UI actions.");
 
+    // Verify a previous human annotation can actually be re-imported in Chromium.
+    await page.Locator("#player-absent").ClickAsync();
+    var changedStatus = await page.Locator("#player-state").TextContentAsync() ?? "";
+    if (!changedStatus.Contains("Explicitly not visible", StringComparison.Ordinal))
+        throw new InvalidDataException("Browser did not update manual label before testing import.");
+
+    await page.Locator("#resume").SetInputFilesAsync(tempFile);
+    await page.WaitForFunctionAsync("() => document.querySelector('#player-state')?.textContent?.includes('Position marked')");
+    var restoredThreats = await page.Locator("#threat-state").TextContentAsync() ?? "";
+    if (!restoredThreats.Contains("1 visible threat(s)", StringComparison.Ordinal))
+        throw new InvalidDataException("Annotation re-import did not restore the saved threat label.");
+
     // All browser-smoke marks are synthetic clicks for UI verification and MUST NOT be kept as real labels.
     await context.CloseAsync();
-    Console.WriteLine("ARGUS offline annotator UI PASS: screenshot loaded, clicks changed labels, exported schema validated.");
+    Console.WriteLine("ARGUS offline annotator UI PASS: screenshot loaded, clicks changed labels, exported schema validated, import restored saved points.");
     return 0;
 }
 catch (Exception ex)
