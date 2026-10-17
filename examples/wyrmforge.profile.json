@@ -19,6 +19,7 @@
     "Start",
     "Play"
   ],
+  "terminalScreenCues": ["IT DOESN'T END", "THE ARCANE ATLAS", "CODEX UNLOCKED", "Wyrmrealm remembers you"],
   "choiceScreenCues": ["Refine your magic"],
   "choiceCardTypes": ["REFINEMENT"],
   "routeCues": ["Wyrm signs", "Choose your tra", "Choose a connected trail"],
@@ -28,6 +29,7 @@
     "minimumPlayerPixels": 70,
     "minimumThreatPixels": 75,
     "threatAvoidanceRadius": 115,
+    "maxPlayerDistanceFromScreenCenter": 155,
     "playerPalette": {
       "minRed": 35,
       "minGreen": 54,
