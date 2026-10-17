@@ -37,6 +37,34 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void FindFirst_RefinementCard_SelectsVisibleTitleNotInstruction()
+    {
+        var labels = new[]
+        {
+            new VisibleText("Refine your magic", 33, 56, 290, 28, 96),
+            new VisibleText("REFINEMENT", 64, 128, 78, 8, 89),
+            new VisibleText("Steady Force", 56, 211, 130, 18, 96),
+            new VisibleText("+6% spell damage per rank", 56, 265, 189, 13, 94),
+            new VisibleText("REFINEMENT", 64, 444, 78, 8, 88),
+            new VisibleText("Casting Rhythm", 56, 527, 160, 18, 91)
+        };
+
+        var result = ChoiceCardMatcher.FindFirst(labels, ["REFINEMENT"], 45);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual("Steady Force", result.Text);
+        Assert.AreEqual(121f, result.CenterX);
+    }
+
+    [TestMethod]
+    public void FindFirst_NoRecognizedCardTitle_DoesNotInventLocation()
+    {
+        var labels = new[] { new VisibleText("REFINEMENT", 64, 128, 78, 8, 90) };
+
+        Assert.IsNull(ChoiceCardMatcher.FindFirst(labels, ["REFINEMENT"], 45));
+    }
+
+    [TestMethod]
     public void FindBest_GenericWordInsideInstruction_DoesNotClick()
     {
         var profile = new VisualGameProfile { MenuActions = ["Choose"] };
