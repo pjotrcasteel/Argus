@@ -24,6 +24,8 @@ public static class MenuTextMatcher
 
     private static bool Matches(string recognized, string sought)
     {
+        // A generic single-word command must be an entire OCR line, not the first word of instructions.
+        if (!sought.Contains(' ')) return recognized == sought;
         if (recognized.Contains(sought, StringComparison.Ordinal)) return true;
 
         // OCR can preserve intervening UI words: "BEGIN FIRST HUNT" must match "Begin Hunt".
