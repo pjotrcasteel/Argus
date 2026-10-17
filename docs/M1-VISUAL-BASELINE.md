@@ -24,7 +24,7 @@ Build once and install the bundled Chromium browser:
 
     dotnet restore Argus.slnx
     dotnet build Argus.slnx
-    pwsh src/Argus.Adapters.Browser/bin/Debug/net10.0/playwright.ps1 install chromium
+    pwsh src/Argus.Runner/bin/Debug/net10.0/playwright.ps1 install chromium
 
 Start a bounded visual experiment:
 
