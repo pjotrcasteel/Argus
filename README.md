@@ -2,9 +2,13 @@
 
 A **standalone, game-independent visual agent research platform**. ARGUS treats games as black boxes: it sees viewport pixels and sends the same mouse/keyboard/controller actions a player could. No game code changes, DOM state, JavaScript injection or hidden engine information.
 
+## Resume this project in a new chat
+
+Say **"continue with ARGUS https://github.com/pjotrcasteel/Argus"**. A new agent should read [AGENTS.md](AGENTS.md) and the [current engineering handover](docs/CONTINUITY.md) first, then check actual GitHub main/PRs/Actions before continuing. The handover includes current hypotheses, measured evidence, outstanding questions and the next implementation step.
+
 ## Status
 
-**M1 visual-agent prototype, not a trained AI.** The real screenshot → local OCR → visually located menu click → experimental movement → explainable local trace pipeline is implemented. It has **not yet been verified against a running WyrmForge browser session**. Learning, personality vectors, computer-vision combat tracking and performance dashboards are planned, not shipped.
+**M1 visual-agent prototype, not a trained AI.** The real screenshot → local OCR → visually located menu click → experimental movement → explainable local trace pipeline is implemented. It **has been exercised against the public WyrmForge browser game** with visual player tracking, simple candidate avoidance, upgrades and per-run evidence; these remain heuristic and not trained. Learning, personality vectors and a research dashboard are still future work. See the up-to-date [continuity handover](docs/CONTINUITY.md).
 
 ## Repository projects
 
