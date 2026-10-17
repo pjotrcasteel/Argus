@@ -9,7 +9,11 @@ namespace Argus.Evaluation;
 /// <summary>A stable, no-leakage plan: all screenshots from one run belong to one partition.</summary>
 public sealed record StudyRun(string RunId, ReplayTrace Trace);
 public sealed record StudyAssignment(string RunId, string Partition, IReadOnlyList<int> FrameSteps);
-public sealed record StudyPlan(int SchemaVersion, string Seed, int RequestedFramesPerRun, IReadOnlyList<StudyAssignment> Assignments);
+public sealed record StudyPlan(int SchemaVersion, string Seed, int RequestedFramesPerRun, IReadOnlyList<StudyAssignment> Assignments)
+{
+    // Old M2.4 studies omit Mode and must retain their original run-level held-out contract.
+    public string Mode { get; init; } = "partitioned";
+}
 
 public static class StudyPlanner
 {
@@ -42,7 +46,10 @@ public static class StudyPlanner
         var runs = ValidateRuns(input, seed, framesPerRun);
         return new StudyPlan(1, seed, framesPerRun,
             runs.Select(run => new StudyAssignment(run.RunId, "development",
-                SampleSteps(run.Trace, seed, run.RunId, framesPerRun))).ToArray());
+                SampleSteps(run.Trace, seed, run.RunId, framesPerRun))).ToArray())
+        {
+            Mode = "development-only"
+        };
     }
 
     private static StudyRun[] ValidateRuns(IEnumerable<StudyRun> input, string seed, int framesPerRun)
