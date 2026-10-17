@@ -6,6 +6,13 @@ namespace Argus.Agents.Visual;
 /// <summary>Bounding box inferred from visible RGB pixels, not an actor identity or privileged world coordinate.</summary>
 public sealed record VisualBlob(float X, float Y, int Width, int Height, int MatchingPixels, float Confidence);
 
+/// <summary>
+/// Annotation-conditioned *offline* diagnosis of raw color components, including rejected ones.
+/// Proximity to a human marker does not establish sprite identity and must never feed active steering.
+/// </summary>
+public sealed record PlayerColorComponentEvidence(float X, float Y, int Width, int Height,
+    int MatchingPixels, string RejectionReason, float DistanceToHumanCenter);
+
 public sealed record CombatVisualObservation(VisualBlob? Player, IReadOnlyList<VisualBlob> ThreatCandidates)
 {
     public float? NearestThreatDistance => Player is null || ThreatCandidates.Count == 0
@@ -118,8 +125,44 @@ public static class CombatPixelPerception
         blob.X < width / 30f || blob.X >= width * 29 / 30f ||
         blob.Y < height * 19 / 100f || blob.Y >= height * 82 / 100f;
 
+    /// <summary>
+    /// Purely offline visual diagnostic for a manually confirmed player's center, using the exact
+    /// original 5x5-neighbor connected-component scanner. Returns rejected candidates rather
+    /// than relaxing thresholds or inferring a missing actor for the live game.
+    /// </summary>
+    public static IReadOnlyList<PlayerColorComponentEvidence> InspectPlayerColorComponentsRgb(byte[] rgb,
+        int width, int height, CombatVisualSettings settings, VisualCandidatePoint humanCenter,
+        float referenceRadius = 30)
+    {
+        settings.Validate();
+        if (rgb.Length != width * height * 3 || width < 100 || height < 150 ||
+            !float.IsFinite(referenceRadius) || referenceRadius is < 1 or > 150 ||
+            !float.IsFinite(humanCenter.X) || !float.IsFinite(humanCenter.Y) ||
+            humanCenter.X < 0 || humanCenter.X >= width || humanCenter.Y < 0 || humanCenter.Y >= height)
+            throw new ArgumentOutOfRangeException(nameof(humanCenter), "Invalid offline pixel reference.");
+
+        var components = new List<PlayerColorComponentEvidence>();
+        _ = Locate(rgb, width, height, settings.PlayerPalette!, settings.MinimumPlayerPixels, includeEdges: true,
+            onComponent: (blob, reason) =>
+            {
+                // Rectangle-edge distance survives offsets when a magical effect merges into the player.
+                var left = blob.X - (blob.Width - 1) / 2f;
+                var right = blob.X + (blob.Width - 1) / 2f;
+                var top = blob.Y - (blob.Height - 1) / 2f;
+                var bottom = blob.Y + (blob.Height - 1) / 2f;
+                var dx = MathF.Max(MathF.Max(left - humanCenter.X, humanCenter.X - right), 0);
+                var dy = MathF.Max(MathF.Max(top - humanCenter.Y, humanCenter.Y - bottom), 0);
+                var distance = MathF.Sqrt(dx * dx + dy * dy);
+                if (distance <= referenceRadius)
+                    components.Add(new PlayerColorComponentEvidence(blob.X, blob.Y, blob.Width,
+                        blob.Height, blob.MatchingPixels, reason, distance));
+            }).ToArray();
+        return components.OrderBy(component => component.DistanceToHumanCenter)
+            .ThenByDescending(component => component.MatchingPixels).ToArray();
+    }
+
     private static IEnumerable<VisualBlob> Locate(byte[] rgb, int width, int height, VisualColorRule rule, int minimumPixels,
-        bool includeEdges = false, int worldTopPercent = 19, int worldBottomPercent = 82)
+        bool includeEdges = false, int worldTopPercent = 19, int worldBottomPercent = 82, Action<VisualBlob, string>? onComponent = null)
     {
         var worldTop = height * worldTopPercent / 100;
         var worldBottom = height * worldBottomPercent / 100;
@@ -187,7 +230,15 @@ public static class CombatPixelPerception
 
                 var blobWidth = maxX - minX + 1;
                 var blobHeight = maxY - minY + 1;
-                if (count < minimumPixels || blobWidth is < 8 or > 52 || blobHeight is < 12 or > 60) continue;
+                var rejection = count < minimumPixels ? "BELOW_MINIMUM_PIXELS"
+                    : blobWidth > 52 ? "TOO_WIDE"
+                    : blobHeight > 60 ? "TOO_TALL"
+                    : blobWidth < 8 ? "TOO_NARROW"
+                    : blobHeight < 12 ? "TOO_SHORT" : "ELIGIBLE_GEOMETRY";
+                if (onComponent is not null)
+                    onComponent(new VisualBlob((minX + maxX) / 2f, (minY + maxY) / 2f, blobWidth, blobHeight,
+                        count, 0), rejection);
+                if (rejection != "ELIGIBLE_GEOMETRY") continue;
 
                 var density = count / (float)(blobWidth * blobHeight);
                 var confidence = MathF.Min(0.90f, 0.35f + 0.5f * density + MathF.Min(0.15f, count / 1000f));
