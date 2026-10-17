@@ -3,7 +3,7 @@ using Argus.Core;
 using Argus.Evaluation;
 using Argus.Replay;
 
-if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate" or "--shadow-edges" or "--appearance-audit" or "--player-visibility" or "--occlusion-shadow"))
+if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate" or "--shadow-edges" or "--appearance-audit" or "--player-visibility" or "--occlusion-shadow" or "--occlusion-veto"))
 {
     Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --template results/my-run/labels.template.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotate results/my-run/annotate.html");
@@ -13,6 +13,7 @@ if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "-
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --appearance-audit examples/wyrmforge.profile.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --player-visibility examples/wyrmforge.profile.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --occlusion-shadow examples/wyrmforge.profile.json");
+    Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --occlusion-veto examples/wyrmforge.profile.json");
     return 2;
 }
 
@@ -65,6 +66,29 @@ try
             $"{audit.Candidates.Count(c => c.MatchedHuman)} matched candidates and " +
             $"{audit.Candidates.Count(c => !c.MatchedHuman)} unmatched candidates.");
         Console.WriteLine($"Saved local feature audit: {output}");
+    }
+    else if (args[2] == "--occlusion-veto")
+    {
+        var labels = await GroundTruth.ReadAsync(Path.Combine(run, "labels.json"), run, replay);
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
+        var profile = JsonSerializer.Deserialize<VisualGameProfile>(await File.ReadAllTextAsync(args[3]), json)
+            ?? throw new InvalidDataException("Invalid visual game profile.");
+        profile.Validate();
+        if (profile.CombatTracking is null)
+            throw new InvalidDataException("Current-pixel shadow veto needs combat tracking settings.");
+
+        var original = await PlayerOcclusionShadowStudy.AnalyzeAsync(run, labels, replay, profile.CombatTracking);
+        var study = await PlayerCurrentFrameVetoStudy.AnalyzeAsync(run, replay, original, profile.CombatTracking);
+        var output = Path.Combine(run, "player-current-frame-veto.json");
+        await File.WriteAllTextAsync(output, JsonSerializer.Serialize(study, options));
+        await File.WriteAllTextAsync(Path.Combine(run, "player-current-frame-veto.md"),
+            PlayerCurrentFrameVetoStudy.RenderMarkdown(study));
+        Console.WriteLine($"Shadow-only current-frame negative cue: raw bridges {study.RawBridgeProposals}, " +
+            $"vetoes {study.VetoedProposals}, INDETERMINATE {study.UnresolvedProposals}; " +
+            $"human-visible FALSE vetoes {study.VetoedOverHumanVisible}, " +
+            $"absent-human bridges still unresolved {study.UnresolvedOverHumanAbsent}. " +
+            "No verified player identities, no game input.");
+        Console.WriteLine($"Saved local offline development report: {output}");
     }
     else if (args[2] == "--occlusion-shadow")
     {

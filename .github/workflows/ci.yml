@@ -506,3 +506,39 @@ jobs:
           assert "NOT current detections" in md
           print("PASS: 2 plausible visual gaps AND 2 verified false-memory traps. Research only.")
           PY
+
+      - name: Verify current-image empty-patch veto and limits on synthetic shadow false-player hypotheses
+        run: |
+          python3 tools/m210/generate_occlusion_shadow_fixture.py
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-occlusion-shadow/run-local --occlusion-veto examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/ci-occlusion-shadow/run-local")
+          result = json.loads((root / "player-current-frame-veto.json").read_text())
+          assert result["rawBridgeProposals"] == 4
+          assert result["vetoedProposals"] == 2
+          assert result["unresolvedProposals"] == 2
+          assert result["vetoedOverHumanAbsent"] == 2
+          assert result["vetoedOverHumanVisible"] == 0
+          assert result["unresolvedOverHumanAbsent"] == 0
+          assert result["unresolvedOverHumanVisible"] == 2
+          assert result["unknownOrUnreviewedProposals"] == 0
+          frames = {row["step"]: row for row in result["frames"]}
+          assert sorted(frames) == [3, 4, 7, 8]
+          for step in (3, 4):
+              assert frames[step]["witnessStatus"] == "INDETERMINATE"
+              assert frames[step]["humanReference"] == "VISIBLE"
+              assert frames[step]["playerPalettePixels"] > 0
+          for step in (7, 8):
+              assert frames[step]["witnessStatus"] == "EMPTY_PATCH_VETO"
+              assert frames[step]["humanReference"] == "ABSENT"
+              assert frames[step]["playerPalettePixels"] == 0
+              assert frames[step]["maximumRgbChannelStdDev"] < 5
+          markdown = (root / "player-current-frame-veto.md").read_text()
+          assert "visible-player false vetoes: 0" in markdown
+          assert "absent-player proposals still unresolved: 0" in markdown
+          assert "INDETERMINATE is NOT a player detection" in markdown
+          print("PASS: current-pixel veto refuses empty absent-player examples; occlusions stay UNKNOWN.")
+          PY
