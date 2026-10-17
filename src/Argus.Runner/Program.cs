@@ -7,7 +7,7 @@ using Argus.Core;
 var options = CommandOptions.Parse(args);
 if (options is null)
 {
-    Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Runner -- --url https://example.org [--agent observe|script|visual] [--profile examples/wyrmforge.profile.json] [--script examples/actions.example.json] [--headless] [--max-steps 80] [--timeout-seconds 180] [--output results/demo]");
+    Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Runner -- --url https://example.org [--agent observe|script|visual] [--profile examples/wyrmforge.profile.json] [--script examples/actions.example.json] [--headless] [--require-combat-vision] [--max-steps 80] [--timeout-seconds 180] [--output results/demo]");
     return 2;
 }
 
