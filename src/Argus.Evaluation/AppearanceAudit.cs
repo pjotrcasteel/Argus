@@ -32,6 +32,7 @@ public static class AppearanceAudit
         var rows = new List<AppearanceAuditCandidate>();
         var frames = new List<AppearanceAuditFrame>();
         var byStep = labels.Frames.ToDictionary(f => f.Step);
+        VisualBlob? previousPlayer = null;
         using var reader = new StreamReader(Path.Combine(folder, "trace.jsonl"));
         var step = 0;
         string? line;
@@ -39,38 +40,49 @@ public static class AppearanceAudit
         {
             if (line.Length == 0) continue;
             cancellationToken.ThrowIfCancellationRequested();
+            var recorded = replay.Frames[step];
+            // Sample all preceding frames, including those NOT labeled by a human. Without
+            // this causal history, a tracked player at the viewport edge disappears when
+            // the study visits only its sparse preselected screenshots.
+            using var document = JsonDocument.Parse(line);
+            var legacy = TraceEvidenceReliability.IsUnverifiedLegacyFinal(document.RootElement, step, replay.Frames.Count);
+            AppearanceFrame? observation = null;
+            if (recorded.Phase == "exploring" && !legacy)
+            {
+                var png = await File.ReadAllBytesAsync(Path.Combine(folder, recorded.Screenshot), cancellationToken);
+                observation = VisualAppearanceDescriptors.ObservePng(png, settings, previousPlayer);
+                previousPlayer = observation.Player;
+            }
+            else
+            {
+                previousPlayer = null;
+            }
+
             if (byStep.TryGetValue(step, out var human))
             {
-                using var document = JsonDocument.Parse(line);
-                var recorded = replay.Frames[step];
-                var status = TraceEvidenceReliability.IsUnverifiedLegacyFinal(document.RootElement, step, replay.Frames.Count)
-                    ? "LEGACY_FINAL_UNVERIFIED"
+                // Human annotations are used exclusively for matching *after* the pixels
+                // have been observed. Unknown player truth may coexist with scored threats.
+                var status = legacy ? "LEGACY_FINAL_UNVERIFIED"
                     : human.Threats.State == "unknown" ? "UNKNOWN_REFERENCE"
                     : recorded.Phase != "exploring" ? "NOT_COMBAT_FRAME" : "SCORED";
                 if (status != "SCORED")
                 {
                     frames.Add(new AppearanceAuditFrame(step, status, 0, 0, 0));
                 }
+                else if (observation is null || !observation.PlayerLocated)
+                {
+                    frames.Add(new AppearanceAuditFrame(step, "PLAYER_NOT_LOCATED", 0, 0, 0));
+                }
                 else
                 {
-                    var png = await File.ReadAllBytesAsync(Path.Combine(folder, recorded.Screenshot), cancellationToken);
-                    // Extraction is complete BEFORE human labels are passed to the matching code.
-                    var observation = VisualAppearanceDescriptors.ObservePng(png, settings);
-                    if (!observation.PlayerLocated)
-                    {
-                        frames.Add(new AppearanceAuditFrame(step, "PLAYER_NOT_LOCATED", 0, 0, 0));
-                    }
-                    else
-                    {
-                        var predictions = observation.Candidates
-                            .Select(c => new VisualCandidatePoint(c.Features.X, c.Features.Y)).ToArray();
-                        var matched = ThreatMatching.Match(human.Threats.Centers!, predictions, radius);
-                        var matchedIndices = matched.MatchedPredictionIndices.ToHashSet();
-                        rows.AddRange(observation.Candidates.Select((c, i) =>
-                            new AppearanceAuditCandidate(step, c.Source, matchedIndices.Contains(i), c.Features)));
-                        frames.Add(new AppearanceAuditFrame(step, "SCORED", matched.TruePositives,
-                            matched.FalsePositives.Count, matched.FalseNegatives.Count));
-                    }
+                    var predictions = observation.Candidates
+                        .Select(c => new VisualCandidatePoint(c.Features.X, c.Features.Y)).ToArray();
+                    var matched = ThreatMatching.Match(human.Threats.Centers!, predictions, radius);
+                    var matchedIndices = matched.MatchedPredictionIndices.ToHashSet();
+                    rows.AddRange(observation.Candidates.Select((c, i) =>
+                        new AppearanceAuditCandidate(step, c.Source, matchedIndices.Contains(i), c.Features)));
+                    frames.Add(new AppearanceAuditFrame(step, "SCORED", matched.TruePositives,
+                        matched.FalsePositives.Count, matched.FalseNegatives.Count));
                 }
             }
             step++;
@@ -96,6 +108,8 @@ public static class AppearanceAudit
             .AppendLine($"Unmatched human threat centers on scored frames: {report.MissedHumanCenters}.")
             .AppendLine("Matches mean **within 26 pixels of a human-reviewed mark**, not independently verified actor identity.")
             .AppendLine("No model was trained; all features are calculated before reading candidate truth assignments.")
+            .AppendLine("Causal player tracking uses preceding screenshot pixels, even on unreviewed frames. " +
+                "A noncombat frame or missing visible player resets the pixel-only prior.")
             .AppendLine()
             .AppendLine("| Source | Match status | Count | Contrast to ring | Edge density | Saturation | Luminance | Variation |")
             .AppendLine("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |");

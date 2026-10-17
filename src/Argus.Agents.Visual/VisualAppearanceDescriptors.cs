@@ -10,7 +10,11 @@ public sealed record VisualAppearanceDescriptor(float X, float Y, int Width, int
 
 /// <summary>Single screenshot's measured palette candidates, without enemy classification.</summary>
 public sealed record AppearanceCandidate(string Source, VisualAppearanceDescriptor Features);
-public sealed record AppearanceFrame(bool PlayerLocated, IReadOnlyList<AppearanceCandidate> Candidates);
+public sealed record AppearanceFrame(bool PlayerLocated, IReadOnlyList<AppearanceCandidate> Candidates)
+{
+    // Only pixels from the current or previous screenshot, never recorded agent predictions.
+    public VisualBlob? Player { get; init; }
+}
 
 /// <summary>
 /// Stateless, game-agnostic image features. Uses only RGB pixels inside the visible candidate bounding
@@ -18,18 +22,28 @@ public sealed record AppearanceFrame(bool PlayerLocated, IReadOnlyList<Appearanc
 /// </summary>
 public static class VisualAppearanceDescriptors
 {
-    public static AppearanceFrame ObservePng(byte[] png, CombatVisualSettings settings)
+    public static AppearanceFrame ObservePng(byte[] png, CombatVisualSettings settings, VisualBlob? previousPlayer = null)
     {
         var image = ImageResult.FromMemory(png, ColorComponents.RedGreenBlue);
-        var detected = CombatPixelPerception.ObserveShadowRgb(image.Data, image.Width, image.Height, settings);
+        return ObserveRgb(image.Data, image.Width, image.Height, settings, previousPlayer);
+    }
+
+    /// <summary>
+    /// Feature evidence from only visible pixels. The optional prior is from the preceding
+    /// screenshot's measured player, not a saved agent prediction or human annotation.
+    /// </summary>
+    public static AppearanceFrame ObserveRgb(byte[] rgb, int width, int height, CombatVisualSettings settings,
+        VisualBlob? previousPlayer = null)
+    {
+        var detected = CombatPixelPerception.ObserveShadowRgb(rgb, width, height, settings, previousPlayer);
         if (detected.Baseline.Player is null) return new AppearanceFrame(false, []);
 
         var candidates = detected.Baseline.ThreatCandidates.Select(b =>
-                new AppearanceCandidate("baseline", Measure(image.Data, image.Width, image.Height, b)))
+                new AppearanceCandidate("baseline", Measure(rgb, width, height, b)))
             .Concat(detected.AddedCandidates.Select(b =>
-                new AppearanceCandidate("shadow", Measure(image.Data, image.Width, image.Height, b))))
+                new AppearanceCandidate("shadow", Measure(rgb, width, height, b))))
             .ToArray();
-        return new AppearanceFrame(true, candidates);
+        return new AppearanceFrame(true, candidates) { Player = detected.Baseline.Player };
     }
 
     public static VisualAppearanceDescriptor Measure(byte[] rgb, int width, int height, VisualBlob blob)
