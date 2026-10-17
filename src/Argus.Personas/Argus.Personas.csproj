@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Argus.Core/Argus.Core.csproj" />
+    <ProjectReference Include="../Argus.Replay/Argus.Replay.csproj" />
+  </ItemGroup>
+</Project>
