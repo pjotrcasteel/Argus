@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Argus.Agents.Visual;
 
 namespace Argus.Evaluation;
 
