@@ -151,13 +151,14 @@ public static class StudyQualityEvaluation
             .AppendLine("> Labels must come from independent human review of original pixels; this tool cannot verify who annotated a file.")
             .AppendLine($"> Study mode: {report.Seed} sample plan; absent held-out reference stays NOT_EVALUATED, never inferred from development runs.")
             .AppendLine()
-            .AppendLine("| Run | Partition | Selected | Player reviewed | Threat reviewed | Status | Player precision | Threat precision | Threat evidence unavailable |")
-            .AppendLine("| --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |");
+            .AppendLine("| Run | Partition | Selected | Player reviewed | Threat reviewed | Status | Player precision | Threat precision | Threat evidence unavailable | Human threat centers unscored |")
+            .AppendLine("| --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |");
         foreach (var run in report.Runs)
             b.AppendLine($"| {Safe(run.RunId)} | {run.Partition} | {run.SelectedFrames} | " +
                 $"{run.HumanReviewedPlayerFrames} | {run.HumanReviewedThreatFrames} | {run.Status} | " +
                 $"{Pct(run.Perception?.Player.Precision)} | {Pct(run.Perception?.Threats.Precision)} | " +
-                $"{(run.Perception is null ? "N/A" : run.Perception.ThreatEvidenceUnavailableFrames.ToString(CultureInfo.InvariantCulture))} |");
+                $"{(run.Perception is null ? "N/A" : run.Perception.ThreatEvidenceUnavailableFrames.ToString(CultureInfo.InvariantCulture))} | " +
+                $"{(run.Perception is null ? "N/A" : run.Perception.ThreatCentersOnUnavailableFrames.ToString(CultureInfo.InvariantCulture))} |");
 
         b.AppendLine().AppendLine("## Partition summaries — unweighted per-run metrics").AppendLine()
             .AppendLine("| Partition | Runs reviewed | Player frames | Threat frames | Median player precision | Median player recall | Median threat precision | Median threat recall |")
@@ -172,6 +173,8 @@ public static class StudyQualityEvaluation
         b.AppendLine()
             .AppendLine("**NOT_EVALUATED** means no reviewed labels were supplied; it never means 0% accuracy. " +
                 "Partial labels, unknown object states and missing candidate coordinates remain explicit.")
+            .AppendLine("Unscored human threat centers are excluded from observed-frame precision/recall; " +
+                "always report this coverage gap beside those metrics.")
             .AppendLine("Runs are separate units of comparison; adjacent frames within one run are correlated. " +
                 "No game victories, player realism or learning claims follow from screen-space precision/recall.")
             .AppendLine("Do not revise the detector after viewing held-out quality and then present the same held-out runs as an untouched test.");

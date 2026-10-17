@@ -99,7 +99,9 @@ try
         await File.WriteAllTextAsync(Path.Combine(run, "perception-failures.md"), PerceptionFailureAnalysis.RenderMarkdown(failures));
         Console.WriteLine($"Scored {report.LabeledFrames} labeled frames; {failures.ScoredThreatFrames} comparable threat frames.");
         Console.WriteLine($"Unavailable threat frames: {report.ThreatEvidenceUnavailableFrames}; " +
-            $"excluded legacy final frames: {report.LegacyFinalUnverifiedFrames}.");
+            $"excluded legacy final frames: {report.LegacyFinalUnverifiedFrames}; " +
+            $"human-marked threat centers UNAVAILABLE: {report.ThreatCentersOnUnavailableFrames} " +
+            $"across {report.ThreatFramesWithHumanCentersAndUnavailableEvidence} frames.");
         Console.WriteLine($"Reports: {markdownPath}, {Path.Combine(run, "perception-failures.md")}");
     }
     return 0;

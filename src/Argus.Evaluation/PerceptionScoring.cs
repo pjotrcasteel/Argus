@@ -12,6 +12,10 @@ public sealed record PerceptionReport(string RunId, int TotalFrames, int Labeled
 {
     public int PlayerEvidenceUnavailableFrames { get; init; }
     public int LegacyFinalUnverifiedFrames { get; init; }
+    // Human-visible threat points in reviewed frames with no comparable detector evidence.
+    // These are not classified as false negatives: the agent did not produce an observation.
+    public int ThreatCentersOnUnavailableFrames { get; init; }
+    public int ThreatFramesWithHumanCentersAndUnavailableEvidence { get; init; }
 }
 
 public static class PerceptionScoring
@@ -33,6 +37,8 @@ public static class PerceptionScoring
         var unavailable = 0;
         var playerUnavailable = 0;
         var legacyFinalUnavailable = 0;
+        var unavailableThreatCenters = 0;
+        var unavailableThreatFramesWithHumanCenters = 0;
         var annotations = truth.Frames.ToDictionary(f => f.Step);
         var tracePath = Path.Combine(folder, "trace.jsonl");
 
@@ -79,6 +85,14 @@ public static class PerceptionScoring
                 {
                     unavailable++;
                     threat.Unknown++;
+                    // Do not silently make a recall denominator look better by hiding
+                    // positively identified human threats on menu/transition or
+                    // exploring frames that never emitted recorded candidate locations.
+                    if (label.Threats.Centers!.Count > 0)
+                    {
+                        unavailableThreatFramesWithHumanCenters++;
+                        unavailableThreatCenters += label.Threats.Centers.Count;
+                    }
                 }
                 else
                 {
@@ -94,7 +108,9 @@ public static class PerceptionScoring
             player.Metrics(), threat.Metrics(), unavailable, radius)
         {
             PlayerEvidenceUnavailableFrames = playerUnavailable,
-            LegacyFinalUnverifiedFrames = legacyFinalUnavailable
+            LegacyFinalUnverifiedFrames = legacyFinalUnavailable,
+            ThreatCentersOnUnavailableFrames = unavailableThreatCenters,
+            ThreatFramesWithHumanCentersAndUnavailableEvidence = unavailableThreatFramesWithHumanCenters
         };
     }
 
@@ -108,6 +124,10 @@ public static class PerceptionScoring
                 $"Player evidence unavailable: {report.PlayerEvidenceUnavailableFrames}. " +
                 $"Threat evidence unavailable: {report.ThreatEvidenceUnavailableFrames}. " +
                 $"Legacy final frames excluded: {report.LegacyFinalUnverifiedFrames}.")
+            .AppendLine($"Human-marked threat centers without comparable detector evidence: " +
+                $"{report.ThreatCentersOnUnavailableFrames} across " +
+                $"{report.ThreatFramesWithHumanCentersAndUnavailableEvidence} reviewed frames. " +
+                "These are UNAVAILABLE, not silently zero false negatives or true positives.")
             .AppendLine()
             .AppendLine("| Object | TP | FP | FN | TN | Unknown | Precision | Recall | F1 |")
             .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
