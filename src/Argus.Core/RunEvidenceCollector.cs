@@ -13,7 +13,12 @@ public sealed record RunEvidenceSummary(
     int MissingPlayerExplorationFrames,
     int TerminalStops,
     int DistinctMovementKeys,
-    bool MeetsVisualCombatGate);
+    bool MeetsVisualCombatGate)
+{
+    public int CameraEstimatedFrames { get; init; }
+    public int FramesWithMovingCandidates { get; init; }
+    public int FramesWithStationaryCandidates { get; init; }
+}
 
 public sealed class RunEvidenceCollector
 {
@@ -25,6 +30,9 @@ public sealed class RunEvidenceCollector
     private int _avoiding;
     private int _missingPlayer;
     private int _terminal;
+    private int _cameraEstimated;
+    private int _movingCandidateFrames;
+    private int _stationaryCandidateFrames;
     private readonly HashSet<string> _movementKeys = new(StringComparer.OrdinalIgnoreCase);
 
     public void Record(GameAction? action, AgentEvidence? evidence)
@@ -46,6 +54,9 @@ public sealed class RunEvidenceCollector
         {
             _playerLocated++;
             if (evidence.Combat.SteeringSource == "candidate-avoidance") _avoiding++;
+            if (evidence.Combat.BackgroundShiftConfidence is not null) _cameraEstimated++;
+            if (evidence.Combat.MotionMovingCandidates > 0) _movingCandidateFrames++;
+            if (evidence.Combat.MotionStationaryCandidates > 0) _stationaryCandidateFrames++;
         }
         else if (evidence.Phase == "exploring")
         {
@@ -62,6 +73,11 @@ public sealed class RunEvidenceCollector
         // A successful transport test must have reached visual combat; mere page loading isn't enough.
         var passed = _menu > 0 && _route >= 2 && _playerLocated >= 3;
         return new RunEvidenceSummary(_frames, _menu, _route, _upgrades, _playerLocated, _avoiding,
-            _missingPlayer, _terminal, _movementKeys.Count, passed);
+            _missingPlayer, _terminal, _movementKeys.Count, passed)
+        {
+            CameraEstimatedFrames = _cameraEstimated,
+            FramesWithMovingCandidates = _movingCandidateFrames,
+            FramesWithStationaryCandidates = _stationaryCandidateFrames
+        };
     }
 }
