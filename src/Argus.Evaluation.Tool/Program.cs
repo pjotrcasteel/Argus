@@ -3,7 +3,7 @@ using Argus.Core;
 using Argus.Evaluation;
 using Argus.Replay;
 
-if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate" or "--shadow-edges" or "--appearance-audit"))
+if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate" or "--shadow-edges" or "--appearance-audit" or "--player-visibility"))
 {
     Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --template results/my-run/labels.template.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotate results/my-run/annotate.html");
@@ -11,6 +11,7 @@ if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "-
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --blind-annotate results/my-run/blind-annotate.html");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --shadow-edges examples/wyrmforge.profile.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --appearance-audit examples/wyrmforge.profile.json");
+    Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --player-visibility examples/wyrmforge.profile.json");
     return 2;
 }
 
@@ -63,6 +64,26 @@ try
             $"{audit.Candidates.Count(c => c.MatchedHuman)} matched candidates and " +
             $"{audit.Candidates.Count(c => !c.MatchedHuman)} unmatched candidates.");
         Console.WriteLine($"Saved local feature audit: {output}");
+    }
+    else if (args[2] == "--player-visibility")
+    {
+        var labels = await GroundTruth.ReadAsync(Path.Combine(run, "labels.json"), run, replay);
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
+        var profile = JsonSerializer.Deserialize<VisualGameProfile>(await File.ReadAllTextAsync(args[3]), json)
+            ?? throw new InvalidDataException("Invalid visual game profile.");
+        profile.Validate();
+        if (profile.CombatTracking is null)
+            throw new InvalidDataException("Player visibility audit requires combat tracking settings.");
+
+        var audit = await PlayerVisibilityAudit.AnalyzeAsync(run, labels, replay, profile.CombatTracking);
+        var output = Path.Combine(run, "player-visibility-audit.json");
+        await File.WriteAllTextAsync(output, JsonSerializer.Serialize(audit, options));
+        await File.WriteAllTextAsync(Path.Combine(run, "player-visibility-audit.md"),
+            PlayerVisibilityAudit.RenderMarkdown(audit));
+        Console.WriteLine($"Player visibility audit: {audit.MissingRecordedPlayerFrames} missed visible-player " +
+            $"combat observations of {audit.ComparablePlayerFrames}; {audit.NonCombatVisiblePlayerFrames} " +
+            "player-visible noncombat frames reported separately.");
+        Console.WriteLine($"Saved private post-hoc color segmentation evidence: {output}");
     }
     else if (args[2] == "--shadow-edges")
     {
