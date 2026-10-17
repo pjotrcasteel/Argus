@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - .github/workflows/m1-live-smoke.yml
+      - examples/wyrmforge.profile.json
+      - src/Argus.Agents.Visual/**
+      - src/Argus.Runner/**
+      - tests/Argus.Tests/**
 permissions:
   contents: read
 jobs:
