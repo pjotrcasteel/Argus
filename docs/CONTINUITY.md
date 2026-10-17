@@ -178,6 +178,14 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 
 Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/runs/39046004064) **105/105 tests passed**; [real public WyrmForge smoke 39046004022](https://github.com/pjotrcasteel/Argus/actions/runs/39046004022) passed, with 35 frames, 18 player-located frames, 2 route interactions, 1 upgrade, and 1 visible terminal. [PR #27](https://github.com/pjotrcasteel/Argus/pull/27) is merged as `2c04cb85640a86e2281dd06136548d93c368db2f`. No change to active combat decisions. The original .NET CLI has not run directly on the private human labels; 27/2/11 is independently reproduced against the original frozen trace.
 
+## M2.5c — shadow-only edge-threat trial (2026-10-17; PR validation pending)
+
+- The owner requested continued development after recovery of original human `run-02` labels and merged M2.5b diagnostic-only [PR #27](https://github.com/pjotrcasteel/Argus/pull/27).
+- Old RGB threat-search bounds 19%-82% height and 1/30–29/30 width exclude multiple manually marked outside-region sprites, but naïve expansion also creates extra false positives. M2.5c adds an **opt-in read-only** `CombatPixelPerception.ObserveShadow` second scanner, restricted to supplemental regions 11%-93% height and the full horizontal width. It reports newly proposed, deduplicated candidate sprites capped at confidence 0.50. The active `ObserveRgb`, steering and gameplay path are unchanged.
+- New `ShadowEdgeStudy` compares **fresh baseline vs fresh expanded** detections on the same original screenshot against only real human marks (never previously generated predictions). It excludes noncombat, unreviewed, missing player and stale legacy last-step frames. The output contains per-run TP/FP/FN with denominators; **it is not identical to original trace scores** because both alternatives deliberately run without a temporal tracking prior.
+- Local CLI: `dotnet run --project src/Argus.Evaluation.Tool -- --run results/research/run-02 --shadow-edges examples/wyrmforge.profile.json` after privately extracting the real M2.4 development screenshots and owner-reviewed `labels.json` together. It writes `shadow-edge-study.json` and `shadow-edge-study.md`, but **never uploads** any raw frames or labels. The original run-01 held-out session remains untouched.
+- [Detailed protocol](M2-5-SHADOW-EDGE-STUDY.md). Await green CI and bounded real-browser smoke before merge. For future detector promotion, explicitly measure new false positives and preserve a fresh untouched held-out run.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -198,7 +206,7 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**M2.5 continues: preserve the human-reviewed development labels, validate PR #26, and perform reproducible failure analysis**, without pretending to be a human reviewer or using detector outputs as labels.
+**M2.5c: compare edge-region shadow proposals without modifying gameplay; preserve independent future held-out testing**, without pretending to be a human reviewer or using detector outputs as labels.
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -238,6 +246,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.5c open:** shadow-only threat expansion and same-image human-label A/B CLI implemented on branch `feat/m2-5c-shadow-edge-candidates`; no active gameplay modifications. Real original labels and screenshots remain private; validation pending. Next: green .NET tests and WyrmForge smoke, then local A/B scoring and false-positive review.
 
 - **2026-10-17 — M2.5b merged in PR #27 (`2c04cb8`): local diagnostics and legacy final-frame exclusion implemented on branch `feat/m2-5b-human-label-failure-analysis`. Genuine run-02 human labels recovered privately; run-01 held-out unchanged. Seven comparable frame observations: threat TP/FP/FN 27/2/11 (reproduced original matching); no new detector improvement asserted. Validate tests + real browser before merging.
 
