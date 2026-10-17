@@ -40,10 +40,23 @@ player and threat positions, JSON download and persistence on reload. It uploads
 `argus-m26b-independent-development-evidence` (original research traces, fixed plan and
 blank labels) and `argus-m26b-mobile-blind-review` (only selected images and mobile pages).
 
-These artifacts do **not** by themselves create a public URL or upload human labels anywhere.
-Publishing screenshot images to the public GitHub Pages site should be a separate deliberate
-opt-in, not an unnoticed side effect of a development PR. Do not claim the generated artifact
-is accessible in Safari through a direct GitHub Pages link until such a site has actually deployed.
+The owner **explicitly authorized publishing the 24 new public-game screenshots** on
+2026-10-17, while preserving the original run-02 route. [M2.6c Pages workflow](../.github/workflows/mobile-annotator-pages.yml)
+combines the previous verified development screenshot page with the two existing pre-reviewed,
+prediction-free mobile artifact pages, without including raw traces, hidden predictions, held-out
+screenshots or human labels.
+
+Deployment must be confirmed before claiming these three HTTPS routes work:
+`https://pjotrcasteel.github.io/Argus/annoteren/dev-a/`,
+`https://pjotrcasteel.github.io/Argus/annoteren/dev-b/`, and unchanged
+`https://pjotrcasteel.github.io/Argus/annoteren/run-02/`.
+They are **public GitHub Pages screenshots**, but personal annotations remain local to each
+device until copied/exported. The user should export separate `labels.json` documents per run.
+No public upload endpoint for user-entered labels exists.
+
+The current Actions source archives have two-day retention; deployed Pages serves its static
+assets beyond that, but a future redevelopment/rebuild needs renewed archive sources.
+Preserve or migrate exact original assets before that retention window expires.
 
 ## Workflow
 

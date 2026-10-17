@@ -27,10 +27,20 @@ jobs:
         run: |
           gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12100334875/zip > original-real-game-evidence.zip
           unzip -t original-real-game-evidence.zip | tail -1
-      - name: Generate no-dependencies Safari-compatible static annotator
+      - name: Retrieve explicitly owner-approved M2.6b development mobile screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12108479907/zip > development-approved-reviews.zip
+          unzip -t development-approved-reviews.zip | tail -1
+      - name: Generate original run-02 annotation route unchanged
         run: |
           python3 web/mobile-annotator/build.py \
             --archive original-real-game-evidence.zip --destination _site
+      - name: Add two newly approved blind development annotation routes
+        run: |
+          python3 web/mobile-annotator/publish_m26b.py \
+            --archive development-approved-reviews.zip --destination _site
       - name: Check real screenshots, blind ground truth, and page JavaScript
         run: |
           python3 - <<'PY'
@@ -45,13 +55,31 @@ jobs:
           assert "playerX" not in html and "threatLocations" not in html
           assert "run-01" not in html
           Path("mobile-script.js").write_text(html.split("<script>",1)[1].split("</script>",1)[0])
-          print("Verified 12 public development screenshots and no agent predictions.")
+          manifest = json.loads(Path("_site/published-development-manifest.json").read_text())
+          assert manifest["routes"] == [
+            "annoteren/run-02/", "annoteren/dev-a/", "annoteren/dev-b/"]
+          assert len(manifest["preservedRun02HtmlSha256"]) == 64
+          for name in ("dev-a", "dev-b"):
+            directory = Path("_site/annoteren") / name
+            doc = (directory / "index.html").read_text()
+            assert len(list(directory.glob("frame-*.png"))) == 12
+            assert len(manifest["screenshots"][name]) == 12
+            assert "/*ARGUS_FRAMES*/" not in doc and "/*ARGUS_LABELS*/" not in doc
+            assert "threatLocations" not in doc and "playerX" not in doc
+            assert "run-01" not in doc and "run-02" not in doc
+            Path(f"{name}-mobile-script.js").write_text(
+              doc.split("<script>",1)[1].split("</script>",1)[0])
+          assert len(list(Path("_site/annoteren").glob("*/frame-*.png"))) == 36
+          print("Verified all three original and new BLIND annotation routes, 36 real PNGs.")
           PY
           node --check mobile-script.js
+          node --check dev-a-mobile-script.js
+          node --check dev-b-mobile-script.js
       - name: Verify navigation, tap annotations and JSON download in mobile Chromium
         run: |
           python3 -m pip install --quiet --break-system-packages playwright
           python3 web/mobile-annotator/smoke.py --site _site
+          python3 tools/m26b/smoke.py --site _site
       - name: Upload build for deployment
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
