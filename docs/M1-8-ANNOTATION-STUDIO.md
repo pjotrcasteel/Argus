@@ -14,7 +14,7 @@ dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotat
 3. Open `results/my-run/annotate.html` locally. It selects up to 16 genuine captured frames (preferring combat).
 4. For each frame, choose **Mark player** and click on the visible player center; or click **Player not visible** / **Can't determine**.
 5. Choose **Mark threat** and click each visible hostile/hazardous object you can confidently identify. If none, click **No visible threats**. If occluded or uncertain, click **Can't determine**.
-6. Export `labels.json` using the green button, place the downloaded file in `results/my-run`, and run:
+6. To resume a previous session, use **Import previous labels.json** and choose the downloaded file. Export `labels.json` using the green button, place the downloaded file in `results/my-run`, and run:
 
 ```bash
 dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --labels results/my-run/labels.json
@@ -33,7 +33,8 @@ ARGUS produces `perception-report.md` and `perception-report.json`, with player 
 
 ## Limits
 
-- The UI currently uses only up to 16 sampled frames per run and **does not import an already edited labels.json**. Annotate a subset in one session before export.
+- The UI samples up to 16 frames per run. You can now **import a previously downloaded labels.json** to resume labeling (schema/run ID/sample steps and coordinate bounds are validated locally). Download again after further edits; there is no autosave.
+- New recordings contain threat candidate pixel centers. **Blue dotted candidate circles** show what ARGUS predicted, separate from **human threat markers**; older runs may lack candidate coordinates, which means unavailable evidence rather than no threats.
 - It is not the future **Live Spectator Mode**. The live request remains in issue #11.
 - Source code, unit tests, and CI generation verify structural correctness. Real browser usability and annotation accuracy require a human review; do not claim human UX validation from a green build.
 - Color-segmented threat candidates remain approximate and may include particles or decoration. A few hand-labeled frames are not a reliable cross-seed generalization estimate.
