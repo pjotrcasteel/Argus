@@ -19,23 +19,31 @@ public sealed record CombatVisualObservation(VisualBlob? Player, IReadOnlyList<V
 /// </summary>
 public static class CombatPixelPerception
 {
-    public static CombatVisualObservation Observe(byte[] pngBytes, CombatVisualSettings settings)
+    public static CombatVisualObservation Observe(byte[] pngBytes, CombatVisualSettings settings, VisualBlob? previousPlayer = null)
     {
         var image = ImageResult.FromMemory(pngBytes, ColorComponents.RedGreenBlue);
-        return ObserveRgb(image.Data, image.Width, image.Height, settings);
+        return ObserveRgb(image.Data, image.Width, image.Height, settings, previousPlayer);
     }
 
-    public static CombatVisualObservation ObserveRgb(byte[] rgb, int width, int height, CombatVisualSettings settings)
+    public static CombatVisualObservation ObserveRgb(byte[] rgb, int width, int height, CombatVisualSettings settings,
+        VisualBlob? previousPlayer = null)
     {
         settings.Validate();
         if (width < 100 || height < 150 || rgb.Length != width * height * 3)
             return new CombatVisualObservation(null, []);
 
+        var targetX = previousPlayer?.X ?? width / 2f;
+        var targetY = previousPlayer?.Y ?? height / 2f;
         var player = Locate(rgb, width, height, settings.PlayerPalette!, settings.MinimumPlayerPixels)
             .Where(b => settings.MaxPlayerDistanceFromScreenCenter == 0 ||
                 MathF.Sqrt((b.X - width / 2f) * (b.X - width / 2f) +
                     (b.Y - height / 2f) * (b.Y - height / 2f)) <= settings.MaxPlayerDistanceFromScreenCenter)
-            .OrderByDescending(b => b.MatchingPixels).FirstOrDefault();
+            .OrderByDescending(b =>
+            {
+                var distance = MathF.Sqrt((b.X - targetX) * (b.X - targetX) + (b.Y - targetY) * (b.Y - targetY));
+                var penalty = 1f + distance / 60f;
+                return b.MatchingPixels / (penalty * penalty);
+            }).FirstOrDefault();
 
         if (player is null) return new CombatVisualObservation(null, []);
 
