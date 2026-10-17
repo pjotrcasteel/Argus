@@ -42,6 +42,11 @@ jobs:
         run: |
           dotnet run --project src/Argus.Replay.Tool --configuration Release --no-build -- --run artifacts/m1-live
           test -s artifacts/m1-live/replay.html
+      - name: Prepare offline human annotation template (all unknown)
+        run: |
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/m1-live --template artifacts/m1-live/labels.template.json
+          test -s artifacts/m1-live/labels.template.json
       - name: Show visual evidence report
         if: always()
         run: |

@@ -13,7 +13,12 @@ public sealed record CombatScreenEvidence(float PlayerX, float PlayerY, int Thre
     public int MotionMatchedCandidates { get; init; }
     public int MotionMovingCandidates { get; init; }
     public int MotionStationaryCandidates { get; init; }
+    // Pixel centers from the actual visual detector, NOT verified enemy locations.
+    // Null in earlier traces means these detections were not recorded, not zero candidates.
+    public IReadOnlyList<VisualCandidatePoint>? ThreatLocations { get; init; }
 }
+
+public sealed record VisualCandidatePoint(float X, float Y);
 
 public interface IAgentEvidenceProvider
 {

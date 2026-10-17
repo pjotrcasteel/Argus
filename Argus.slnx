@@ -4,6 +4,8 @@
   <Project Path="src/Argus.Reporter/Argus.Reporter.csproj" />
   <Project Path="src/Argus.Replay/Argus.Replay.csproj" />
   <Project Path="src/Argus.Replay.Tool/Argus.Replay.Tool.csproj" />
+  <Project Path="src/Argus.Evaluation/Argus.Evaluation.csproj" />
+  <Project Path="src/Argus.Evaluation.Tool/Argus.Evaluation.Tool.csproj" />
   <Project Path="src/Argus.Agents.Visual/Argus.Agents.Visual.csproj" />
   <Project Path="src/Argus.Adapters.Browser/Argus.Adapters.Browser.csproj" />
   <Project Path="src/Argus.Runner/Argus.Runner.csproj" />
