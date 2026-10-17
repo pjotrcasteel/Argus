@@ -542,3 +542,42 @@ jobs:
           assert "INDETERMINATE is NOT a player detection" in markdown
           print("PASS: current-pixel veto refuses empty absent-player examples; occlusions stay UNKNOWN.")
           PY
+
+      - name: Verify hard-negative research CSV and failure groups using 21 artificial PNG frames
+        run: |
+          python3 tools/m212/generate_hard_negative_fixture.py
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-hard-negatives/run-local --occlusion-veto examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+          root = Path("artifacts/ci-hard-negatives/run-local")
+          veto = json.loads((root / "player-current-frame-veto.json").read_text())
+          groups = json.loads((root / "player-shadow-hard-negatives.json").read_text())
+          assert veto["rawBridgeProposals"] == 8
+          assert veto["vetoedProposals"] == 2
+          assert veto["unresolvedProposals"] == 6
+          assert veto["vetoedOverHumanAbsent"] == 2
+          assert veto["vetoedOverHumanVisible"] == 0
+          assert veto["unresolvedOverHumanAbsent"] == 4
+          assert veto["unresolvedOverHumanVisible"] == 2
+          assert groups["reviewedAbsentProposals"] == 6
+          assert groups["correctlyVetoedAbsent"] == 2
+          assert groups["unresolvedAbsentTexturedWithoutPalette"] == 2
+          assert groups["unresolvedAbsentWithPalette"] == 2
+          assert groups["unresolvedAbsentOther"] == 0
+          assert groups["falseVetoedVisible"] == 0
+          with (root / "player-shadow-feature-rows.csv").open(newline="") as file:
+              rows = list(csv.DictReader(file))
+          assert len(rows) == 8
+          assert all(x["run_id"] == "run-local" for x in rows)
+          assert [int(x["step"]) for x in rows] == [3, 4, 7, 8, 12, 13, 17, 18]
+          assert all(x["reviewed_player_label"] == "1" for x in rows[:2])
+          assert all(x["reviewed_player_label"] == "0" for x in rows[2:])
+          assert all(int(x["player_palette_pixels"]) == 0 for x in rows[4:6])
+          assert all(int(x["player_palette_pixels"]) > 0 for x in rows[6:])
+          assert "NOT a trained AI" in (root / "player-shadow-hard-negatives.md").read_text() or (
+              "NOT live player detections" in (root / "player-shadow-hard-negatives.md").read_text())
+          print("PASS: six ABSENT references, four hard-negatives unresolved, no learned policy.")
+          PY
