@@ -121,8 +121,8 @@ public static class PersonaContrastMarkdown
             builder.AppendLine($"| {Safe(p.PersonaId)} | {p.ComparedFrames} | {p.SuggestedWaits} | {p.SuggestedMoves} | {p.FramesWithoutProposal} | {Duration(p.MeanMoveDurationMs)} |");
 
         builder.AppendLine().AppendLine("## Pairwise differences").AppendLine()
-            .AppendLine("| Pair | Both proposed | Different action kinds | Both moving | Different directions | Same direction, different duration | Any action difference | Direction difference rate |")
-            .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+            .AppendLine("| Pair | Both proposed | Different action kinds | Both moving | Different directions | Same direction, different duration | Any action difference | Any action difference rate | Direction difference rate |")
+            .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
         foreach (var pair in report.Pairs)
             builder.AppendLine($"| {Safe(pair.FirstPersona)} vs {Safe(pair.SecondPersona)} | {pair.BothProposedFrames} | " +
                 $"{pair.DifferentActionKinds} | {pair.BothMovingFrames} | {pair.DifferentDirections} | " +
