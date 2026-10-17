@@ -5,7 +5,15 @@ public sealed record AgentEvidence(string Phase, string Reason, float Confidence
     CombatScreenEvidence? Combat = null);
 
 public sealed record CombatScreenEvidence(float PlayerX, float PlayerY, int ThreatCandidates, float? NearestCandidatePixels,
-    string SteeringSource);
+    string SteeringSource)
+{
+    public int? BackgroundShiftX { get; init; }
+    public int? BackgroundShiftY { get; init; }
+    public float? BackgroundShiftConfidence { get; init; }
+    public int MotionMatchedCandidates { get; init; }
+    public int MotionMovingCandidates { get; init; }
+    public int MotionStationaryCandidates { get; init; }
+}
 
 public interface IAgentEvidenceProvider
 {
