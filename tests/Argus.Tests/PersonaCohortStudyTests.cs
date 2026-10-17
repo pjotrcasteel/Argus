@@ -126,14 +126,17 @@ public sealed class PersonaCohortStudyTests
     [TestMethod]
     public void TraitAblations_AttentionAndExploration_AreObservableOnlyWhenRelevant()
     {
-        var frames = new ReplayTrace(Enumerable.Range(0, 30).Select(i =>
+        var attentionalFrames = new ReplayTrace(Enumerable.Range(0, 30).Select(i =>
             Scene(i) with { ThreatLocations = [], ThreatCandidates = 0, Confidence = 0.4f }).ToArray());
+        var explorationFrames = new ReplayTrace(Enumerable.Range(0, 30).Select(i =>
+            Scene(i) with { ThreatLocations = [], ThreatCandidates = 0, Confidence = 0.95f }).ToArray());
         var baseProfile = PersonaPresets.Default[1] with { Patience = 0 };
-        var report = PersonaTraitAblations.Analyze(frames, baseProfile, Keys, 29);
+        var attention = PersonaTraitAblations.Analyze(attentionalFrames, baseProfile, Keys, 29);
+        var exploration = PersonaTraitAblations.Analyze(explorationFrames, baseProfile, Keys, 29);
 
-        Assert.IsTrue(report.Traits.Single(t => t.Trait == "attention").DifferentKinds > 0);
-        Assert.IsTrue(report.Traits.Single(t => t.Trait == "exploration").DifferentDirections > 0);
-        Assert.AreEqual(0, report.Traits.Single(t => t.Trait == "riskAppetite").DifferentDirections);
+        Assert.IsTrue(attention.Traits.Single(t => t.Trait == "attention").DifferentKinds > 0);
+        Assert.IsTrue(exploration.Traits.Single(t => t.Trait == "exploration").DifferentDirections > 0);
+        Assert.AreEqual(0, exploration.Traits.Single(t => t.Trait == "riskAppetite").DifferentDirections);
     }
 
     [TestMethod]
