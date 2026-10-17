@@ -37,6 +37,28 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void FindBest_GenericWordInsideInstruction_DoesNotClick()
+    {
+        var profile = new VisualGameProfile { MenuActions = ["Choose"] };
+        var heading = new VisibleText("Choose your primary magic", 79, 240, 222, 20, 95);
+
+        Assert.IsNull(MenuTextMatcher.FindBest([heading], profile));
+    }
+
+    [TestMethod]
+    public void FindBest_RealSpellOption_ChoosesButtonNotHeading()
+    {
+        var profile = new VisualGameProfile { MenuActions = ["Arcane Orb", "Choose"] };
+        var lines = new[]
+        {
+            new VisibleText("Choose your primary magic", 79, 240, 222, 20, 95),
+            new VisibleText("Arcane Orb", 60, 410, 120, 30, 87)
+        };
+
+        Assert.AreEqual("Arcane Orb", MenuTextMatcher.FindBest(lines, profile)?.Text);
+    }
+
+    [TestMethod]
     public void FindBest_LowConfidence_DoesNotClick()
     {
         var result = MenuTextMatcher.FindBest([new VisibleText("Begin Hunt", 0, 0, 100, 20, 10)], new VisualGameProfile());
