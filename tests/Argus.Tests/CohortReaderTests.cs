@@ -72,7 +72,7 @@ public sealed class CohortReaderTests
         var root = FreshRoot();
         try
         {
-            await WriteRun(root, "bad", Evidence(20, 10, false, 4));
+            await WriteRun(root, "bad", Evidence(20, 10, true, 4) with { MeetsVisualCombatGate = false });
 
             var failed = false;
             try { await CohortReader.ReadAsync(root, TestContext.CancellationToken); }
@@ -96,6 +96,31 @@ public sealed class CohortReaderTests
             try { await CohortReader.ReadAsync(root, TestContext.CancellationToken); }
             catch (InvalidDataException) { failed = true; }
             Assert.IsTrue(failed);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [TestMethod]
+    public async Task ReadAsync_MissingCameraCounters_RejectsUnknownRatherThanTreatingItAsZero()
+    {
+        var root = FreshRoot();
+        try
+        {
+            var folder = Path.Combine(root, "legacy");
+            Directory.CreateDirectory(folder);
+            var evidence = Evidence(20, 10, true, 4);
+            var json = JsonSerializer.Serialize(evidence, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            using var original = JsonDocument.Parse(json);
+            var counters = original.RootElement.EnumerateObject()
+                .Where(p => p.Name != "cameraEstimatedFrames")
+                .ToDictionary(p => p.Name, p => p.Value.Clone());
+            await File.WriteAllTextAsync(Path.Combine(folder, "summary.json"), JsonSerializer.Serialize(counters),
+                TestContext.CancellationToken);
+
+            var failed = false;
+            try { await CohortReader.ReadAsync(root, TestContext.CancellationToken); }
+            catch (InvalidDataException) { failed = true; }
+            Assert.IsTrue(failed, "Unknown camera coverage must not be silently counted as zero.");
         }
         finally { Directory.Delete(root, true); }
     }
