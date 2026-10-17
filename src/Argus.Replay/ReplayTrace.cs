@@ -1,11 +1,15 @@
 using System.Text.Json;
+using Argus.Core;
 
 namespace Argus.Replay;
 
 /// <summary>Read-only presentation of evidence, not a statement about true game state.</summary>
 public sealed record ReplayFrame(
     int Step, string Screenshot, DateTimeOffset TimestampUtc, int Width, int Height, string Phase, string Reason,
-    float? Confidence, string? Action, float? PlayerX, float? PlayerY, int? ThreatCandidates);
+    float? Confidence, string? Action, float? PlayerX, float? PlayerY, int? ThreatCandidates)
+{
+    public IReadOnlyList<VisualCandidatePoint>? ThreatLocations { get; init; }
+}
 
 public sealed record ReplayTrace(IReadOnlyList<ReplayFrame> Frames);
 
@@ -86,6 +90,7 @@ public static class ReplayTraceReader
         float? playerX = null;
         float? playerY = null;
         int? candidates = null;
+        IReadOnlyList<VisualCandidatePoint>? locations = null;
 
         if (item.TryGetProperty("evidence", out var evidence) && evidence.ValueKind == JsonValueKind.Object)
         {
@@ -103,6 +108,23 @@ public static class ReplayTraceReader
                 }
                 if (combat.TryGetProperty("threatCandidates", out var count) && count.TryGetInt32(out var n) && n >= 0)
                     candidates = n;
+                if (combat.TryGetProperty("threatLocations", out var list))
+                {
+                    if (list.ValueKind != JsonValueKind.Array || list.GetArrayLength() > 100)
+                        throw new InvalidDataException("Invalid threat candidate list.");
+                    var recorded = new List<VisualCandidatePoint>();
+                    foreach (var position in list.EnumerateArray())
+                    {
+                        if (position.ValueKind != JsonValueKind.Object ||
+                            !position.TryGetProperty("x", out var positionX) || !positionX.TryGetSingle(out var px) ||
+                            !position.TryGetProperty("y", out var positionY) || !positionY.TryGetSingle(out var py) ||
+                            !float.IsFinite(px) || !float.IsFinite(py) ||
+                            px < 0 || px >= width || py < 0 || py >= height)
+                            throw new InvalidDataException("Invalid threat candidate pixel position.");
+                        recorded.Add(new VisualCandidatePoint(px, py));
+                    }
+                    locations = recorded;
+                }
             }
         }
 
@@ -115,7 +137,7 @@ public static class ReplayTraceReader
         }
 
         return new ReplayFrame(step, name, timestamp, width, height, phase, reason, confidence, action,
-            playerX, playerY, candidates);
+            playerX, playerY, candidates) { ThreatLocations = locations };
     }
 
     private static string RequiredString(JsonElement element, string name) =>
