@@ -32,6 +32,9 @@ public static class CombatPixelPerception
             return new CombatVisualObservation(null, []);
 
         var player = Locate(rgb, width, height, settings.PlayerPalette!, settings.MinimumPlayerPixels)
+            .Where(b => settings.MaxPlayerDistanceFromScreenCenter == 0 ||
+                MathF.Sqrt((b.X - width / 2f) * (b.X - width / 2f) +
+                    (b.Y - height / 2f) * (b.Y - height / 2f)) <= settings.MaxPlayerDistanceFromScreenCenter)
             .OrderByDescending(b => b.MatchingPixels).FirstOrDefault();
 
         if (player is null) return new CombatVisualObservation(null, []);
