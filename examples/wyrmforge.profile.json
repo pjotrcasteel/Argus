@@ -1,6 +1,7 @@
 {
   "name": "WyrmForge visual black-box baseline",
   "menuActions": [
+    "Begin First Hunt",
     "Begin Hunt",
     "Continue Hunt",
     "Continue",
