@@ -49,7 +49,7 @@ jobs:
           test -s artifacts/m1-live/labels.template.json
       - name: Generate offline human annotation viewer from actual game frames
         run: |
-          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \\
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
             --run artifacts/m1-live --annotate artifacts/m1-live/annotate.html
           test -s artifacts/m1-live/annotate.html
       - name: Show visual evidence report
