@@ -111,6 +111,34 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void DetectRgb_VisibleLavenderRing_LocatesCircleWithoutCoordinates()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var distance = Math.Sqrt((x - 155) * (x - 155) + (y - 475) * (y - 475));
+                var ring = Math.Abs(distance - 18) <= 2;
+                rgb[p] = ring ? (byte)190 : (byte)30;
+                rgb[p + 1] = ring ? (byte)156 : (byte)26;
+                rgb[p + 2] = ring ? (byte)228 : (byte)42;
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 155) <= 5);
+        Assert.IsTrue(Math.Abs(result.Y - 475) <= 5);
+        Assert.IsGreaterThanOrEqualTo(0.6f, result.Confidence);
+    }
+
+    [TestMethod]
     public void ChooseDirection_IdenticalActivity_RotatesEveryFourActions()
     {
         var empty = new float[4];
