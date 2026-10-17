@@ -1,3 +1,6 @@
+using Argus.Core;
+using StbImageSharp;
+
 namespace Argus.Agents.Visual;
 
 /// <summary>Measured appearance of unverified screenshot candidates; no enemy identity or classification.</summary>
@@ -5,12 +8,30 @@ public sealed record VisualAppearanceDescriptor(float X, float Y, int Width, int
     float MeanLuminance, float LuminanceStdDev, float ContrastToSurroundings, float GradientDensity,
     float MeanSaturation);
 
+/// <summary>Single screenshot's measured palette candidates, without enemy classification.</summary>
+public sealed record AppearanceCandidate(string Source, VisualAppearanceDescriptor Features);
+public sealed record AppearanceFrame(bool PlayerLocated, IReadOnlyList<AppearanceCandidate> Candidates);
+
 /// <summary>
 /// Stateless, game-agnostic image features. Uses only RGB pixels inside the visible candidate bounding
 /// rectangle and a four-pixel surrounding ring; independent of human labels, actions and game state.
 /// </summary>
 public static class VisualAppearanceDescriptors
 {
+    public static AppearanceFrame ObservePng(byte[] png, CombatVisualSettings settings)
+    {
+        var image = ImageResult.FromMemory(png, ColorComponents.RedGreenBlue);
+        var detected = CombatPixelPerception.ObserveShadowRgb(image.Data, image.Width, image.Height, settings);
+        if (detected.Baseline.Player is null) return new AppearanceFrame(false, []);
+
+        var candidates = detected.Baseline.ThreatCandidates.Select(b =>
+                new AppearanceCandidate("baseline", Measure(image.Data, image.Width, image.Height, b)))
+            .Concat(detected.AddedCandidates.Select(b =>
+                new AppearanceCandidate("shadow", Measure(image.Data, image.Width, image.Height, b))))
+            .ToArray();
+        return new AppearanceFrame(true, candidates);
+    }
+
     public static VisualAppearanceDescriptor Measure(byte[] rgb, int width, int height, VisualBlob blob)
     {
         if (width < 1 || height < 1 || rgb.LongLength != (long)width * height * 3)
