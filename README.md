@@ -111,6 +111,16 @@ This produces `persona-cohort.json` and `persona-cohort.md` with one entry per g
 
 Open **GitHub Actions → M2.3 opt-in two-session WyrmForge research → Run workflow** to record two separate bounded game sessions and generate real multi-run shadow-persona reports. This does **not** run on every code change. The artifacts are retained for only two days and cannot prove identical procedural conditions. See [M2.3 real research capture](docs/M2-3-REAL-RESEARCH.md).
 
+## Evaluate actual blind labels from independent runs (M2.4)
+
+The opt-in two-session WyrmForge research workflow now includes fixed-seed blind annotation pages and a strictly **NOT_EVALUATED** result until somebody independently reviews screenshots. To validate completed `labels.json` files:
+
+```bash
+dotnet run --project src/Argus.Study.Quality.Tool -- --runs results/research-runs
+```
+
+This refuses modified frame selections and reports per-run, development and held-out screen-space precision/recall and unknown coverage when genuinely reviewed labels exist. It never invents reference truth or changes the game's code. See [M2.4 quality gate](docs/M2-4-BLIND-QUALITY.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
@@ -125,6 +135,7 @@ Open **GitHub Actions → M2.3 opt-in two-session WyrmForge research → Run wor
 - [Measuring persona action differences (M2.1)](docs/M2-1-PERSONA-CONTRAST.md)
 - [Multi-run personas and one-trait attribution (M2.2)](docs/M2-2-COHORT-ABLATIONS.md)
 - [Opt-in real two-session WyrmForge research (M2.3)](docs/M2-3-REAL-RESEARCH.md)
+- [Actual blind human-label research and held-out quality (M2.4)](docs/M2-4-BLIND-QUALITY.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
