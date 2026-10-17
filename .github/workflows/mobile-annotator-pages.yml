@@ -48,6 +48,10 @@ jobs:
           print("Verified 12 public development screenshots and no agent predictions.")
           PY
           node --check mobile-script.js
+      - name: Verify navigation, tap annotations and JSON download in mobile Chromium
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 web/mobile-annotator/smoke.py --site _site
       - name: Upload build for deployment
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
