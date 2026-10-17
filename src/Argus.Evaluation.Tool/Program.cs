@@ -61,7 +61,9 @@ try
         Console.WriteLine($"Shadow A/B: {study.ScoredFrames} comparable frames, " +
             $"baseline TP/FP/FN {study.Baseline.TruePositive}/{study.Baseline.FalsePositive}/{study.Baseline.FalseNegative}, " +
             $"raw shadow {study.Expanded.TruePositive}/{study.Expanded.FalsePositive}/{study.Expanded.FalseNegative}, " +
-            $"temporal shadow {study.Temporal?.TruePositive}/{study.Temporal?.FalsePositive}/{study.Temporal?.FalseNegative}.");
+            $"moving temporal {study.Temporal?.TruePositive}/{study.Temporal?.FalsePositive}/{study.Temporal?.FalseNegative}, " +
+            $"stationary research {study.PersistentStationaryTrial?.TruePositive}/" +
+            $"{study.PersistentStationaryTrial?.FalsePositive}/{study.PersistentStationaryTrial?.FalseNegative}.");
         Console.WriteLine($"Saved local study: {output}");
     }
     else

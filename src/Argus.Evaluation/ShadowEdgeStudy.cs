@@ -20,12 +20,15 @@ public sealed record ShadowEdgeFrame(int Step, string Status, ShadowThreatCounts
     public int TemporallyConfirmed { get; init; }
     public int Pending { get; init; }
     public int Stationary { get; init; }
+    public ShadowThreatCounts? PersistentStationaryTrial { get; init; }
+    public int PersistentStationaryProposals { get; init; }
 }
 
 public sealed record ShadowEdgeStudyReport(string RunId, int ReviewedFrames, int ScoredFrames, int UnscoredFrames,
     float MatchingRadius, ShadowThreatCounts Baseline, ShadowThreatCounts Expanded, IReadOnlyList<ShadowEdgeFrame> Frames)
 {
     public ShadowThreatCounts? Temporal { get; init; }
+    public ShadowThreatCounts? PersistentStationaryTrial { get; init; }
 }
 
 /// <summary>
@@ -94,13 +97,17 @@ public static class ShadowEdgeStudy
                     var expanded = Match(human.Threats.Centers!, observation.CombinedCandidates, radius);
                     var temporalCandidates = observation.Baseline.ThreatCandidates.Concat(temporal!.Confirmed).ToArray();
                     var stable = Match(human.Threats.Centers!, temporalCandidates, radius);
+                    var persistentCandidates = temporalCandidates.Concat(temporal.PersistentStationaryCandidates).ToArray();
+                    var stationaryTrial = Match(human.Threats.Centers!, persistentCandidates, radius);
                     var additions = observation.AddedCandidates.Select(p => new VisualCandidatePoint(p.X, p.Y)).ToArray();
                     entries.Add(new ShadowEdgeFrame(step, "SCORED", original, expanded, additions)
                     {
                         Temporal = stable,
                         TemporallyConfirmed = temporal.Confirmed.Count,
                         Pending = temporal.PendingCandidates,
-                        Stationary = temporal.StationaryCandidates
+                        Stationary = temporal.StationaryCandidates,
+                        PersistentStationaryTrial = stationaryTrial,
+                        PersistentStationaryProposals = temporal.PersistentStationaryCandidates.Count
                     });
                 }
             }
@@ -111,7 +118,8 @@ public static class ShadowEdgeStudy
         return new ShadowEdgeStudyReport(labels.RunId, labels.Frames.Count, scored.Length, entries.Count - scored.Length,
             radius, Sum(scored.Select(f => f.Baseline!)), Sum(scored.Select(f => f.Expanded!)), entries)
         {
-            Temporal = Sum(scored.Select(f => f.Temporal!))
+            Temporal = Sum(scored.Select(f => f.Temporal!)),
+            PersistentStationaryTrial = Sum(scored.Select(f => f.PersistentStationaryTrial!))
         };
     }
 
@@ -120,7 +128,7 @@ public static class ShadowEdgeStudy
         static string Pct(double? rate) => rate is null ? "N/A" :
             rate.Value.ToString("P1", CultureInfo.InvariantCulture);
         var b = new StringBuilder();
-        b.AppendLine("# ARGUS — M2.5d causal temporal shadow comparison").AppendLine()
+        b.AppendLine("# ARGUS — M2.5e stationary-candidate audit (shadow only)").AppendLine()
             .AppendLine($"Run: `{report.RunId.Replace("`", "")}`. Human-labeled frames: {report.ReviewedFrames}; " +
                 $"scored: {report.ScoredFrames}; unscored: {report.UnscoredFrames}.")
             .AppendLine("All variants use the same current PNG; temporal association uses only preceding " +
@@ -132,18 +140,24 @@ public static class ShadowEdgeStudy
             .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: |");
         AddCounts("Current baseline", report.Baseline);
         AddCounts("Extended shadow (raw)", report.Expanded);
-        if (report.Temporal is not null) AddCounts("Extended shadow (temporal)", report.Temporal);
-        b.AppendLine().AppendLine("| Frame | Status | Baseline TP/FP/FN | Raw TP/FP/FN | Temporal TP/FP/FN | Added | Confirmed | Pending | Static |")
-            .AppendLine("| ---: | --- | --- | --- | --- | ---: | ---: | ---: | ---: |");
+        if (report.Temporal is not null) AddCounts("Extended shadow (moving temporal)", report.Temporal);
+        if (report.PersistentStationaryTrial is not null)
+            AddCounts("Experimental: temporal + persistent still", report.PersistentStationaryTrial);
+        b.AppendLine().AppendLine("| Frame | Status | Baseline TP/FP/FN | Raw TP/FP/FN | Moving TP/FP/FN | Still trial TP/FP/FN | Added | Moving | Pending | Static | Stable still |")
+            .AppendLine("| ---: | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |");
         foreach (var f in report.Frames)
             b.AppendLine($"| {f.Step} | {f.Status} | {Counts(f.Baseline)} | {Counts(f.Expanded)} | " +
-                $"{Counts(f.Temporal)} | {f.AdditionalCandidates.Count} | {f.TemporallyConfirmed} | {f.Pending} | {f.Stationary} |");
+                $"{Counts(f.Temporal)} | {Counts(f.PersistentStationaryTrial)} | {f.AdditionalCandidates.Count} | " +
+                $"{f.TemporallyConfirmed} | {f.Pending} | {f.Stationary} | {f.PersistentStationaryProposals} |");
         b.AppendLine()
             .AppendLine("**Safety:** this probe does not affect `VisualGameAgent` or avoidance. New candidates are " +
                 "uncertain palette matches, never verified enemies. Old bounded final-frame evidence and " +
                 "non-combat/unknown references are excluded. The temporal tracker additionally requires " +
                 "two consecutive sightings and at least three pixels of observed motion; it can miss " +
                 "stationary or fast threats, and moving decorations can still appear as candidates. " +
+                "The fourth experimental column separately restores visually stable still objects after " +
+                "three consecutive sightings; static scenery may qualify and it must NEVER be treated " +
+                "as confirmed enemy identity or affect player input. " +
                 "The shadow scan deliberately avoids the top 11% " +
                 "and bottom 7% to reduce HUD/footer contamination; other false positives remain possible.")
             .AppendLine("Do not promote this detector until new independent human-reviewed development runs confirm " +
