@@ -118,6 +118,43 @@ public sealed class CombatPerceptionTests
         Assert.IsNull(CombatPixelPerception.ObserveRgb(rgb, 390, 844, Settings).Player);
     }
 
+    [TestMethod]
+    public void ObserveRgb_TrackedMageAtViewportEdge_ContinuesOutsideInitialCenterRegion()
+    {
+        var rgb = MakeEmptyFrame();
+        Paint(rgb, 381, 406, 9, 30, 72, 91, 115);
+        var settings = new CombatVisualSettings
+        {
+            PlayerPalette = Settings.PlayerPalette,
+            MinimumPlayerPixels = 70,
+            MaxPlayerDistanceFromScreenCenter = 155
+        };
+        var previous = new VisualBlob(335, 421, 24, 32, 240, 0.8f);
+
+        var detected = CombatPixelPerception.ObserveRgb(rgb, 390, 844, settings, previous);
+
+        Assert.IsNotNull(detected.Player);
+        Assert.IsTrue(detected.Player.X >= 380f);
+        Assert.IsTrue(Math.Abs(detected.Player.Y - 420.5f) <= 2f);
+    }
+
+    [TestMethod]
+    public void ObserveRgb_MageAtViewportEdgeWithoutContinuity_KeepsSafeUnknown()
+    {
+        var rgb = MakeEmptyFrame();
+        Paint(rgb, 381, 406, 9, 30, 72, 91, 115);
+        var settings = new CombatVisualSettings
+        {
+            PlayerPalette = Settings.PlayerPalette,
+            MinimumPlayerPixels = 70,
+            MaxPlayerDistanceFromScreenCenter = 155
+        };
+
+        Assert.IsNull(CombatPixelPerception.ObserveRgb(rgb, 390, 844, settings).Player);
+        Assert.IsNull(CombatPixelPerception.ObserveRgb(rgb, 390, 844, settings,
+            new VisualBlob(170, 421, 20, 30, 250, 0.8f)).Player);
+    }
+
     private static byte[] MakeEmptyFrame()
     {
         var pixels = new byte[390 * 844 * 3];

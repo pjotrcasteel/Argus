@@ -39,13 +39,17 @@ try
         var frame = await environment.ObserveAsync(cts.Token);
         var filename = $"frame-{step:D4}.png";
         await File.WriteAllBytesAsync(Path.Combine(options.Output, filename), frame.PngBytes, cts.Token);
-        var action = step == options.MaxSteps ? null : await agent.DecideAsync(frame, cts.Token);
-        var evidence = (agent as IAgentEvidenceProvider)?.LastEvidence;
+        // Evaluate even the final screenshot, but never execute input after the step limit.
+        // The prior implementation copied the previous frame's LastEvidence into the final trace record.
+        var captured = await FrameDecisionCapture.CaptureAsync(agent, frame, step == options.MaxSteps, cts.Token);
+        var action = captured.Action;
+        var evidence = captured.Evidence;
+        var inputSuppressedAtStepLimit = captured.InputSuppressedAtStepLimit;
         evidenceCollector.Record(action, evidence);
 
         await JsonSerializer.SerializeAsync(trace, new
         {
-            step, frame.TimestampUtc, frame.Width, frame.Height, screenshot = filename, action, evidence
+            step, frame.TimestampUtc, frame.Width, frame.Height, screenshot = filename, action, evidence, inputSuppressedAtStepLimit
         }, jsonOptions, cts.Token);
         await trace.WriteAsync(new byte[] { (byte)'\n' }, cts.Token);
         Console.WriteLine($"[{step}] {evidence?.Phase ?? options.Agent}: {evidence?.Reason ?? "screenshot"}; action: {action?.Kind.ToString() ?? "stop"}");

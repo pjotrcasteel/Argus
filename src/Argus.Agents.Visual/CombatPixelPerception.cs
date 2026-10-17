@@ -34,10 +34,15 @@ public static class CombatPixelPerception
 
         var targetX = previousPlayer?.X ?? width / 2f;
         var targetY = previousPlayer?.Y ?? height / 2f;
-        var player = Locate(rgb, width, height, settings.PlayerPalette!, settings.MinimumPlayerPixels)
+        // The center prior is a bootstrap guard, not a hard leash: a mage already tracked from
+        // nearby frames can move to the viewport edge without becoming "unknown".
+        // The prior must be close enough to prevent a distant decoration from taking its identity.
+        var continuationRadius = MathF.Min(90f, MathF.Max(65f, settings.MaxPlayerDistanceFromScreenCenter / 2f));
+        var player = Locate(rgb, width, height, settings.PlayerPalette!, settings.MinimumPlayerPixels, includeEdges: true)
             .Where(b => settings.MaxPlayerDistanceFromScreenCenter == 0 ||
                 MathF.Sqrt((b.X - width / 2f) * (b.X - width / 2f) +
-                    (b.Y - height / 2f) * (b.Y - height / 2f)) <= settings.MaxPlayerDistanceFromScreenCenter)
+                    (b.Y - height / 2f) * (b.Y - height / 2f)) <= settings.MaxPlayerDistanceFromScreenCenter ||
+                previousPlayer is not null && Distance(b, previousPlayer) <= continuationRadius)
             .OrderByDescending(b =>
             {
                 var distance = MathF.Sqrt((b.X - targetX) * (b.X - targetX) + (b.Y - targetY) * (b.Y - targetY));
@@ -64,17 +69,20 @@ public static class CombatPixelPerception
         return new CombatVisualObservation(player, unique);
     }
 
-    private static IEnumerable<VisualBlob> Locate(byte[] rgb, int width, int height, VisualColorRule rule, int minimumPixels)
+    private static IEnumerable<VisualBlob> Locate(byte[] rgb, int width, int height, VisualColorRule rule, int minimumPixels,
+        bool includeEdges = false)
     {
         var worldTop = height * 19 / 100;
         var worldBottom = height * 82 / 100;
+        var firstX = includeEdges ? 0 : width / 30;
+        var lastX = includeEdges ? width : width * 29 / 30;
         var mask = new bool[width * height];
         var visited = new bool[width * height];
         var queue = new int[width * height];
 
         for (var y = worldTop; y < worldBottom; y++)
         {
-            for (var x = width / 30; x < width * 29 / 30; x++)
+            for (var x = firstX; x < lastX; x++)
             {
                 var pixel = y * width + x;
                 var p = pixel * 3;
@@ -85,7 +93,7 @@ public static class CombatPixelPerception
         var blobs = new List<VisualBlob>();
         for (var y = worldTop; y < worldBottom; y++)
         {
-            for (var x = width / 30; x < width * 29 / 30; x++)
+            for (var x = firstX; x < lastX; x++)
             {
                 var start = y * width + x;
                 if (!mask[start] || visited[start]) continue;
@@ -119,7 +127,7 @@ public static class CombatPixelPerception
                         for (var dx = -2; dx <= 2; dx++)
                         {
                             var nx = px + dx;
-                            if (nx < width / 30 || nx >= width * 29 / 30) continue;
+                            if (nx < firstX || nx >= lastX) continue;
                             var next = ny * width + nx;
                             if (!mask[next] || visited[next]) continue;
                             visited[next] = true;

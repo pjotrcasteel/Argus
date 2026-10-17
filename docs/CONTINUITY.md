@@ -159,6 +159,15 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 - [External baseline smoke 39032328655](https://github.com/pjotrcasteel/Argus/actions/runs/39032328655) also passed. Note that the workflow and UI cannot authenticate whether a later `labels.json` was really made by a human; **reviewer provenance and integrity are procedural requirements**.
 - **Not achieved:** human-labeled actual precision/recall, trained AI, successful persona-controlled WyrmForge game outcomes, balancing conclusions or live spectator mode. Neither two browser sessions nor 12 sampled images per run supports strong statistical generalization.
 
+## M2.5a in progress: real run-02 failure analysis and trace integrity (2026-10-17)
+
+- [PR #26](https://github.com/pjotrcasteel/Argus/pull/26) addresses specific **development-only** observations from the original M2.4 public WyrmForge research artifact [12100334875](https://github.com/pjotrcasteel/Argus/actions/runs/39032328654/artifacts/12100334875). The original run and the run-01 held-out partition remain frozen.
+- The owner supplied a genuine first `run-02` human `labels.json` through chat. This file was **not** published into GitHub or re-created from detector outputs. The current project checkout does not hold the full submitted labels file, so no full-run accuracy score is claimed here.
+- Original frame **26** has a visible mage and upper enemies in the screenshot, but the recorded agent phase is `transition` immediately after an upgrade: it **never attempted combat perception** on that screenshot. Scoring it as a player false negative is a measurement bug; missing detection evidence must remain unknown. The existing 19%-height threat-search top cutoff can also hide real enemies near the HUD, but relaxing it requires false-positive review.
+- Original frame **42** is a new screenshot with the mage close to the right edge. The trace reused the **prior frame 41** player estimate `(335,421)` and six candidate coordinates despite a changed screenshot. This stems from suppressing `DecideAsync` at `MaxSteps` and inadvertently writing stale `LastEvidence`. Earlier metrics on final-frame candidates are therefore **not independent frame-42 detections**.
+- PR #26 now asks the agent to observe the final screenshot and suppresses only its final proposed input, records `inputSuppressedAtStepLimit`, uses nearby prior player locations to allow screen-edge continuity, and counts unexecuted evasion proposals as observations rather than actual avoidance actions. Dedicated unit tests cover those cases and transition-phase scoring.
+- **Validation pending**: .NET 10 GitHub CI and real bounded visual smoke. Do not merge or state a precision gain until verified. Fixes are prospective, not retroactive modifications to M2.4 trace or held-out evidence. The immediate next step is green CI, real visual smoke, and then analyze a newly captured **development** session with the original human-reviewed labels used only for diagnostic understanding.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -179,7 +188,7 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 
 ## Single recommended next slice
 
-**M2.5: real human-reviewed screenshot labels and first honest failure analysis**, without pretending to be a human reviewer or using detector outputs as labels.
+**M2.5 continues: preserve the human-reviewed development labels, validate PR #26, and perform reproducible failure analysis**, without pretending to be a human reviewer or using detector outputs as labels.
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -219,6 +228,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.5a open:** [PR #26](https://github.com/pjotrcasteel/Argus/pull/26) makes bounded final screenshot observations fresh, prevents fabricated executed avoidance, separates transition no-measurement from actual misses, and keeps tracked mage detection at viewport edges. Grounded in original development run-02 frames 26/42; **CI and live validation pending**. Human labels are not checked in; run-01 remains held out.
 
 - **2026-10-17 — Baseline:** after merged PR #10: screenshot-only visual game prototype and motion diagnostics. Live run 39022431491 was green with the numbers above. Next: M1.5 offline multi-run cohort comparison.
 - **2026-10-17 — M1.5 completed:** [PR #12](https://github.com/pjotrcasteel/Argus/pull/12) merged: offline validation, Markdown/JSON cohort reporting, controlled-manifest matching and technical-gate uncertainty. Unit tests and live smoke passed; latter had **0** inferred camera shifts.

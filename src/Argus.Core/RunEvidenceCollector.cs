@@ -53,7 +53,8 @@ public sealed class RunEvidenceCollector
         if (evidence.Combat is not null)
         {
             _playerLocated++;
-            if (evidence.Combat.SteeringSource == "candidate-avoidance") _avoiding++;
+            // A final observation can propose evasion without ever sending that input.
+            if (evidence.Combat.SteeringSource == "candidate-avoidance" && action?.Kind == GameActionKind.HoldKey) _avoiding++;
             if (evidence.Combat.BackgroundShiftConfidence is not null) _cameraEstimated++;
             if (evidence.Combat.MotionMovingCandidates > 0) _movingCandidateFrames++;
             if (evidence.Combat.MotionStationaryCandidates > 0) _stationaryCandidateFrames++;
