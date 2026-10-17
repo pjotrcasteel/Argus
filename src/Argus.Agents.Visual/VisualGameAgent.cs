@@ -12,6 +12,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
     private int _menuClicks;
     private int _emptyScans;
     private int _explorationSteps;
+    private bool _routeNodeSelected;
     private bool _settling;
 
     public AgentEvidence? LastEvidence { get; private set; }
@@ -30,6 +31,28 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var labels = await textReader.ReadAsync(observation, cancellationToken);
         var names = labels.Select(t => t.Text).Take(24).ToArray();
+        var isRouteScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
+            profile.RouteCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
+        if (!isRouteScreen) _routeNodeSelected = false;
+
+        // "Enter Trail" may be visible but disabled until a connected route node is chosen.
+        // Locate a circular map marker in screenshot pixels, without coordinates, DOM or map state.
+        if (isRouteScreen && !_routeNodeSelected)
+        {
+            var node = RouteCircleDetector.Detect(observation.PngBytes);
+            if (node is null)
+            {
+                LastEvidence = new AgentEvidence("route", "No high-confidence circular route node visible; waiting", 0, names);
+                return new GameAction(GameActionKind.Wait, DurationMs: 700);
+            }
+
+            _routeNodeSelected = true;
+            _settling = true;
+            _previousFrame = observation.PngBytes;
+            LastEvidence = new AgentEvidence("route", "Selecting circular route marker from visible pixels", node.Confidence, names);
+            return new GameAction(GameActionKind.Click, X: node.X, Y: node.Y);
+        }
+
         var match = MenuTextMatcher.FindBest(labels, profile);
         if (match is not null)
         {
