@@ -9,7 +9,11 @@ namespace Argus.Evaluation;
 /// <summary>A stable, no-leakage plan: all screenshots from one run belong to one partition.</summary>
 public sealed record StudyRun(string RunId, ReplayTrace Trace);
 public sealed record StudyAssignment(string RunId, string Partition, IReadOnlyList<int> FrameSteps);
-public sealed record StudyPlan(int SchemaVersion, string Seed, int RequestedFramesPerRun, IReadOnlyList<StudyAssignment> Assignments);
+public sealed record StudyPlan(int SchemaVersion, string Seed, int RequestedFramesPerRun, IReadOnlyList<StudyAssignment> Assignments)
+{
+    // Old M2.4 studies omit Mode and must retain their original run-level held-out contract.
+    public string Mode { get; init; } = "partitioned";
+}
 
 public static class StudyPlanner
 {
@@ -18,11 +22,42 @@ public static class StudyPlanner
 
     public static StudyPlan Create(IEnumerable<StudyRun> input, string seed, int framesPerRun = 12)
     {
+        var runs = ValidateRuns(input, seed, framesPerRun);
+
+        // Split by *entire run*, never by neighboring frames. No candidate positions, outcomes,
+        // agent success flags or manual labels influence selection.
+        var ranked = runs.OrderBy(r => Hash(seed, r.RunId, "partition"))
+            .ThenBy(r => r.RunId, StringComparer.Ordinal).ToArray();
+        var heldOutCount = Math.Clamp((int)Math.Ceiling(runs.Length * 0.3), 1, runs.Length - 1);
+        var heldOut = ranked.Take(heldOutCount).Select(r => r.RunId).ToHashSet(StringComparer.Ordinal);
+
+        var assignments = runs.Select(run => new StudyAssignment(run.RunId,
+            heldOut.Contains(run.RunId) ? "held-out" : "development",
+            SampleSteps(run.Trace, seed, run.RunId, framesPerRun))).ToArray();
+        return new StudyPlan(1, seed, framesPerRun, assignments);
+    }
+
+    /// <summary>
+    /// Independent NEW development sessions only. Does not inspect or reassign prior held-out runs.
+    /// Shares the same seeded temporal-bin sampling as the frozen development/held-out protocol.
+    /// </summary>
+    public static StudyPlan CreateDevelopment(IEnumerable<StudyRun> input, string seed, int framesPerRun = 12)
+    {
+        var runs = ValidateRuns(input, seed, framesPerRun);
+        return new StudyPlan(1, seed, framesPerRun,
+            runs.Select(run => new StudyAssignment(run.RunId, "development",
+                SampleSteps(run.Trace, seed, run.RunId, framesPerRun))).ToArray())
+        {
+            Mode = "development-only"
+        };
+    }
+
+    private static StudyRun[] ValidateRuns(IEnumerable<StudyRun> input, string seed, int framesPerRun)
+    {
         if (string.IsNullOrWhiteSpace(seed) || seed.Length > 128)
             throw new ArgumentException("Provide a short, nonempty study seed.", nameof(seed));
         if (framesPerRun is < 1 or > MaximumFramesPerRun)
             throw new ArgumentOutOfRangeException(nameof(framesPerRun));
-
         var runs = input.OrderBy(r => r.RunId, StringComparer.Ordinal).ToArray();
         if (runs.Length is < 2 or > MaximumRuns)
             throw new InvalidDataException("A study needs 2–128 independently recorded sessions.");
@@ -36,17 +71,7 @@ public static class StudyPlanner
                 throw new InvalidDataException("Invalid run ID or unsorted/empty screenshot evidence.");
         }
 
-        // Split by *entire run*, never by neighboring frames. No candidate positions, outcomes,
-        // agent success flags or manual labels influence selection.
-        var ranked = runs.OrderBy(r => Hash(seed, r.RunId, "partition"))
-            .ThenBy(r => r.RunId, StringComparer.Ordinal).ToArray();
-        var heldOutCount = Math.Clamp((int)Math.Ceiling(runs.Length * 0.3), 1, runs.Length - 1);
-        var heldOut = ranked.Take(heldOutCount).Select(r => r.RunId).ToHashSet(StringComparer.Ordinal);
-
-        var assignments = runs.Select(run => new StudyAssignment(run.RunId,
-            heldOut.Contains(run.RunId) ? "held-out" : "development",
-            SampleSteps(run.Trace, seed, run.RunId, framesPerRun))).ToArray();
-        return new StudyPlan(1, seed, framesPerRun, assignments);
+        return runs;
     }
 
     public static LabelSet Template(StudyAssignment assignment, ReplayTrace trace)

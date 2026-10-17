@@ -33,6 +33,44 @@ public sealed class StudyPlannerTests
     }
 
     [TestMethod]
+    public void CreateDevelopment_IndependentRuns_AllDevelopmentWithStableTemporalSamples()
+    {
+        var runs = new[] { Run("dev-b", 43), Run("dev-a", 51) };
+        var first = StudyPlanner.CreateDevelopment(runs, "m26-predeclared", 12);
+        var second = StudyPlanner.CreateDevelopment(runs.Reverse(), "m26-predeclared", 12);
+
+        Assert.AreEqual("development-only", first.Mode);
+        Assert.HasCount(2, first.Assignments);
+        Assert.IsTrue(first.Assignments.All(a => a.Partition == "development"));
+        Assert.IsTrue(first.Assignments.All(a => a.FrameSteps.Count == 12));
+        for (var i = 0; i < first.Assignments.Count; i++)
+        {
+            CollectionAssert.AreEqual(first.Assignments[i].FrameSteps.ToArray(), second.Assignments[i].FrameSteps.ToArray());
+            var trace = runs.Single(run => run.RunId == first.Assignments[i].RunId).Trace;
+            var labels = StudyPlanner.Template(first.Assignments[i], trace);
+            Assert.IsTrue(labels.Frames.All(f => f.Player.State == "unknown" && f.Threats.State == "unknown"));
+            for (var j = 0; j < 12; j++)
+            {
+                var low = j * trace.Frames.Count / 12;
+                var high = (j + 1) * trace.Frames.Count / 12;
+                Assert.IsTrue(first.Assignments[i].FrameSteps[j] >= low);
+                Assert.IsTrue(first.Assignments[i].FrameSteps[j] < high);
+            }
+        }
+    }
+
+    [TestMethod]
+    public void CreateDevelopment_UnsafeAndRepeatedRunIds_RejectsWithoutTouchingHeldOut()
+    {
+        Assert.ThrowsExactly<InvalidDataException>(() =>
+            StudyPlanner.CreateDevelopment([Run("same", 10), Run("SAME", 9)], "m26", 6));
+        Assert.ThrowsExactly<InvalidDataException>(() =>
+            StudyPlanner.CreateDevelopment([Run("../escape", 10), Run("dev-b", 10)], "m26", 6));
+        Assert.ThrowsExactly<InvalidDataException>(() =>
+            StudyPlanner.CreateDevelopment([Run("dev-a", 10)], "m26", 6));
+    }
+
+    [TestMethod]
     public void Create_ChronologicalBins_SpreadsSamplesAcrossWholeSession()
     {
         var plan = StudyPlanner.Create([Run("alpha", 100), Run("beta", 100)], "seed", 10);

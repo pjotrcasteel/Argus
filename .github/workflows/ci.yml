@@ -261,3 +261,55 @@ jobs:
                         c["features"]["meanSaturation"]))
           assert "No model was trained" in (root / "appearance-audit.md").read_text()
           PY
+
+      - name: Verify distinct development-only sampling and mobile package using synthetic traces
+        run: |
+          python3 - <<'PY'
+          import json
+          import shutil
+          from pathlib import Path
+          src = Path("artifacts/ci-shadow/run-local")
+          dst = Path("artifacts/ci-dev")
+          for name in ("dev-a", "dev-b"):
+              folder = dst / name
+              folder.mkdir(parents=True, exist_ok=True)
+              for png in src.glob("frame-*.png"):
+                  shutil.copyfile(png, folder / png.name)
+              records = [json.loads(line) for line in (src / "trace.jsonl").read_text().splitlines()]
+              for record in records:
+                  record["evidence"]["reason"] = "independent synthetic " + name
+              (folder / "trace.jsonl").write_text("\n".join(json.dumps(record) for record in records) + "\n")
+          PY
+          dotnet run --project src/Argus.Study.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-dev --seed m26-ci-frozen-sample --samples 3 --development-only
+          dotnet run --project src/Argus.Study.Quality.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-dev
+          python3 tools/m26b/mobile_review.py --runs artifacts/ci-dev --output artifacts/ci-mobile
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("artifacts/ci-dev")
+          plan = json.loads((root / "study-plan.json").read_text())
+          report = json.loads((root / "study-quality.json").read_text())
+          assert plan["mode"] == "development-only"
+          assert all(a["partition"] == "development" and len(a["frameSteps"]) == 3
+                     for a in plan["assignments"])
+          assert report["status"] == "NOT_EVALUATED"
+          assert report["partitions"][0]["runs"] == 2
+          assert report["partitions"][1]["runs"] == 0
+          for name in ("dev-a", "dev-b"):
+              run = root / name
+              page = Path("artifacts/ci-mobile/annoteren") / name / "index.html"
+              html = page.read_text()
+              labels = json.loads((run / "blind-labels.template.json").read_text())
+              assert all(f["player"]["state"] == "unknown" and f["threats"]["state"] == "unknown"
+                         for f in labels["frames"])
+              assert "3 echte screenshots" in html
+              assert len(list(page.parent.glob("frame-*.png"))) == 3
+              assert "threatLocations" not in html and "playerX" not in html
+              assert "run-01" not in html and "run-02" not in html
+              script = html.split("<script>", 1)[1].split("</script>", 1)[0]
+              Path("artifacts/ci-mobile/" + name + ".js").write_text(script)
+          PY
+          node --check artifacts/ci-mobile/dev-a.js
+          node --check artifacts/ci-mobile/dev-b.js

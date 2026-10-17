@@ -220,6 +220,15 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 - **Validated and merged:** [PR #31](https://github.com/pjotrcasteel/Argus/pull/31) squash `6576badcb3e528afc2d8430a3566ad06973b649c`. [.NET 10 CI 39053725468](https://github.com/pjotrcasteel/Argus/actions/runs/39053725468): **125/125 MSTest passed**, no build errors, end-to-end synthetic PNG-to-appearance-report PASS: 2 matched plus 1 unmatched candidate with normalized descriptors. [External WyrmForge visual smoke 39053725474](https://github.com/pjotrcasteel/Argus/actions/runs/39053725474) technical PASS: **46 frames, 30 player-located, 2 route interactions, 1 upgrade, 1 visible terminal stop**. No enemy-classification or play-skill claim. Real owner-reviewed private `run-02` has NOT been run through this official .NET appearance command; features need independent blind new development runs before any learning or active steering.
 - **Next independent research action:** collect at least two fresh development browser sessions and blind human labels *per run* (without inspecting the untouched held-out run-01), then review feature separability and unmatched human threats per run before considering a small offline learned candidate scorer.
 
+## M2.6b — independent fresh development capture (2026-10-17; validation pending)
+
+- **Do not reuse the prior `run-01` held-out set.** Original M2.4 `run-02` contains the first human reference and only six comparable screenshots for exploratory appearance research. M2.6a merged in [PR #31](https://github.com/pjotrcasteel/Argus/pull/31) with 125/125 tests and a 46-frame real browser smoke, but **no trained classifier** and no new real generalization proof.
+- Added `StudyPlanner.CreateDevelopment` and explicit `StudyPlan.Mode=development-only` for a cohort in which **every new independent run is development**. The existing M2.4 `partitioned` behavior stays unchanged. `Argus.Study.Tool --development-only` selects a fixed number of blind samples per independent session; `StudyQualityEvaluation` recalculates that exact plan and declares absent/all-unknown labels `NOT_EVALUATED`, never fabricated quality.
+- New opt-in [M2.6b workflow](../.github/workflows/m2-6-development.yml) launches **two new** bounded screenshot-only WyrmForge browser sessions `dev-a` and `dev-b`, captures run manifests and distinct trace hashes, preselects 12 chronological-bin samples from each using seed `argus-m26b-development-frozen-20261017`, and packages two iPhone-friendly **prediction-free** review pages. It does not touch existing run-01 / run-02. All raw frames and mobile pages are short-lived GitHub Actions artifacts, **not automatically published publicly**.
+- The mobile review artifact is constructed with the already-used iPhone annotator template, rejects nondevelopment runs or nonempty fabricated labels, copies only 24 sampled original PNGs, and exercises real mobile Chromium tap/navigation/export/reload. Real human annotation will remain a separate manual step by the owner; no new human data may be invented.
+- [M2.6b protocol](M2-6-NEW-DEVELOPMENT-STUDY.md) and README updated. **Validation pending:** .NET 10 CI, full synthetic development-only plan + quality + mobile packaging, and the two external new-run research workflow. Until artifacts exist and owner reviews original screenshots, there are **no new human-reference scores** or trained visual classifiers.
+- **Next:** verify actual independent Actions research artifacts, make an owner-approved HTTPS iPhone review experience without silently replacing the old run-02 page, obtain two separate `labels.json` exports, then analyze per-run M2.6a appearance features. The original held-out remains untouched.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -240,7 +249,7 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**M2.6a: build unbiased screenshot appearance measurements, then gather new independent development annotations before any learned classifier or live steering change**, without pretending to be a human reviewer or using detector outputs as labels.
+**M2.6b: capture two entirely new independent development-only runs, verify blind sample provenance and obtain the owner's original-image labels before any learning or policy changes**, without pretending to be a human reviewer or using detector outputs as labels.
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -280,6 +289,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.6b pending validation:** new separate two-run, development-only screenshot capture and presampled iPhone review artifact; explicit mode preserves M2.4 held-out behavior, all reference labels start UNKNOWN. Verify PR CI and real independent capture before merging or claiming a result.
 
 - **2026-10-17 — M2.6a merged:** [PR #31](https://github.com/pjotrcasteel/Argus/pull/31) (`6576bad`) adds screenshot patch contrast/texture/saturation features and private human-reference audit, no gameplay or model training changes. [CI 39053725468](https://github.com/pjotrcasteel/Argus/actions/runs/39053725468): **125/125 tests** + complete synthetic PNG audit. [Real game smoke 39053725474](https://github.com/pjotrcasteel/Argus/actions/runs/39053725474): 46 frames, 30 player-located, 2 routes, 1 upgrade, visible terminal. **Next: two independent new development runs, blind labels and per-run feature analysis; keep run-01 held-out untouched.**
 

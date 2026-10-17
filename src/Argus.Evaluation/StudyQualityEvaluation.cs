@@ -70,7 +70,12 @@ public static class StudyQualityEvaluation
 
         // Recompute the complete original assignment from the raw traces. An edited study-plan cannot
         // silently cherry-pick only easy-to-detect screenshots or reassign sessions across the holdout.
-        var expected = StudyPlanner.Create(runs, plan.Seed, plan.RequestedFramesPerRun);
+        var expected = plan.Mode switch
+        {
+            "partitioned" => StudyPlanner.Create(runs, plan.Seed, plan.RequestedFramesPerRun),
+            "development-only" => StudyPlanner.CreateDevelopment(runs, plan.Seed, plan.RequestedFramesPerRun),
+            _ => throw new InvalidDataException("Invalid study partition mode.")
+        };
         if (plan.Assignments.Count != expected.Assignments.Count ||
             !plan.Assignments.Zip(expected.Assignments).All(pair =>
                 pair.First.RunId == pair.Second.RunId &&
@@ -144,6 +149,7 @@ public static class StudyQualityEvaluation
             .AppendLine($"> Status: **{report.Status}**. Fixed sample seed: `{report.Seed.Replace("`", "")}`. " +
                 $"Radius: {report.MatchingRadiusPixels.ToString("0.#", CultureInfo.InvariantCulture)} px.")
             .AppendLine("> Labels must come from independent human review of original pixels; this tool cannot verify who annotated a file.")
+            .AppendLine($"> Study mode: {report.Seed} sample plan; absent held-out reference stays NOT_EVALUATED, never inferred from development runs.")
             .AppendLine()
             .AppendLine("| Run | Partition | Selected | Player reviewed | Threat reviewed | Status | Player precision | Threat precision | Threat evidence unavailable |")
             .AppendLine("| --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |");
