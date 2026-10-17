@@ -21,7 +21,7 @@ public sealed class AppearanceReadinessTests
         Assert.IsTrue(result.Blockers.Any(b => b.Contains("dev-b: Only 2 unmatched")));
         Assert.IsFalse(result.Runs.Single(r => r.RunId == "dev-b").EnoughReferences);
         StringAssert.Contains(AppearanceReadiness.RenderMarkdown(result), "NOT_READY");
-        StringAssert.Contains(AppearanceReadiness.RenderMarkdown(result), "not confirmed");
+        StringAssert.Contains(AppearanceReadiness.RenderMarkdown(result), "confirmed enemy/non-enemy identities");
     }
 
     [TestMethod]
@@ -41,8 +41,8 @@ public sealed class AppearanceReadinessTests
     [TestMethod]
     public void Assess_LessThanFiveScoredScreenshots_RemainsBlockedRegardlessOfCandidateCounts()
     {
-        var result = AppearanceReadiness.Assess([Report("dev-a", 50, 30, 4), Report("dev-b", 50, 30, 3),
-            Report("dev-c", 50, 30, 4)]);
+        var result = AppearanceReadiness.Assess([Report("dev-a", 50, 30, 4, scoredFrames: 4), Report("dev-b", 50, 30, 3, scoredFrames: 3),
+            Report("dev-c", 50, 30, 4, scoredFrames: 4)]);
 
         Assert.AreEqual("NOT_READY", result.Status);
         Assert.IsTrue(result.Blockers.Any(b => b.Contains("Only 4 scored frames")));
@@ -58,7 +58,7 @@ public sealed class AppearanceReadinessTests
         Assert.ThrowsExactly<InvalidDataException>(() => AppearanceReadiness.Assess([]));
     }
 
-    private static AppearanceAuditReport Report(string id, int matched, int unmatched, int missed)
+    private static AppearanceAuditReport Report(string id, int matched, int unmatched, int missed, int scoredFrames = 6)
     {
         var features = new VisualAppearanceDescriptor(30, 200, 18, 22, false, 0.3f, 0.1f, 0.2f, 0.2f, 0.3f);
         AppearanceAuditCandidate[] candidates =
@@ -69,7 +69,7 @@ public sealed class AppearanceReadinessTests
         AppearanceAuditFrame[] frames =
         [
             new AppearanceAuditFrame(0, "SCORED", matched, unmatched, missed),
-            .. Enumerable.Range(1, 5).Select(i => new AppearanceAuditFrame(i, "SCORED", 0, 0, 0))
+            .. Enumerable.Range(1, scoredFrames - 1).Select(i => new AppearanceAuditFrame(i, "SCORED", 0, 0, 0))
         ];
 
         return new AppearanceAuditReport(id, frames.Length, frames.Length, missed, frames, candidates, []);
