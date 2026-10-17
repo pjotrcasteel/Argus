@@ -1,13 +1,15 @@
 using System.Text.Json;
+using Argus.Core;
 using Argus.Evaluation;
 using Argus.Replay;
 
-if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate"))
+if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate" or "--shadow-edges"))
 {
     Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --template results/my-run/labels.template.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotate results/my-run/annotate.html");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --labels results/my-run/labels.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --blind-annotate results/my-run/blind-annotate.html");
+    Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --shadow-edges examples/wyrmforge.profile.json");
     return 2;
 }
 
@@ -41,6 +43,25 @@ try
         Console.WriteLine(blind
             ? "Blind mode: agent predictions/explanations are removed. Label only visible screenshot evidence."
             : "Open the HTML locally, mark visible objects, download labels.json, then evaluate it offline.");
+    }
+    else if (args[2] == "--shadow-edges")
+    {
+        var labels = await GroundTruth.ReadAsync(Path.Combine(run, "labels.json"), run, replay);
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
+        var profile = JsonSerializer.Deserialize<VisualGameProfile>(await File.ReadAllTextAsync(args[3]), json)
+            ?? throw new InvalidDataException("Invalid visual game profile.");
+        profile.Validate();
+        if (profile.CombatTracking is null)
+            throw new InvalidDataException("Shadow scan requires a combat tracking profile.");
+
+        var study = await ShadowEdgeStudy.CompareAsync(run, labels, replay, profile.CombatTracking);
+        var output = Path.Combine(run, "shadow-edge-study.json");
+        await File.WriteAllTextAsync(output, JsonSerializer.Serialize(study, options));
+        await File.WriteAllTextAsync(Path.Combine(run, "shadow-edge-study.md"), ShadowEdgeStudy.RenderMarkdown(study));
+        Console.WriteLine($"Shadow A/B: {study.ScoredFrames} comparable frames, " +
+            $"baseline TP/FP/FN {study.Baseline.TruePositive}/{study.Baseline.FalsePositive}/{study.Baseline.FalseNegative}, " +
+            $"shadow {study.Expanded.TruePositive}/{study.Expanded.FalsePositive}/{study.Expanded.FalseNegative}.");
+        Console.WriteLine($"Saved local study: {output}");
     }
     else
     {
