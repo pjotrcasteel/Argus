@@ -10,6 +10,8 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 {
     private byte[]? _previousFrame;
     private VisualBlob? _trackedPlayer;
+    private byte[]? _previousCombatFrame;
+    private CombatVisualObservation? _previousCombatObservation;
     private int _missedPlayerFrames;
     private int _menuClicks;
     private int _emptyScans;
@@ -26,6 +28,8 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         if (_settling)
         {
+            _previousCombatFrame = null;
+            _previousCombatObservation = null;
             _settling = false;
             LastEvidence = new AgentEvidence("transition", "Allowing visual transition to finish", 1, []);
             _previousFrame = observation.PngBytes;
@@ -149,6 +153,14 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
         {
             _trackedPlayer = null;
         }
+        // Purely diagnostic: never allow unvalidated scene-relative motion to drive steering.
+        var relativeMotion = _previousCombatFrame is not null && _previousCombatObservation is not null && combat is not null
+            ? ThreatMotionAnalyzer.Analyze(_previousCombatObservation, combat,
+                VisualSceneMotion.Estimate(_previousCombatFrame, observation.PngBytes))
+            : null;
+        _previousCombatFrame = combat is null ? null : observation.PngBytes;
+        _previousCombatObservation = combat;
+
         var motion = _previousFrame is null ? (Change: 0f, Quadrants: new float[4]) : VisualMotion.Measure(_previousFrame, observation.PngBytes);
         _previousFrame = observation.PngBytes;
         var avoidance = combat is null ? null : VisualCombatSteering.SelectEvasionDirection(combat,
@@ -160,6 +172,14 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
         var source = avoidance is not null ? "candidate-avoidance" : "screen-motion";
         var screen = combat?.Player is { } player
             ? new CombatScreenEvidence(player.X, player.Y, combat.ThreatCandidates.Count, combat.NearestThreatDistance, source)
+            {
+                BackgroundShiftX = relativeMotion?.Background?.X,
+                BackgroundShiftY = relativeMotion?.Background?.Y,
+                BackgroundShiftConfidence = relativeMotion?.Background?.Confidence,
+                MotionMatchedCandidates = relativeMotion?.Matched ?? 0,
+                MotionMovingCandidates = relativeMotion?.Moving ?? 0,
+                MotionStationaryCandidates = relativeMotion?.Stationary ?? 0
+            }
             : null;
         var reason = screen is null ? "No confidently located player; " + source : $"Visual player ({screen.PlayerX:0},{screen.PlayerY:0}); {source}";
         LastEvidence = new AgentEvidence("exploring", reason + "; holding " + key,
