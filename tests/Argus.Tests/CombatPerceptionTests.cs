@@ -39,6 +39,27 @@ public sealed class CombatPerceptionTests
     }
 
     [TestMethod]
+    public void ObserveRgb_PriorKnownMageLocation_BeatsBrighterTransientEffect()
+    {
+        var rgb = MakeEmptyFrame();
+        Paint(rgb, 169, 405, 19, 30, 72, 91, 115);
+        Paint(rgb, 250, 300, 38, 42, 72, 91, 115);
+        var settings = new CombatVisualSettings
+        {
+            PlayerPalette = Settings.PlayerPalette,
+            MinimumPlayerPixels = 70,
+            MaxPlayerDistanceFromScreenCenter = 155
+        };
+        var previous = new VisualBlob(187, 420, 20, 30, 300, 0.8f);
+
+        var detected = CombatPixelPerception.ObserveRgb(rgb, 390, 844, settings, previous);
+
+        Assert.IsNotNull(detected.Player);
+        Assert.IsTrue(Math.Abs(detected.Player.X - 178) <= 3);
+        Assert.IsTrue(Math.Abs(detected.Player.Y - 419.5) <= 3);
+    }
+
+    [TestMethod]
     public void ObserveRgb_NoRecognizableMage_ReturnsUnknownInsteadOfInventedPosition()
     {
         var rgb = MakeEmptyFrame();
