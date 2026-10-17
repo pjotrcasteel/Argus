@@ -52,6 +52,17 @@ jobs:
           dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
             --run artifacts/m1-live --annotate artifacts/m1-live/annotate.html
           test -s artifacts/m1-live/annotate.html
+      - name: Verify offline annotation JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path("artifacts/m1-live/annotate.html").read_text()
+          assert html.count("<script>") == 1
+          assert html.count("</script>") == 1
+          javascript = html.split("<script>", 1)[1].split("</script>", 1)[0]
+          Path("artifacts/m1-live/annotate-script.js").write_text(javascript)
+          PY
+          node --check artifacts/m1-live/annotate-script.js
       - name: Show visual evidence report
         if: always()
         run: |
