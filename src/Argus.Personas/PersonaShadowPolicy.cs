@@ -14,10 +14,12 @@ public sealed record PersonaShadowProposal(string PersonaId, GameAction? Propose
 /// </summary>
 public static class PersonaShadowPolicy
 {
-    public static PersonaShadowProposal Propose(ReplayFrame frame, PersonaProfile persona, MovementBindings keys, int seed)
+    public static PersonaShadowProposal Propose(ReplayFrame frame, PersonaProfile persona, MovementBindings keys, int seed, string? randomStreamKey = null)
     {
         persona.Validate();
         keys.Validate();
+        if (randomStreamKey is { Length: 0 or > 128 }) throw new ArgumentException("Ablation random stream key must be 1–128 characters.", nameof(randomStreamKey));
+        var stream = randomStreamKey ?? persona.Id;
         if (frame.Phase != "exploring")
             return new PersonaShadowProposal(persona.Id, null, "No shadow movement outside visually inferred gameplay.", 0);
 
@@ -37,7 +39,7 @@ public static class PersonaShadowPolicy
             {
                 < 0.35f => (toward + 2) % 4,
                 > 0.65f => toward,
-                _ => ExplorationDirection(frame.Step, persona, seed)
+                _ => ExplorationDirection(frame.Step, persona, seed, stream)
             };
             var rationale = persona.RiskAppetite switch
             {
@@ -50,13 +52,13 @@ public static class PersonaShadowPolicy
 
         // A missing threat list is UNKNOWN evidence, not the assertion that there are no enemies.
         var unknownThreats = frame.ThreatLocations is null;
-        var pause = (Stable(seed, persona.Id, frame.Step.ToString(System.Globalization.CultureInfo.InvariantCulture)) % 1000) <
+        var pause = (Stable(seed, stream, frame.Step.ToString(System.Globalization.CultureInfo.InvariantCulture)) % 1000) <
             (uint)(persona.Patience * 220);
         if (pause)
             return new PersonaShadowProposal(persona.Id, new GameAction(GameActionKind.Wait, DurationMs: 300),
                 unknownThreats ? "Waiting during uncertain threat visibility." : "Patient observation before exploring.", confidence);
 
-        var index = ExplorationDirection(frame.Step, persona, seed);
+        var index = ExplorationDirection(frame.Step, persona, seed, stream);
         return Movement(persona, keys.At(index),
             unknownThreats ? "Exploration under unknown visual threat coverage." : "Exploration with no nearby detected candidate.",
             confidence);
@@ -77,8 +79,8 @@ public static class PersonaShadowPolicy
         return dy < 0 ? 0 : 2;
     }
 
-    private static int ExplorationDirection(int step, PersonaProfile p, int seed) =>
-        (int)(Stable(seed, p.Id, p.Exploration >= 0.6f
+    private static int ExplorationDirection(int step, PersonaProfile p, int seed, string stream) =>
+        (int)(Stable(seed, stream, p.Exploration >= 0.6f
             ? step.ToString(System.Globalization.CultureInfo.InvariantCulture)
             : "consistent") % 4);
 

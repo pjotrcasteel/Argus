@@ -99,6 +99,14 @@ dotnet run --project src/Argus.Persona.Tool -- --run results/my-run --movement-k
 
 Creates local `persona-shadow.jsonl`, `persona-contrast.json` and `persona-contrast.md` with conservative, adventurous and risk-taking action proposals and measured differences. **These are neither trained AI players nor actual player inputs**. See [M2.0 persona shadow research](docs/M2-0-PERSONA-SHADOW.md) and [M2.1 quantitative comparisons](docs/M2-1-PERSONA-CONTRAST.md).
 
+## Compare independent sessions and isolate individual traits (M2.2)
+
+```bash
+dotnet run --project src/Argus.Persona.Cohort.Tool -- --runs results/experiments --movement-keys w,a,s,d --seed 42
+```
+
+This produces `persona-cohort.json` and `persona-cohort.md` with one entry per genuinely recorded session, descriptive run-level distributions, unknown evidence and five controlled 0-versus-1 trait ablations. The existing single-run persona tool also writes `persona-ablation.json`. **None of the hypothetical persona decisions is sent to the game.** See [M2.2 cohort and attribution guide](docs/M2-2-COHORT-ABLATIONS.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
@@ -111,6 +119,7 @@ Creates local `persona-shadow.jsonl`, `persona-contrast.json` and `persona-contr
 - [Blind independent-run perception study (M1.9)](docs/M1-9-BLIND-STUDY.md)
 - [Personality proposals in shadow mode (M2.0)](docs/M2-0-PERSONA-SHADOW.md)
 - [Measuring persona action differences (M2.1)](docs/M2-1-PERSONA-CONTRAST.md)
+- [Multi-run personas and one-trait attribution (M2.2)](docs/M2-2-COHORT-ABLATIONS.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)

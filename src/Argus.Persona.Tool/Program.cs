@@ -52,6 +52,10 @@ try
     await File.WriteAllTextAsync(Path.Combine(folder, "persona-contrast.md"),
         PersonaContrastMarkdown.Render(contrast));
 
+    var ablations = PersonaTraitAblations.Analyze(replay, profiles[1], keys, seed);
+    await File.WriteAllTextAsync(Path.Combine(folder, "persona-ablation.json"),
+        JsonSerializer.Serialize(ablations, reportOptions));
+
     Console.WriteLine($"ARGUS shadow personas analyzed {replay.Frames.Count} previously saved visual frames.");
     foreach (var profile in profiles)
         Console.WriteLine($"{profile.Id}: {proposals.GetValueOrDefault(profile.Id)} hypothetical actions (not executed).");
@@ -59,7 +63,8 @@ try
         Console.WriteLine($"{pair.FirstPersona} vs {pair.SecondPersona}: " +
             $"{pair.DifferentDirections}/{pair.BothMovingFrames} different movement directions, " +
             $"{pair.DifferentFullActions}/{pair.BothProposedFrames} any action differences.");
-    Console.WriteLine($"Saved local shadow proposals and contrast.json/.md alongside {path}. No game input or training took place.");
+    Console.WriteLine($"Saved local shadow proposals, contrasts and one-trait ablations alongside {path}.");
+    Console.WriteLine("Proposed actions were never executed; no game outcome or human realism was inferred.");
     return 0;
 }
 catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException)

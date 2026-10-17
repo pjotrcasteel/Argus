@@ -92,6 +92,7 @@ jobs:
           test -s artifacts/m1-live/persona-shadow.jsonl
           test -s artifacts/m1-live/persona-contrast.json
           test -s artifacts/m1-live/persona-contrast.md
+          test -s artifacts/m1-live/persona-ablation.json
           python3 - <<'PY'
           from pathlib import Path
           import json
@@ -104,6 +105,10 @@ jobs:
           assert 0 <= report["gameplayFramesWithCandidateLocationsUnknown"] <= report["gameplayFrames"]
           assert len(report["personas"]) == 3
           assert len(report["pairs"]) == 3
+          ablations = json.loads(Path("artifacts/m1-live/persona-ablation.json").read_text())
+          assert len(ablations["traits"]) == 5
+          assert ablations["randomStreamKey"] == "controlled-ablation-v1"
+          assert all(0 <= t["differentDirections"] <= t["bothMovingFrames"] for t in ablations["traits"])
           for pair in report["pairs"]:
               assert 0 <= pair["bothMovingFrames"] <= pair["bothProposedFrames"] <= len(rows)
               assert 0 <= pair["differentDirections"] <= pair["bothMovingFrames"]
