@@ -8,7 +8,7 @@ Say **"continue with ARGUS https://github.com/pjotrcasteel/Argus"**. A new agent
 
 ## Status
 
-**M1 visual-agent prototype, not a trained AI.** The real screenshot → local OCR → visually located menu click → experimental movement → explainable local trace pipeline is implemented. It **has been exercised against the public WyrmForge browser game** with visual player tracking, simple candidate avoidance, upgrades and per-run evidence; these remain heuristic and not trained. Learning, personality vectors and a research dashboard are still future work. See the up-to-date [continuity handover](docs/CONTINUITY.md).
+**M1 visual-agent prototype, not a trained AI.** The real screenshot → local OCR → visually located menu click → experimental movement → explainable local trace pipeline is implemented. It **has been exercised against the public WyrmForge browser game** with visual player tracking, simple candidate avoidance, upgrades and per-run evidence; these remain heuristic and not trained. Genuine self-learning, human-calibrated personality behavior and a research dashboard remain future work. See the up-to-date [continuity handover](docs/CONTINUITY.md).
 
 ## Repository projects
 
@@ -97,7 +97,7 @@ Run three illustrative personality hypotheses against **the exact same saved vis
 dotnet run --project src/Argus.Persona.Tool -- --run results/my-run --movement-keys w,a,s,d --seed 42
 ```
 
-Creates local `persona-shadow.jsonl` with conservative, adventurous and risk-taking action proposals. **These are neither trained AI players nor actual player inputs**. See [M2.0 persona shadow research](docs/M2-0-PERSONA-SHADOW.md).
+Creates local `persona-shadow.jsonl`, `persona-contrast.json` and `persona-contrast.md` with conservative, adventurous and risk-taking action proposals and measured differences. **These are neither trained AI players nor actual player inputs**. See [M2.0 persona shadow research](docs/M2-0-PERSONA-SHADOW.md) and [M2.1 quantitative comparisons](docs/M2-1-PERSONA-CONTRAST.md).
 
 ## Architecture and research
 
@@ -110,6 +110,7 @@ Creates local `persona-shadow.jsonl` with conservative, adventurous and risk-tak
 - [Local annotation studio (M1.8)](docs/M1-8-ANNOTATION-STUDIO.md)
 - [Blind independent-run perception study (M1.9)](docs/M1-9-BLIND-STUDY.md)
 - [Personality proposals in shadow mode (M2.0)](docs/M2-0-PERSONA-SHADOW.md)
+- [Measuring persona action differences (M2.1)](docs/M2-1-PERSONA-CONTRAST.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
