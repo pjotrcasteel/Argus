@@ -127,7 +127,9 @@ jobs:
               folder = root / run["runId"]
               html = (folder / "blind-annotate.html").read_text()
               assert "BLIND REVIEW" in html
-              assert "agent" not in html.lower().split('const frames =',1)[0] or "Agent predictions" in html
+              labels = json.loads((folder / "blind-labels.template.json").read_text())
+              assert all(frame["player"]["state"] == "unknown" and frame["threats"]["state"] == "unknown"
+                         for frame in labels["frames"])
               assert (folder / "blind-labels.template.json").stat().st_size > 0
           print("Ground truth is NOT_EVALUATED; human independent review remains required.")
           PY
