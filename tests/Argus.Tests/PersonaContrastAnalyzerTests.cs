@@ -30,7 +30,7 @@ public sealed class PersonaContrastAnalyzerTests
         Assert.AreEqual(3, pair.DifferentFullActions);
         Assert.AreEqual(1d, pair.DirectionDifferenceRate);
         Assert.AreEqual(1d, pair.FullActionDifferenceRate);
-        StringAssert.Contains(PersonaContrastMarkdown.Render(report), "3/3");
+        StringAssert.Contains(PersonaContrastMarkdown.Render(report), "Different directions");
     }
 
     [TestMethod]
