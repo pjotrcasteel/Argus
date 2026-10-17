@@ -11,6 +11,7 @@
     <ProjectReference Include="../../src/Argus.Analysis/Argus.Analysis.csproj" />
     <ProjectReference Include="../../src/Argus.Replay/Argus.Replay.csproj" />
     <ProjectReference Include="../../src/Argus.Evaluation/Argus.Evaluation.csproj" />
+    <ProjectReference Include="../../src/Argus.Personas/Argus.Personas.csproj" />
     <ProjectReference Include="../../src/Argus.Agents.Visual/Argus.Agents.Visual.csproj" />
     <ProjectReference Include="../../src/Argus.Adapters.Browser/Argus.Adapters.Browser.csproj" />
   </ItemGroup>
