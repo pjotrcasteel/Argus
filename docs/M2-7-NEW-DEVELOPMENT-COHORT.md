@@ -79,6 +79,35 @@ publish new M2.7 imagery. Ask before a separate Pages deployment.
 The existing `dev-a`, `dev-b` and `run-02` annotation links must
 remain intact.
 
+**Owner authorization update, 2026-10-17:** the user explicitly approved
+publishing *this additional* 36-image M2.7 cohort on public ARGUS GitHub Pages.
+The separately validated `publish_m27.py` step extends the existing review
+website with `annoteren/dev-c/`, `annoteren/dev-d/` and `annoteren/dev-e/`;
+old `run-02/dev-a/dev-b` routes and their original screenshot and HTML bytes
+must remain unchanged. The public page contains only the originally selected
+WyrmForge screenshot pixels and blank human reference templates. It never
+publishes source traces, candidate predictions, game internals or submitted
+human labels. The build cross-verifies every one of the 36 new PNG byte
+contents and sample indices against the frozen original M2.7 study plan,
+runs mobile Chromium tap/export/reload tests for all 6 routes and verifies
+the GitHub Pages deployment before declaring the HTTPS links usable.
+
+Public links (claim working only after the main Pages deploy succeeds):
+- `https://pjotrcasteel.github.io/Argus/annoteren/dev-c/`
+- `https://pjotrcasteel.github.io/Argus/annoteren/dev-d/`
+- `https://pjotrcasteel.github.io/Argus/annoteren/dev-e/`
+
+As in earlier runs, export one separate `labels.json` per development run:
+the JSON `runId` must remain `dev-c`, `dev-d` or `dev-e` respectively.
+The review UI saves in the browser's local storage and does not transmit
+human annotations to GitHub or ARGUS servers.
+
+**Rebuild caveat:** the previous source review artifacts for M2.4/M2.6b and
+the new M2.7 source artifacts are short-lived GitHub Actions files. The
+site remains published after artifact expiration, but its next rebuild
+requires preserved/recovered original data. Do not introduce a broken
+rebuild that removes existing pages; archive vetted sources before expiry.
+
 Once the owner sends three separately exported label files, run the
 existing .NET 10 evaluation and M2.6d causal screenshot-feature audits
 against this fixed cohort, alongside the previously **private** dev-a/b
