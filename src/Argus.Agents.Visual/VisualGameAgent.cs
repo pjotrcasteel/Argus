@@ -15,6 +15,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
     private int _emptyScans;
     private int _explorationSteps;
     private bool _routeNodeSelected;
+    private int _routeConfirmationAttempts;
     private bool _settling;
 
     public AgentEvidence? LastEvidence { get; private set; }
@@ -60,7 +61,11 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var isRouteScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.RouteCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
-        if (!isRouteScreen) _routeNodeSelected = false;
+        if (!isRouteScreen)
+        {
+            _routeNodeSelected = false;
+            _routeConfirmationAttempts = 0;
+        }
 
         // "Enter Trail" may be visible but disabled until a connected route node is chosen.
         // Locate a circular map marker in screenshot pixels, without coordinates, DOM or map state.
@@ -74,6 +79,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             }
 
             _routeNodeSelected = true;
+            _routeConfirmationAttempts = 0;
             _settling = true;
             _previousFrame = observation.PngBytes;
             LastEvidence = new AgentEvidence("route", "Selecting circular route marker from visible pixels", node.Confidence, names);
@@ -82,6 +88,12 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         if (isRouteScreen && _routeNodeSelected)
         {
+            if (_routeConfirmationAttempts >= 3)
+            {
+                LastEvidence = new AgentEvidence("blocked", "Route did not advance after three visual confirmation attempts", 0, names);
+                return null;
+            }
+
             // OCR is often unreliable over bright, filled controls. The button must visibly be enabled.
             var confirmation = FilledActionButtonDetector.Detect(observation.PngBytes);
             if (confirmation is null)
@@ -90,6 +102,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
                 return new GameAction(GameActionKind.Wait, DurationMs: 550);
             }
 
+            _routeConfirmationAttempts++;
             _settling = true;
             _previousFrame = observation.PngBytes;
             LastEvidence = new AgentEvidence("route", "Activating visually enabled lower action button", confirmation.Confidence, names);
