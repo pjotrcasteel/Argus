@@ -2,7 +2,11 @@ namespace Argus.Agents.Visual;
 
 /// <summary>Supplemental shadow candidates confirmed by consecutive visual observations only.</summary>
 public sealed record ShadowTemporalObservation(IReadOnlyList<VisualBlob> Confirmed,
-    int PendingCandidates, int StationaryCandidates);
+    int PendingCandidates, int StationaryCandidates)
+{
+    // Research-only proposals: repeated still sprites, not confirmed enemies.
+    public IReadOnlyList<VisualBlob> PersistentStationaryCandidates { get; init; } = [];
+}
 
 /// <summary>
 /// Per-run, causal association of *supplemental* candidates. Does not modify active combat vision,
@@ -13,6 +17,7 @@ public sealed class ShadowTemporalCandidateTracker
 {
     private const float MaxStepDistance = 55f;
     private const float MinimumTotalMovement = 3f;
+    private const int MinimumStationaryObservations = 3;
     private readonly List<Track> _tracks = [];
 
     public void Reset() => _tracks.Clear();
@@ -52,33 +57,50 @@ public sealed class ShadowTemporalCandidateTracker
             }
 
             var old = _tracks[pair.Previous];
-            associated[pair.Current] = new Track(frame.AddedCandidates[pair.Current],
-                Math.Min(100, old.SeenConsecutive + 1), old.TotalMovement + pair.Distance);
+            var current = frame.AddedCandidates[pair.Current];
+            associated[pair.Current] = new Track(current, Math.Min(100, old.SeenConsecutive + 1),
+                old.TotalMovement + pair.Distance, old.AppearanceStable && SimilarAppearance(old.Blob, current));
         }
 
         var confirmed = new List<VisualBlob>();
+        var stableStationary = new List<VisualBlob>();
         var pending = 0;
         var stationary = 0;
         for (var j = 0; j < frame.AddedCandidates.Count; j++)
         {
-            var track = associated.GetValueOrDefault(j) ?? new Track(frame.AddedCandidates[j], 1, 0);
+            var track = associated.GetValueOrDefault(j) ?? new Track(frame.AddedCandidates[j], 1, 0, true);
             updated.Add(track);
             if (track.SeenConsecutive >= 2 && track.TotalMovement >= MinimumTotalMovement)
                 confirmed.Add(track.Blob);
             else if (track.SeenConsecutive >= 2)
+            {
                 stationary++;
+                if (track.SeenConsecutive >= MinimumStationaryObservations && track.AppearanceStable)
+                    stableStationary.Add(track.Blob);
+            }
             else
                 pending++;
         }
 
         _tracks.Clear();
         _tracks.AddRange(updated);
-        return new ShadowTemporalObservation(confirmed, pending, stationary);
+        return new ShadowTemporalObservation(confirmed, pending, stationary)
+        {
+            PersistentStationaryCandidates = stableStationary
+        };
     }
 
     private static bool ComparableSize(VisualBlob a, VisualBlob b) =>
         a.Width <= b.Width * 2 && b.Width <= a.Width * 2 &&
         a.Height <= b.Height * 2 && b.Height <= a.Height * 2;
 
-    private sealed record Track(VisualBlob Blob, int SeenConsecutive, float TotalMovement);
+    // Simple geometric/pixel-count stability; no color identity or game-specific sprite classes.
+    // Matching backgrounds also satisfy it, hence persistent still objects remain research-only.
+    private static bool SimilarAppearance(VisualBlob previous, VisualBlob current) =>
+        Math.Abs(previous.Width - current.Width) <= Math.Max(2, previous.Width / 4) &&
+        Math.Abs(previous.Height - current.Height) <= Math.Max(2, previous.Height / 4) &&
+        current.MatchingPixels >= previous.MatchingPixels * 0.75f &&
+        current.MatchingPixels <= previous.MatchingPixels * 1.25f;
+
+    private sealed record Track(VisualBlob Blob, int SeenConsecutive, float TotalMovement, bool AppearanceStable);
 }
