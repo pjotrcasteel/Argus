@@ -31,20 +31,20 @@ try
     if (await image.BoundingBoxAsync() is null) throw new InvalidDataException("Screenshot is not visible.");
 
     await page.Locator("#mode-threat").ClickAsync();
-    var threatRectangle = await image.BoundingBoxAsync() ?? throw new InvalidDataException("Screenshot moved off screen.");
-    await page.Mouse.ClickAsync(threatRectangle.X + threatRectangle.Width * 0.25f,
-        threatRectangle.Y + threatRectangle.Height * 0.40f);
+    await image.ClickAsync(new LocatorClickOptions { Position = new Position { X = 60, Y = 85 } });
     var threatStatus = await page.Locator("#threat-state").TextContentAsync() ?? "";
     if (!threatStatus.Contains("1 visible threat(s) annotated", StringComparison.Ordinal))
         throw new InvalidDataException("Clicking the image did not register a manual threat point.");
 
     await page.Locator("#mode-player").ClickAsync();
-    var playerRectangle = await image.BoundingBoxAsync() ?? throw new InvalidDataException("Screenshot moved off screen.");
-    await page.Mouse.ClickAsync(playerRectangle.X + playerRectangle.Width * 0.5f,
-        playerRectangle.Y + playerRectangle.Height * 0.5f);
+    await image.ClickAsync(new LocatorClickOptions { Position = new Position { X = 95, Y = 125 } });
     var playerStatus = await page.Locator("#player-state").TextContentAsync() ?? "";
     if (!playerStatus.Contains("Position marked", StringComparison.Ordinal))
-        throw new InvalidDataException("Clicking the image did not register the manual player center.");
+    {
+        var modeState = await page.Locator("#mode-player").GetAttributeAsync("class");
+        throw new InvalidDataException("Clicking the image did not register the manual player center: " +
+            playerStatus + "; player button class: " + modeState);
+    }
 
     var downloadTask = page.WaitForDownloadAsync();
     await page.Locator("#export").ClickAsync();
