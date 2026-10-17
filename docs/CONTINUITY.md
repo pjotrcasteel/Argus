@@ -193,6 +193,14 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 - The expanded palette produces **4 additional true matches but 9 additional false positives**. New false matches cluster near edge decoration and peripheral UI. **Do not enable this shadow detector for player steering**. This is an informative development-only screening result, not robust precision/recall generalization or evidence of autonomous game competence. Neither the held-out `run-01` nor game internals were used.
 - Next focused step: reduce false-positive proposals without encoding brittle game-specific coordinates, confirm candidate quality over independent development sessions, then run a locked validation on fresh held-out data. Preserve the active baseline unchanged while the shadow approach is being refined.
 
+## M2.5d causal shadow confirmation — in validation (2026-10-17)
+
+- **Motivation:** the isolated M2.5c extension gained 4 approximate development-set matches but produced 9 additional false positives when compared without prior tracking (same human run-02, six paired frames); numbers from a local Python reproduction, **not the official .NET tool**. Avoid enabling these risky unconfirmed candidates.
+- Added `ShadowTemporalCandidateTracker`, a game-neutral, shadow-only, causal nearest-neighbor state machine. It requires two consecutive valid player-visible combat frames, motion totaling at least 3 screen pixels, 55px maximum per-frame association, and similar visual blob dimensions. Exact stationary decorations remain unconfirmed. No camera correction or verified enemy identity is claimed.
+- Extended `ShadowEdgeStudy` to process **every sequential trace screenshot** for a fair causal history, then score only the existing human-labeled steps against three alternatives: original fresh baseline, raw shadow, and temporally confirmed shadow. Noncombat phase, unavailable player and stale older final-frame evidence reset the shadow tracker. The old `VisualGameAgent`, active `ObserveRgb` and steering remain unchanged.
+- The [M2.5d experimental protocol](M2-5-TEMPORAL-SHADOW.md) and synthetic two-frame end-to-end CLI regression prevent counting stationary false objects as true threats. Real human-run metrics are pending execution of the official .NET CLI on private preserved run-02 labels. **Do not infer gameplay wins or generalize a six-frame study.**
+- **Next:** confirm GitHub CI and bounded external WyrmForge smoke, merge only if green; then run local private real-data A/B on run-02. The run-01 held-out reference must stay untouched.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -213,7 +221,7 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**M2.5c: compare edge-region shadow proposals without modifying gameplay; preserve independent future held-out testing**, without pretending to be a human reviewer or using detector outputs as labels.
+**M2.5d: verify causal shadow candidate persistence without changing gameplay and score it against private development annotations**, without pretending to be a human reviewer or using detector outputs as labels.
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -253,6 +261,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.5d pending verification:** shadow-only causal persistence tracker, three-way offline A/B and two-frame synthetic CI validation. Active game agent unchanged; original human labels privately preserved; verify CI/real browser before merge.
 
 - **2026-10-17 — M2.5c merged:** [PR #28](https://github.com/pjotrcasteel/Argus/pull/28) (squash `01e3b39`) introduces shadow-only edge/upper/lower candidate proposals and a local human-label baseline-vs-shadow comparison CLI. [CI 39051381693](https://github.com/pjotrcasteel/Argus/actions/runs/39051381693) **109/109 tests**, synthetic CLI A/B 1/0/2 -> 3/0/0 (not real-game accuracy); [real smoke 39051381639](https://github.com/pjotrcasteel/Argus/actions/runs/39051381639) PASS, 44 frames, 26 player-located, 1 visible terminal. No active steering changed. Next: score recovered private development labels via official CLI and prevent extra false positives before considering real-game activation.
 

@@ -14,10 +14,19 @@ public sealed record ShadowThreatCounts(int TruePositive, int FalsePositive, int
 }
 
 public sealed record ShadowEdgeFrame(int Step, string Status, ShadowThreatCounts? Baseline, ShadowThreatCounts? Expanded,
-    IReadOnlyList<VisualCandidatePoint> AdditionalCandidates);
+    IReadOnlyList<VisualCandidatePoint> AdditionalCandidates)
+{
+    public ShadowThreatCounts? Temporal { get; init; }
+    public int TemporallyConfirmed { get; init; }
+    public int Pending { get; init; }
+    public int Stationary { get; init; }
+}
 
 public sealed record ShadowEdgeStudyReport(string RunId, int ReviewedFrames, int ScoredFrames, int UnscoredFrames,
-    float MatchingRadius, ShadowThreatCounts Baseline, ShadowThreatCounts Expanded, IReadOnlyList<ShadowEdgeFrame> Frames);
+    float MatchingRadius, ShadowThreatCounts Baseline, ShadowThreatCounts Expanded, IReadOnlyList<ShadowEdgeFrame> Frames)
+{
+    public ShadowThreatCounts? Temporal { get; init; }
+}
 
 /// <summary>
 /// Replays existing screenshot pixels twice against the same human marks: untouched active detector
@@ -34,17 +43,35 @@ public static class ShadowEdgeStudy
 
         var entries = new List<ShadowEdgeFrame>();
         var byStep = labels.Frames.ToDictionary(f => f.Step);
+        var tracker = new ShadowTemporalCandidateTracker();
         using var reader = new StreamReader(Path.Combine(folder, "trace.jsonl"));
         string? line;
         var step = 0;
         while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
         {
             if (line.Length == 0) continue;
+            cancellationToken.ThrowIfCancellationRequested();
+            var frame = replay.Frames[step];
+            using var document = JsonDocument.Parse(line);
+            var legacy = TraceEvidenceReliability.IsUnverifiedLegacyFinal(document.RootElement, step, replay.Frames.Count);
+
+            // Observe EVERY sequential screenshot, not just sparse human-labeled frames.
+            // A later frame is never used to inform an earlier decision. Reset between phases.
+            ShadowThreatObservation? observation = null;
+            ShadowTemporalObservation? temporal = null;
+            if (frame.Phase == "exploring" && !legacy)
+            {
+                var pixels = await File.ReadAllBytesAsync(Path.Combine(folder, frame.Screenshot), cancellationToken);
+                observation = CombatPixelPerception.ObserveShadow(pixels, settings);
+                temporal = tracker.Observe(observation);
+            }
+            else
+            {
+                tracker.Reset();
+            }
+
             if (byStep.TryGetValue(step, out var human))
             {
-                var frame = replay.Frames[step];
-                using var document = JsonDocument.Parse(line);
-                var legacy = TraceEvidenceReliability.IsUnverifiedLegacyFinal(document.RootElement, step, replay.Frames.Count);
                 if (legacy)
                 {
                     entries.Add(new ShadowEdgeFrame(step, "LEGACY_FINAL_UNVERIFIED", null, null, []));
@@ -57,21 +84,24 @@ public static class ShadowEdgeStudy
                 {
                     entries.Add(new ShadowEdgeFrame(step, "NOT_COMBAT_FRAME", null, null, []));
                 }
+                else if (observation?.Baseline.Player is null)
+                {
+                    entries.Add(new ShadowEdgeFrame(step, "PLAYER_NOT_LOCATED", null, null, []));
+                }
                 else
                 {
-                    var pixels = await File.ReadAllBytesAsync(Path.Combine(folder, frame.Screenshot), cancellationToken);
-                    var observation = CombatPixelPerception.ObserveShadow(pixels, settings);
-                    if (observation.Baseline.Player is null)
+                    var original = Match(human.Threats.Centers!, observation.Baseline.ThreatCandidates, radius);
+                    var expanded = Match(human.Threats.Centers!, observation.CombinedCandidates, radius);
+                    var temporalCandidates = observation.Baseline.ThreatCandidates.Concat(temporal!.Confirmed).ToArray();
+                    var stable = Match(human.Threats.Centers!, temporalCandidates, radius);
+                    var additions = observation.AddedCandidates.Select(p => new VisualCandidatePoint(p.X, p.Y)).ToArray();
+                    entries.Add(new ShadowEdgeFrame(step, "SCORED", original, expanded, additions)
                     {
-                        entries.Add(new ShadowEdgeFrame(step, "PLAYER_NOT_LOCATED", null, null, []));
-                    }
-                    else
-                    {
-                        var original = Match(human.Threats.Centers!, observation.Baseline.ThreatCandidates, radius);
-                        var expanded = Match(human.Threats.Centers!, observation.CombinedCandidates, radius);
-                        var additions = observation.AddedCandidates.Select(p => new VisualCandidatePoint(p.X, p.Y)).ToArray();
-                        entries.Add(new ShadowEdgeFrame(step, "SCORED", original, expanded, additions));
-                    }
+                        Temporal = stable,
+                        TemporallyConfirmed = temporal.Confirmed.Count,
+                        Pending = temporal.PendingCandidates,
+                        Stationary = temporal.StationaryCandidates
+                    });
                 }
             }
             step++;
@@ -79,7 +109,10 @@ public static class ShadowEdgeStudy
 
         var scored = entries.Where(f => f.Status == "SCORED").ToArray();
         return new ShadowEdgeStudyReport(labels.RunId, labels.Frames.Count, scored.Length, entries.Count - scored.Length,
-            radius, Sum(scored.Select(f => f.Baseline!)), Sum(scored.Select(f => f.Expanded!)), entries);
+            radius, Sum(scored.Select(f => f.Baseline!)), Sum(scored.Select(f => f.Expanded!)), entries)
+        {
+            Temporal = Sum(scored.Select(f => f.Temporal!))
+        };
     }
 
     public static string RenderMarkdown(ShadowEdgeStudyReport report)
@@ -87,25 +120,31 @@ public static class ShadowEdgeStudy
         static string Pct(double? rate) => rate is null ? "N/A" :
             rate.Value.ToString("P1", CultureInfo.InvariantCulture);
         var b = new StringBuilder();
-        b.AppendLine("# ARGUS — M2.5c shadow-only edge-region A/B study").AppendLine()
+        b.AppendLine("# ARGUS — M2.5d causal temporal shadow comparison").AppendLine()
             .AppendLine($"Run: `{report.RunId.Replace("`", "")}`. Human-labeled frames: {report.ReviewedFrames}; " +
                 $"scored: {report.ScoredFrames}; unscored: {report.UnscoredFrames}.")
-            .AppendLine("Both alternatives use **fresh detection on the same PNG**, with no prior-frame tracking, at " +
-                $"{report.MatchingRadius.ToString("0.#", CultureInfo.InvariantCulture)} px matching radius.")
+            .AppendLine("All variants use the same current PNG; temporal association uses only preceding " +
+                "contiguous combat screenshots, not human labels or later frames. Radius: " +
+                $"{report.MatchingRadius.ToString("0.#", CultureInfo.InvariantCulture)} px.")
             .AppendLine("This is **development** evidence, not held-out accuracy, gameplay improvement, or proof of enemy identity.")
             .AppendLine()
             .AppendLine("| Detector | TP | FP | FN | Precision | Recall |")
             .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: |");
         AddCounts("Current baseline", report.Baseline);
-        AddCounts("Extended shadow", report.Expanded);
-        b.AppendLine().AppendLine("| Frame | Status | Baseline TP/FP/FN | Shadow TP/FP/FN | Extra candidates |")
-            .AppendLine("| ---: | --- | --- | --- | ---: |");
+        AddCounts("Extended shadow (raw)", report.Expanded);
+        if (report.Temporal is not null) AddCounts("Extended shadow (temporal)", report.Temporal);
+        b.AppendLine().AppendLine("| Frame | Status | Baseline TP/FP/FN | Raw TP/FP/FN | Temporal TP/FP/FN | Added | Confirmed | Pending | Static |")
+            .AppendLine("| ---: | --- | --- | --- | --- | ---: | ---: | ---: | ---: |");
         foreach (var f in report.Frames)
-            b.AppendLine($"| {f.Step} | {f.Status} | {Counts(f.Baseline)} | {Counts(f.Expanded)} | {f.AdditionalCandidates.Count} |");
+            b.AppendLine($"| {f.Step} | {f.Status} | {Counts(f.Baseline)} | {Counts(f.Expanded)} | " +
+                $"{Counts(f.Temporal)} | {f.AdditionalCandidates.Count} | {f.TemporallyConfirmed} | {f.Pending} | {f.Stationary} |");
         b.AppendLine()
             .AppendLine("**Safety:** this probe does not affect `VisualGameAgent` or avoidance. New candidates are " +
                 "uncertain palette matches, never verified enemies. Old bounded final-frame evidence and " +
-                "non-combat/unknown references are excluded. The shadow scan deliberately avoids the top 11% " +
+                "non-combat/unknown references are excluded. The temporal tracker additionally requires " +
+                "two consecutive sightings and at least three pixels of observed motion; it can miss " +
+                "stationary or fast threats, and moving decorations can still appear as candidates. " +
+                "The shadow scan deliberately avoids the top 11% " +
                 "and bottom 7% to reduce HUD/footer contamination; other false positives remain possible.")
             .AppendLine("Do not promote this detector until new independent human-reviewed development runs confirm " +
                 "whether extra true positives outweigh extra false positives, followed by a fresh untouched held-out run.");

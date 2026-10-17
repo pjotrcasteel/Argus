@@ -119,10 +119,20 @@ jobs:
           image = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
           image += chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b"")
           (root / "frame-0000.png").write_bytes(image)
+          # Subsequent image: one moving supplemental candidate + one stationary decoration.
+          paint(300, 110, 20, 25, (30, 39, 34))
+          paint(305, 110, 20, 25, (120, 84, 66))
+          rows = b"".join(b"\x00" + rgb[y * width * 3:(y + 1) * width * 3] for y in range(height))
+          image = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+          image += chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b"")
+          (root / "frame-0001.png").write_bytes(image)
           record = {"step": 0, "timestampUtc": "2026-10-17T10:00:00Z",
                     "width": width, "height": height, "screenshot": "frame-0000.png",
                     "evidence": {"phase": "exploring", "reason": "synthetic only"}}
-          (root / "trace.jsonl").write_text(json.dumps(record) + "\n")
+          next_record = {"step": 1, "timestampUtc": "2026-10-17T10:00:01Z",
+                    "width": width, "height": height, "screenshot": "frame-0001.png",
+                    "evidence": {"phase": "exploring", "reason": "synthetic only"}}
+          (root / "trace.jsonl").write_text(json.dumps(record) + "\n" + json.dumps(next_record) + "\n")
           point = lambda x, y: {"x": x, "y": y}
           labels = {"schemaVersion": 1, "runId": "run-local",
                     "frames": [{"step": 0, "player": {"state": "visible", "center": point(189, 420)},
@@ -141,5 +151,34 @@ jobs:
           assert report["baseline"]["falseNegative"] == 2
           assert report["expanded"]["falseNegative"] == 0
           assert len(report["frames"][0]["additionalCandidates"]) == 2
-          assert "shadow-only" in Path("artifacts/ci-shadow/run-local/shadow-edge-study.md").read_text()
+          assert "temporal" in Path("artifacts/ci-shadow/run-local/shadow-edge-study.md").read_text()
+          PY
+
+      - name: Verify temporal shadow report only accepts moving sequential candidates
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("artifacts/ci-shadow/run-local")
+          point = lambda x, y: {"x": x, "y": y}
+          (root / "labels.json").write_text(json.dumps({
+              "schemaVersion": 1, "runId": "run-local",
+              "frames": [{"step": 1, "player": {"state": "visible", "center": point(189, 420)},
+                          "threats": {"state": "known", "centers": [point(130, 413), point(315, 122)]}}]
+          }))
+          PY
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-shadow/run-local --shadow-edges examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          result = json.loads(Path("artifacts/ci-shadow/run-local/shadow-edge-study.json").read_text())
+          assert result["scoredFrames"] == 1
+          assert (result["baseline"]["truePositive"], result["baseline"]["falsePositive"], result["baseline"]["falseNegative"]) == (1, 0, 1)
+          assert (result["expanded"]["truePositive"], result["expanded"]["falsePositive"], result["expanded"]["falseNegative"]) == (2, 1, 0)
+          assert (result["temporal"]["truePositive"], result["temporal"]["falsePositive"], result["temporal"]["falseNegative"]) == (2, 0, 0)
+          item = result["frames"][0]
+          assert item["temporallyConfirmed"] == 1
+          assert item["stationary"] == 1
+          assert item["pending"] == 0
           PY

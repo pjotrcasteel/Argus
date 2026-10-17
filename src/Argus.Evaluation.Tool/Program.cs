@@ -60,7 +60,8 @@ try
         await File.WriteAllTextAsync(Path.Combine(run, "shadow-edge-study.md"), ShadowEdgeStudy.RenderMarkdown(study));
         Console.WriteLine($"Shadow A/B: {study.ScoredFrames} comparable frames, " +
             $"baseline TP/FP/FN {study.Baseline.TruePositive}/{study.Baseline.FalsePositive}/{study.Baseline.FalseNegative}, " +
-            $"shadow {study.Expanded.TruePositive}/{study.Expanded.FalsePositive}/{study.Expanded.FalseNegative}.");
+            $"raw shadow {study.Expanded.TruePositive}/{study.Expanded.FalsePositive}/{study.Expanded.FalseNegative}, " +
+            $"temporal shadow {study.Temporal?.TruePositive}/{study.Temporal?.FalsePositive}/{study.Temporal?.FalseNegative}.");
         Console.WriteLine($"Saved local study: {output}");
     }
     else
