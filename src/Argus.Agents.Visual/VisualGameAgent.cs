@@ -31,6 +31,13 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var labels = await textReader.ReadAsync(observation, cancellationToken);
         var names = labels.Select(t => t.Text).Take(24).ToArray();
+        var terminal = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
+            profile.TerminalScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
+        if (terminal)
+        {
+            LastEvidence = new AgentEvidence("terminal", "Detected visible result or progression screen; stopping input", 0.85f, names);
+            return null;
+        }
         var isChoiceScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.ChoiceScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
         if (isChoiceScreen)
