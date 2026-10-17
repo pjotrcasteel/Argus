@@ -121,6 +121,18 @@ dotnet run --project src/Argus.Study.Quality.Tool -- --runs results/research-run
 
 This refuses modified frame selections and reports per-run, development and held-out screen-space precision/recall and unknown coverage when genuinely reviewed labels exist. It never invents reference truth or changes the game's code. See [M2.4 quality gate](docs/M2-4-BLIND-QUALITY.md).
 
+## Capture fresh development-only WyrmForge sessions (M2.6b)
+
+Run the opt-in [M2.6b GitHub Actions capture](.github/workflows/m2-6-development.yml) to record
+**two separate development sessions**, freeze 12 original screenshots from each, and produce two
+prediction-free mobile review pages. This deliberately does **not** access or reassign the
+existing held-out run. Two-day private research and mobile-page artifacts are produced, but
+the screenshots are not automatically published to the public Pages website.
+
+After manually reviewed `labels.json` files are supplied for both runs, use the original
+offline study scorer and M2.6a appearance-audit CLI. Until then the new study is
+`NOT_EVALUATED`. Read the [M2.6b protocol](docs/M2-6-NEW-DEVELOPMENT-STUDY.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
