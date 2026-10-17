@@ -170,6 +170,99 @@ public sealed class PerceptionScoringTests
         finally { Directory.Delete(folder, true); }
     }
 
+    [TestMethod]
+    public async Task ScoreAsync_LegacyFinalScreenshot_DoesNotCountStalePredictionsAsQuality()
+    {
+        var folder = FreshFolder();
+        try
+        {
+            var last = "{\"action\":null," + Row(1, (335, 421), [(130, 390)])[1..];
+            await WriteTrace(folder, [Row(0, null, []), last]);
+            var replay = await ReplayTraceReader.ReadAsync(folder, TestContext.CancellationToken);
+            var labels = new LabelSet(1, Path.GetFileName(folder), [
+                new FrameLabel(0, new PlayerLabel("unknown", null), new ThreatLabel("unknown", null)),
+                new FrameLabel(1, new PlayerLabel("visible", Point(371, 421)), new ThreatLabel("known", [Point(130, 390)]))
+            ]);
+
+            var score = await PerceptionScoring.ScoreAsync(folder, labels, replay, cancellationToken: TestContext.CancellationToken);
+            var failures = await PerceptionFailureAnalysis.AnalyzeAsync(folder, labels, replay,
+                cancellationToken: TestContext.CancellationToken);
+
+            Assert.AreEqual(1, score.LegacyFinalUnverifiedFrames);
+            Assert.AreEqual(1, score.PlayerEvidenceUnavailableFrames);
+            Assert.AreEqual(1, score.ThreatEvidenceUnavailableFrames);
+            Assert.AreEqual(0, score.Threats.Counts.TruePositive);
+            Assert.AreEqual(2, score.Threats.Counts.Unknown);
+            Assert.AreEqual(0, failures.ScoredThreatFrames);
+            Assert.AreEqual("LEGACY_FINAL_UNVERIFIED", failures.Frames[1].ThreatStatus);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [TestMethod]
+    public async Task ScoreAsync_ExplicitFreshFinalScreenshot_IsMeasuredEvenWhenInputSuppressed()
+    {
+        var folder = FreshFolder();
+        try
+        {
+            var last = "{\"action\":null,\"inputSuppressedAtStepLimit\":true," + Row(1, (371, 421), [(130, 390)])[1..];
+            await WriteTrace(folder, [Row(0, null, []), last]);
+            var replay = await ReplayTraceReader.ReadAsync(folder, TestContext.CancellationToken);
+            var labels = new LabelSet(1, Path.GetFileName(folder), [
+                new FrameLabel(0, new PlayerLabel("unknown", null), new ThreatLabel("unknown", null)),
+                new FrameLabel(1, new PlayerLabel("visible", Point(371, 421)), new ThreatLabel("known", [Point(130, 390)]))
+            ]);
+
+            var score = await PerceptionScoring.ScoreAsync(folder, labels, replay, cancellationToken: TestContext.CancellationToken);
+            var failures = await PerceptionFailureAnalysis.AnalyzeAsync(folder, labels, replay,
+                cancellationToken: TestContext.CancellationToken);
+
+            Assert.AreEqual(0, score.LegacyFinalUnverifiedFrames);
+            Assert.AreEqual(1, score.Player.Counts.TruePositive);
+            Assert.AreEqual(1, score.Threats.Counts.TruePositive);
+            Assert.AreEqual(1, failures.ScoredThreatFrames);
+            Assert.AreEqual("SCORED", failures.Frames[1].ThreatStatus);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [TestMethod]
+    public async Task AnalyzeAsync_RealisticMisses_ProducesOneToOneCountsAndLegacyRoiDiagnostics()
+    {
+        var folder = FreshFolder();
+        try
+        {
+            await WriteTrace(folder, [Row(0, null, []), Row(1, (195, 420), [(80, 300), (210, 315)]),
+                Row(2, (196, 418), [(100, 300)])]);
+            var replay = await ReplayTraceReader.ReadAsync(folder, TestContext.CancellationToken);
+            var labels = new LabelSet(1, Path.GetFileName(folder), [
+                new FrameLabel(0, new PlayerLabel("visible", Point(186, 431)), new ThreatLabel("known", [Point(150, 100)])),
+                new FrameLabel(1, new PlayerLabel("visible", Point(195, 420)),
+                    new ThreatLabel("known", [Point(80, 300), Point(383, 614)])),
+                new FrameLabel(2, new PlayerLabel("unknown", null), new ThreatLabel("unknown", null))
+            ]);
+
+            var failures = await PerceptionFailureAnalysis.AnalyzeAsync(folder, labels, replay,
+                cancellationToken: TestContext.CancellationToken);
+            var score = await PerceptionScoring.ScoreAsync(folder, labels, replay, cancellationToken: TestContext.CancellationToken);
+
+            Assert.AreEqual(1, failures.ScoredThreatFrames);
+            Assert.AreEqual(1, failures.ThreatTruePositives);
+            Assert.AreEqual(1, failures.ThreatFalsePositives);
+            Assert.AreEqual(1, failures.ThreatFalseNegatives);
+            Assert.AreEqual(1, failures.MissedOutsideLegacySearchArea);
+            Assert.AreEqual("NOT_OBSERVED", failures.Frames[0].ThreatStatus);
+            Assert.AreEqual("MATCH", failures.Frames[1].PlayerStatus);
+            Assert.AreEqual("UNKNOWN_REFERENCE", failures.Frames[2].ThreatStatus);
+            Assert.AreEqual(383f, failures.Frames[1].MissedThreatCenters.Single().X);
+            Assert.AreEqual(score.Threats.Counts.TruePositive, failures.ThreatTruePositives);
+            Assert.AreEqual(score.Threats.Counts.FalsePositive, failures.ThreatFalsePositives);
+            Assert.AreEqual(score.Threats.Counts.FalseNegative, failures.ThreatFalseNegatives);
+            Assert.IsTrue(PerceptionFailureAnalysis.RenderMarkdown(failures).Contains("Frame 1"));
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
     private static VisualCandidatePoint Point(float x, float y) => new(x, y);
 
     private static string FreshFolder()
