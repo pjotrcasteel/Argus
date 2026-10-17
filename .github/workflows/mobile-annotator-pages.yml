@@ -1,0 +1,88 @@
+name: ARGUS Mobile Annotator Website
+on:
+  pull_request:
+    paths:
+      - web/mobile-annotator/**
+      - .github/workflows/mobile-annotator-pages.yml
+  push:
+    branches: [main]
+    paths:
+      - web/mobile-annotator/**
+      - .github/workflows/mobile-annotator-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-annotator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve short-lived original ARGUS M2.4 development screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12100334875/zip > original-real-game-evidence.zip
+          unzip -t original-real-game-evidence.zip | tail -1
+      - name: Generate no-dependencies Safari-compatible static annotator
+        run: |
+          python3 web/mobile-annotator/build.py \
+            --archive original-real-game-evidence.zip --destination _site
+      - name: Check real screenshots, blind ground truth, and page JavaScript
+        run: |
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          root = Path("_site/annoteren/run-02")
+          html = (root / "index.html").read_text()
+          assert len(list(root.glob("frame-*.png"))) == 12
+          assert html.count("<script>") == 1 and html.count("</script>") == 1
+          assert "/*ARGUS_FRAMES*/" not in html and "/*ARGUS_LABELS*/" not in html
+          assert "playerX" not in html and "threatLocations" not in html
+          assert "run-01" not in html
+          Path("mobile-script.js").write_text(html.split("<script>",1)[1].split("</script>",1)[0])
+          print("Verified 12 public development screenshots and no agent predictions.")
+          PY
+          node --check mobile-script.js
+      - name: Verify navigation, tap annotations and JSON download in mobile Chromium
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 web/mobile-annotator/smoke.py --site _site
+      - name: Upload build for deployment
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-mobile-pages-build
+          path: _site
+          retention-days: 1
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build-annotator
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Download validated website build
+        uses: actions/download-artifact@v4
+        with:
+          name: argus-mobile-pages-build
+          path: _site
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Prepare static Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Publish working HTTPS site
+        id: deploy
+        uses: actions/deploy-pages@v4
