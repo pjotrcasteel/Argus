@@ -8,7 +8,10 @@ namespace Argus.Evaluation;
 public sealed record Counts(int TruePositive, int FalsePositive, int FalseNegative, int TrueNegative, int Unknown);
 public sealed record QualityMetrics(Counts Counts, double? Precision, double? Recall, double? F1);
 public sealed record PerceptionReport(string RunId, int TotalFrames, int LabeledFrames, QualityMetrics Player,
-    QualityMetrics Threats, int ThreatEvidenceUnavailableFrames, float MatchingRadiusPixels);
+    QualityMetrics Threats, int ThreatEvidenceUnavailableFrames, float MatchingRadiusPixels)
+{
+    public int PlayerEvidenceUnavailableFrames { get; init; }
+}
 
 public static class PerceptionScoring
 {
@@ -27,6 +30,7 @@ public static class PerceptionScoring
         var player = new Accumulator();
         var threat = new Accumulator();
         var unavailable = 0;
+        var playerUnavailable = 0;
         var annotations = truth.Frames.ToDictionary(f => f.Step);
         var tracePath = Path.Combine(folder, "trace.jsonl");
 
@@ -49,7 +53,19 @@ public static class PerceptionScoring
                 var frame = replay.Frames[step];
                 var detected = frame.PlayerX is not null && frame.PlayerY is not null
                     ? new VisualCandidatePoint(frame.PlayerX.Value, frame.PlayerY.Value) : null;
-                ScorePlayer(label.Player, detected, radius, player);
+                // A menu/transition screenshot can visibly contain a mage without the agent
+                // ever attempting combat perception. This is unavailable evidence, not a miss.
+                // During exploration an unsuccessful detection IS a false negative if reviewed.
+                var perceptionAttempted = combat.ValueKind == JsonValueKind.Object ||
+                    evidence.ValueKind == JsonValueKind.Object &&
+                    evidence.TryGetProperty("phase", out var phase) &&
+                    phase.ValueKind == JsonValueKind.String && phase.GetString() == "exploring";
+                if (label.Player.State != "unknown" && !perceptionAttempted)
+                {
+                    player.Unknown++;
+                    playerUnavailable++;
+                }
+                else ScorePlayer(label.Player, detected, radius, player);
 
                 if (label.Threats.State == "unknown")
                 {
@@ -72,7 +88,10 @@ public static class PerceptionScoring
         }
 
         return new PerceptionReport(truth.RunId, replay.Frames.Count, truth.Frames.Count,
-            player.Metrics(), threat.Metrics(), unavailable, radius);
+            player.Metrics(), threat.Metrics(), unavailable, radius)
+        {
+            PlayerEvidenceUnavailableFrames = playerUnavailable
+        };
     }
 
     public static string RenderMarkdown(PerceptionReport report)
@@ -81,7 +100,9 @@ public static class PerceptionScoring
         sb.AppendLine("# ARGUS perception quality — annotated visible frames").AppendLine()
             .AppendLine($"> Run: `{report.RunId.Replace("`", "")}`. Matched radius: {report.MatchingRadiusPixels:0.#} px. This measures pixel candidate agreement, **not combat competence**.")
             .AppendLine()
-            .AppendLine($"Frames in trace: {report.TotalFrames}. Annotated: {report.LabeledFrames}. Threat evidence unavailable: {report.ThreatEvidenceUnavailableFrames}.")
+            .AppendLine($"Frames in trace: {report.TotalFrames}. Annotated: {report.LabeledFrames}. " +
+                $"Player evidence unavailable: {report.PlayerEvidenceUnavailableFrames}. " +
+                $"Threat evidence unavailable: {report.ThreatEvidenceUnavailableFrames}.")
             .AppendLine()
             .AppendLine("| Object | TP | FP | FN | TN | Unknown | Precision | Recall | F1 |")
             .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
