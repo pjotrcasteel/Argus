@@ -1,0 +1,128 @@
+name: M2.3 opt-in two-session WyrmForge research
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/m2-research-cohort.yml
+
+permissions:
+  contents: read
+
+jobs:
+  two-independent-visual-sessions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install free OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Build ARGUS once
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+      - name: Install Chromium
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Capture two distinct bounded, pixel-only browser sessions
+        run: |
+          mkdir -p artifacts/research-runs
+          for index in 01 02; do
+            folder="artifacts/research-runs/run-$index"
+            mkdir -p "$folder"
+            started="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "Starting research session $index at $started"
+            exit_code=0
+            dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+              --url https://pjotrcasteel.github.io/Wyrmforge/ \
+              --agent visual --profile examples/wyrmforge.profile.json \
+              --headless --width 390 --height 844 --max-steps 42 --timeout-seconds 140 \
+              --output "$folder" || exit_code=$?
+            export ARGUS_RESEARCH_FOLDER="$folder"
+            export ARGUS_RESEARCH_STARTED="$started"
+            export ARGUS_RESEARCH_EXIT="$exit_code"
+            python3 - <<'PY'
+          import datetime
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          folder = Path(os.environ["ARGUS_RESEARCH_FOLDER"])
+          summary_path = folder / "summary.json"
+          summary = json.loads(summary_path.read_text()) if summary_path.exists() else None
+          profile_hash = hashlib.sha256(Path("examples/wyrmforge.profile.json").read_bytes()).hexdigest()
+          completed = (datetime.datetime.now(datetime.timezone.utc)
+                       .isoformat(timespec="seconds").replace("+00:00", "Z"))
+          manifest = {
+              "startedAtUtc": os.environ["ARGUS_RESEARCH_STARTED"],
+              "finishedAtUtc": completed,
+              "runnerExitCode": int(os.environ["ARGUS_RESEARCH_EXIT"]),
+              "gameUrl": "https://pjotrcasteel.github.io/Wyrmforge/",
+              "gameVersion": None,
+              "gameProfile": "wyrmforge.profile.json:" + profile_hash,
+              "viewport": "390x844",
+              "policyVersion": os.environ["GITHUB_SHA"],
+              "actualOutcome": "unknown",
+              "visualEvidenceGate": (summary.get("meetsVisualCombatGate") if summary else None),
+              "frames": (summary.get("frames") if summary else None)
+          }
+          (folder / "run-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          (folder / "experiment.json").write_text(json.dumps({
+              key: manifest[key] for key in ("gameVersion", "gameProfile", "viewport", "policyVersion")
+          }, indent=2) + "\n")
+          print("Recorded run provenance:", json.dumps(manifest))
+          PY
+          done
+          echo "Both separate browser processes completed. Outputs are preserved even if a gate was not met."
+
+      - name: Evaluate run integrity and generate multi-session persona cohort
+        run: |
+          dotnet run --project src/Argus.Persona.Cohort.Tool --configuration Release --no-build -- \
+            --runs artifacts/research-runs --movement-keys w,a,s,d --seed 42
+          test -s artifacts/research-runs/persona-cohort.json
+          test -s artifacts/research-runs/persona-cohort.md
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/research-runs")
+          report = json.loads((root / "persona-cohort.json").read_text())
+          assert report["runCount"] == 2
+          assert [run["runId"] for run in report["runs"]] == ["run-01", "run-02"]
+          assert len(report["pairs"]) == 3
+          assert len(report["traits"]) == 5
+          statuses = []
+          for name in ("run-01", "run-02"):
+              item = json.loads((root / name / "run-manifest.json").read_text())
+              statuses.append(item)
+              assert (root / name / "trace.jsonl").stat().st_size > 0
+              assert item["frames"] is not None and item["frames"] > 0
+          print("Separately recorded evidence gates:", [x["visualEvidenceGate"] for x in statuses])
+          print("Two real sessions processed; game victory, threats and player realism remain unverified.")
+          PY
+
+      - name: Always report factual game evidence status
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          for path in sorted(Path("artifacts/research-runs").glob("run-*/run-manifest.json")):
+              item = json.loads(path.read_text())
+              print(path.parent.name, "frames=", item["frames"], "gate=", item["visualEvidenceGate"],
+                    "runnerExit=", item["runnerExitCode"], "actualOutcome=unknown")
+          PY
+
+      - name: Preserve bounded short-lived research data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m2-3-independent-research
+          path: artifacts/research-runs/
+          retention-days: 2
+          if-no-files-found: warn
