@@ -135,7 +135,7 @@ public sealed class VisualAgentTests
         Assert.IsNotNull(result);
         Assert.IsTrue(Math.Abs(result.X - 155) <= 5);
         Assert.IsTrue(Math.Abs(result.Y - 475) <= 5);
-        Assert.IsGreaterThanOrEqualTo(0.6f, result.Confidence);
+        Assert.IsTrue(result.Confidence >= 0.6f);
     }
 
     [TestMethod]
