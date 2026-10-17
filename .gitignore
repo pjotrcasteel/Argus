@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+.idea/
+results/
+artifacts/
+TestResults/
+playwright-report/
+*.user
+*.suo
