@@ -108,7 +108,7 @@ public static class ReplayTraceReader
                 }
                 if (combat.TryGetProperty("threatCandidates", out var count) && count.TryGetInt32(out var n) && n >= 0)
                     candidates = n;
-                if (combat.TryGetProperty("threatLocations", out var list))
+                if (combat.TryGetProperty("threatLocations", out var list) && list.ValueKind != JsonValueKind.Null)
                 {
                     if (list.ValueKind != JsonValueKind.Array || list.GetArrayLength() > 100)
                         throw new InvalidDataException("Invalid threat candidate list.");
