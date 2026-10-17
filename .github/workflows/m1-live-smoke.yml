@@ -38,6 +38,10 @@ jobs:
             --profile examples/wyrmforge.profile.json \
             --headless --require-combat-vision --max-steps 56 --timeout-seconds 180 \
             --output artifacts/m1-live
+      - name: Generate offline replay from actual WyrmForge trace
+        run: |
+          dotnet run --project src/Argus.Replay.Tool --configuration Release --no-build -- --run artifacts/m1-live
+          test -s artifacts/m1-live/replay.html
       - name: Show visual evidence report
         if: always()
         run: |
