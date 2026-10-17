@@ -12,6 +12,8 @@ on:
       - src/Argus.Replay/**
       - src/Argus.Evaluation/**
       - src/Argus.Study.Tool/**
+      - src/Argus.Personas/**
+      - src/Argus.Persona.Tool/**
 permissions:
   contents: read
 jobs:
@@ -83,6 +85,19 @@ jobs:
           Path("artifacts/m1-live/blind-script.js").write_text(html.split("<script>",1)[1].split("</script>",1)[0])
           PY
           node --check artifacts/m1-live/blind-script.js
+      - name: Compare personality hypotheses against the exact same real visual frames (shadow only)
+        run: |
+          dotnet run --project src/Argus.Persona.Tool --configuration Release --no-build -- \
+            --run artifacts/m1-live --movement-keys w,a,s,d --seed 42
+          test -s artifacts/m1-live/persona-shadow.jsonl
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          rows = [json.loads(line) for line in Path("artifacts/m1-live/persona-shadow.jsonl").read_text().splitlines()]
+          assert len(rows) > 0
+          assert len(rows[0]["candidates"]) == 3
+          assert all(row["note"].startswith("SHADOW ONLY") for row in rows)
+          PY
       - name: Show visual evidence report
         if: always()
         run: |

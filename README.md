@@ -89,6 +89,16 @@ dotnet run --project src/Argus.Study.Tool -- --runs results/experiments --seed f
 
 For just one existing run, generate a blind review page with `Argus.Evaluation.Tool --blind-annotate`. **No labels are inferred, and no real detection accuracy is claimed yet.** See [M1.9 blind study protocol](docs/M1-9-BLIND-STUDY.md).
 
+## Explore independent player personalities (M2.0 shadow mode)
+
+Run three illustrative personality hypotheses against **the exact same saved visual evidence**, without affecting the real game:
+
+```bash
+dotnet run --project src/Argus.Persona.Tool -- --run results/my-run --movement-keys w,a,s,d --seed 42
+```
+
+Creates local `persona-shadow.jsonl` with conservative, adventurous and risk-taking action proposals. **These are neither trained AI players nor actual player inputs**. See [M2.0 persona shadow research](docs/M2-0-PERSONA-SHADOW.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
@@ -99,6 +109,7 @@ For just one existing run, generate a blind review page with `Argus.Evaluation.T
 - [Human-labeled perception quality (M1.7)](docs/M1-7-PERCEPTION-EVALUATION.md)
 - [Local annotation studio (M1.8)](docs/M1-8-ANNOTATION-STUDIO.md)
 - [Blind independent-run perception study (M1.9)](docs/M1-9-BLIND-STUDY.md)
+- [Personality proposals in shadow mode (M2.0)](docs/M2-0-PERSONA-SHADOW.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
