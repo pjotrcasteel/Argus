@@ -52,12 +52,21 @@ dotnet run --project src/Argus.Reporter -- --runs results/experiments --output r
 
 Reports include coverage and uncertainty, never invented win rates. See [M1.5 cohort analysis](docs/M1-5-COHORT-REPORTS.md).
 
+## Watch a recorded ARGUS run (offline)
+
+```bash
+dotnet run --project src/Argus.Replay.Tool -- --run results/your-run
+```
+
+Open `results/your-run/replay.html` in your local browser to replay screenshot decisions with a timeline. This is **not live streaming**; see [M1.6 local replay](docs/M1-6-LOCAL-REPLAY.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
 - [Multi-game adapters, permissions and desktop roadmap](docs/GAME_ADAPTERS.md)
 - [Scene-relative movement evidence](docs/M1-4-SCENE-MOTION.md)
 - [Offline multi-run cohort reports](docs/M1-5-COHORT-REPORTS.md)
+- [Local session replay (M1.6)](docs/M1-6-LOCAL-REPLAY.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
