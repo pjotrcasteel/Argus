@@ -10,7 +10,7 @@ public sealed class ShadowTemporalCandidateTrackerTests
     public void Observe_TwoMovingFrames_ConfirmsSupplementWithoutChangingBaseline()
     {
         var tracker = new ShadowTemporalCandidateTracker();
-        var baseline = [Blob(100, 400)];
+        VisualBlob[] baseline = [Blob(100, 400)];
         var first = tracker.Observe(Frame([Blob(300, 170)], baseline));
         var second = tracker.Observe(Frame([Blob(309, 172)], baseline));
 
