@@ -90,6 +90,30 @@ public sealed class PerceptionScoringTests
     }
 
     [TestMethod]
+    public async Task ScoreAsync_TransitionAndExplorationWithoutDetectedPlayer_DistinguishesMissingEvidenceFromMiss()
+    {
+        var folder = FreshFolder();
+        try
+        {
+            await WriteTrace(folder, [Row(0, null, null), Row(1, null, null)]);
+            var replay = await ReplayTraceReader.ReadAsync(folder, TestContext.CancellationToken);
+            var labels = new LabelSet(1, Path.GetFileName(folder), [
+                new FrameLabel(0, new PlayerLabel("visible", Point(186, 431)), new ThreatLabel("known", [Point(154, 106)])),
+                new FrameLabel(1, new PlayerLabel("visible", Point(194, 420)), new ThreatLabel("known", []))
+            ]);
+
+            var report = await PerceptionScoring.ScoreAsync(folder, labels, replay, cancellationToken: TestContext.CancellationToken);
+
+            Assert.AreEqual(1, report.PlayerEvidenceUnavailableFrames);
+            Assert.AreEqual(1, report.Player.Counts.Unknown);
+            Assert.AreEqual(1, report.Player.Counts.FalseNegative);
+            Assert.AreEqual(2, report.ThreatEvidenceUnavailableFrames);
+            Assert.AreEqual(2, report.Threats.Counts.Unknown);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [TestMethod]
     public async Task ReadAsync_DuplicateLabelsAndInvalidCoordinate_Rejects()
     {
         var folder = FreshFolder();
