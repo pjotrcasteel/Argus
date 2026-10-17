@@ -313,3 +313,29 @@ jobs:
           PY
           node --check artifacts/ci-mobile/dev-a.js
           node --check artifacts/ci-mobile/dev-b.js
+
+      - name: Verify causal edge-player appearance audit on synthetic PNG sequences
+        run: |
+          python3 tools/m26d/generate_causal_fixture.py
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-causal-appearance/run-local --appearance-audit examples/wyrmforge.profile.json
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-causal-appearance/run-local --shadow-edges examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/ci-causal-appearance/run-local")
+          appearance = json.loads((root / "appearance-audit.json").read_text())
+          shadow = json.loads((root / "shadow-edge-study.json").read_text())
+          assert appearance["labeledFrames"] == 1
+          assert appearance["scoredFrames"] == 1
+          assert appearance["frames"][0]["status"] == "SCORED"
+          assert appearance["frames"][0]["matchedCandidates"] == 1
+          assert appearance["frames"][0]["missedHumanCenters"] == 0
+          assert len(appearance["candidates"]) == 1
+          assert appearance["candidates"][0]["matchedHuman"]
+          assert shadow["scoredFrames"] == 1
+          assert shadow["baseline"]["truePositive"] == 1
+          assert shadow["baseline"]["falseNegative"] == 0
+          assert "Causal player tracking" in (root / "appearance-audit.md").read_text()
+          PY
