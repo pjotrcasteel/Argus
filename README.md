@@ -77,7 +77,7 @@ See [M1.7: perception ground truth](docs/M1-7-PERCEPTION-EVALUATION.md). The tem
 dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotate results/my-run/annotate.html
 ```
 
-Open `annotate.html` to click the real mage and visual threats, explicitly mark unknown/absent, and export `labels.json` for the existing offline scorer. No account, internet, game source access or cloud required. See [local annotation guide](docs/M1-8-ANNOTATION-STUDIO.md).
+Open `annotate.html` to click the real mage and visual threats, explicitly mark unknown/absent, export `labels.json`, and later re-import that file to resume labeling for the existing offline scorer. No account, internet, game source access or cloud required. See [local annotation guide](docs/M1-8-ANNOTATION-STUDIO.md).
 
 ## Architecture and research
 

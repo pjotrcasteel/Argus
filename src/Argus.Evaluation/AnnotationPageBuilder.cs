@@ -39,6 +39,8 @@ section{background:#1c2230;border:1px solid #39465b;border-radius:14px;padding:1
 .marker{position:absolute;transform:translate(-50%,-50%);width:19px;height:19px;border-radius:50%;border:2px solid;pointer-events:none;box-shadow:0 0 0 3px #07101aad}
 .marker.player{border-color:#4df5ad}.marker.threat{border-color:#fba0a0}
 .marker.predicted{border-color:#79b4ff;border-style:dashed;width:27px;height:27px;opacity:.85}
+.marker.predicted-threat{border-color:#7bafff;border-style:dotted;width:22px;height:22px;opacity:.7}
+#resume{max-width:220px;color:#c5d7f3}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
 button{font:inherit;color:#eff3ff;border:1px solid #50607d;border-radius:9px;background:#2b3853;padding:9px 12px;cursor:pointer}
 button:hover{background:#354768}button.selected{background:#235a60;border-color:#67d8c9}
@@ -97,7 +99,7 @@ dt{color:#aebbd0}dd{margin:0;overflow-wrap:anywhere}
     <dt>Agent action</dt><dd id="action"></dd>
     <dt>Reported reasoning</dt><dd id="reason"></dd>
   </dl>
-  <div class="controls"><button id="export" class="primary">Export labels.json</button></div>
+  <div class="controls"><button id="export" class="primary">Export labels.json</button><label>Import previous labels.json <input id="resume" type="file" accept=".json,application/json"></label></div>
   <p class="notice">Export the JSON and place it in the same ARGUS run directory. Then use <code>Argus.Evaluation.Tool --labels</code> to calculate objective detection metrics. Unknown labels remain unknown; saving this file never trains an agent.</p>
 </section>
 </main>
@@ -105,6 +107,28 @@ dt{color:#aebbd0}dd{margin:0;overflow-wrap:anywhere}
 "use strict";
 const frames = /*ARGUS_TRACE_FRAMES*/;
 const labels = /*ARGUS_ANNOTATIONS*/;
+let dirty = false;
+function changed() { dirty = true; }
+function validatePoint(p, frame) {
+  return p != null && Number.isFinite(p.x) && Number.isFinite(p.y) &&
+    p.x >= 0 && p.y >= 0 && p.x < frame.width && p.y < frame.height;
+}
+function validImport(json) {
+  if (!json || json.schemaVersion !== 1 || json.runId !== labels.runId ||
+      !Array.isArray(json.frames) || json.frames.length !== labels.frames.length) return false;
+  const byIndex = new Map(json.frames.map(f => [f.step, f]));
+  if (byIndex.size !== labels.frames.length) return false;
+  return labels.frames.every(item => {
+    const entry = byIndex.get(item.step), frame = byStep.get(item.step);
+    if (!entry || !frame || !entry.player || !entry.threats) return false;
+    const playerOK = entry.player.state === "visible" ? validatePoint(entry.player.center, frame)
+      : ["absent", "unknown"].includes(entry.player.state) && entry.player.center == null;
+    const threatOK = entry.threats.state === "unknown" ? entry.threats.centers == null :
+      entry.threats.state === "known" && Array.isArray(entry.threats.centers) &&
+      entry.threats.centers.length <= 100 && entry.threats.centers.every(p => validatePoint(p, frame));
+    return playerOK && threatOK;
+  });
+}
 const byStep = new Map(frames.map(f => [f.step, f]));
 const element = id => document.getElementById(id);
 const viewport = element("viewport");
@@ -127,6 +151,8 @@ function render() {
   image.src = frame.screenshot;
   viewport.querySelectorAll(".marker").forEach(m => m.remove());
   if (frame.playerX != null && frame.playerY != null) marker({x: frame.playerX, y: frame.playerY}, "predicted");
+  if (Array.isArray(frame.threatLocations))
+    frame.threatLocations.forEach(p => marker(p, "predicted-threat"));
   if (label.player.state === "visible" && label.player.center) marker(label.player.center, "player");
   if (label.threats.state === "known") (label.threats.centers ?? []).forEach(p => marker(p, "threat"));
   element("frame-name").textContent = frame.screenshot;
@@ -147,8 +173,8 @@ function render() {
 }
 
 function selectMode(next) { mode = next; render(); }
-function updatePlayer(state, center) { labels.frames[selected].player = {state, center}; render(); }
-function updateThreats(state, centers) { labels.frames[selected].threats = {state, centers}; render(); }
+function updatePlayer(state, center) { labels.frames[selected].player = {state, center}; changed(); render(); }
+function updateThreats(state, centers) { labels.frames[selected].threats = {state, centers}; changed(); render(); }
 function go(delta) { selected = Math.max(0, Math.min(labels.frames.length - 1, selected + delta)); render(); }
 
 image.addEventListener("click", event => {
@@ -160,7 +186,10 @@ image.addEventListener("click", event => {
   if (mode === "player") updatePlayer("visible", {x, y});
   else {
     const prior = labels.frames[selected].threats;
-    updateThreats("known", [...(prior.state === "known" ? prior.centers : []), {x, y}]);
+    const points = [...(prior.state === "known" ? prior.centers : []), {x, y}];
+    if (points.length > 100) { element("status").textContent = "Maximum of 100 threat points per frame."; return; }
+    if (points.slice(0,-1).some(p => Math.hypot(p.x-x,p.y-y) < 7)) return;
+    updateThreats("known", points);
   }
 });
 element("mode-player").addEventListener("click", () => selectMode("player"));
@@ -180,7 +209,30 @@ document.addEventListener("keydown", event => {
   if (event.key === "ArrowLeft") go(-1);
   if (event.key === "ArrowRight") go(1);
 });
+element("resume").addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  if (!file || file.size > 2_000_000) {
+    element("status").textContent = "Invalid or oversized annotation file.";
+    event.target.value = "";
+    return;
+  }
+  try {
+    const imported = JSON.parse(await file.text());
+    if (!validImport(imported)) throw new Error("Run, sample frames or pixel coordinates do not match.");
+    const entries = new Map(imported.frames.map(entry => [entry.step, entry]));
+    for (let i = 0; i < labels.frames.length; i++)
+      labels.frames[i] = structuredClone(entries.get(labels.frames[i].step));
+    dirty = false;
+    render();
+    element("status").textContent += " · Previous human labels restored locally.";
+  } catch (error) {
+    element("status").textContent = "Import rejected: " + error.message;
+  } finally {
+    event.target.value = "";
+  }
+});
 element("export").addEventListener("click", () => {
+  if (!validImport(labels)) { element("status").textContent = "Invalid label coordinates; export blocked."; return; }
   const blob = new Blob([JSON.stringify(labels, null, 2)], {type: "application/json"});
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -188,6 +240,11 @@ element("export").addEventListener("click", () => {
   anchor.download = "labels.json";
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  dirty = false;
+  element("status").textContent = "Download requested. Verify labels.json was saved before closing.";
+});
+window.addEventListener("beforeunload", event => {
+  if (dirty) { event.preventDefault(); event.returnValue = ""; }
 });
 render();
 </script>

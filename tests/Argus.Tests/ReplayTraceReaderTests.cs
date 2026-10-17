@@ -38,6 +38,38 @@ public sealed class ReplayTraceReaderTests
     }
 
     [TestMethod]
+    public async Task ReadAsync_ThreatCandidatePositions_PreservesValidatedCoordinates()
+    {
+        var root = FreshRoot();
+        try
+        {
+            var record = new
+            {
+                step = 0, timestampUtc = "2026-10-17T10:00:00+00:00", width = 390, height = 844,
+                screenshot = "frame-0000.png",
+                evidence = new
+                {
+                    phase = "exploring", reason = "candidate from pixels",
+                    combat = new
+                    {
+                        playerX = 190, playerY = 420, threatCandidates = 2,
+                        threatLocations = new[] { new { x = 88f, y = 300f }, new { x = 260f, y = 470f } }
+                    }
+                }
+            };
+            await WriteTrace(root, JsonSerializer.Serialize(record));
+            await File.WriteAllBytesAsync(Path.Combine(root, "frame-0000.png"), TestPng, TestContext.CancellationToken);
+
+            var replay = await ReplayTraceReader.ReadAsync(root, TestContext.CancellationToken);
+
+            Assert.IsNotNull(replay.Frames[0].ThreatLocations);
+            Assert.HasCount(2, replay.Frames[0].ThreatLocations!);
+            Assert.AreEqual(88f, replay.Frames[0].ThreatLocations![0].X);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [TestMethod]
     public async Task ReadAsync_PathTraversalFrame_RejectsExternalFileAccess()
     {
         var root = FreshRoot();
