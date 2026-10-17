@@ -53,6 +53,22 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Click, X: node.X, Y: node.Y);
         }
 
+        if (isRouteScreen && _routeNodeSelected)
+        {
+            // OCR is often unreliable over bright, filled controls. The button must visibly be enabled.
+            var confirmation = FilledActionButtonDetector.Detect(observation.PngBytes);
+            if (confirmation is null)
+            {
+                LastEvidence = new AgentEvidence("route", "Waiting for a visibly enabled route confirmation button", 0, names);
+                return new GameAction(GameActionKind.Wait, DurationMs: 550);
+            }
+
+            _settling = true;
+            _previousFrame = observation.PngBytes;
+            LastEvidence = new AgentEvidence("route", "Activating visually enabled lower action button", confirmation.Confidence, names);
+            return new GameAction(GameActionKind.Click, X: confirmation.X, Y: confirmation.Y);
+        }
+
         var match = MenuTextMatcher.FindBest(labels, profile);
         if (match is not null)
         {
