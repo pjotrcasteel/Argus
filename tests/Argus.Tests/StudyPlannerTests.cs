@@ -60,6 +60,30 @@ public sealed class StudyPlannerTests
     }
 
     [TestMethod]
+    public void CreateDevelopment_ThreeIndependentRuns_UsesFrozenDevelopmentOnlyTemporalBins()
+    {
+        StudyRun[] runs = [Run("dev-e", 49), Run("dev-c", 45), Run("dev-d", 44)];
+        var planned = StudyPlanner.CreateDevelopment(runs, "argus-m27-independent-development-frozen-20261017", 12);
+        var repeated = StudyPlanner.CreateDevelopment(runs.Reverse(), "argus-m27-independent-development-frozen-20261017", 12);
+
+        Assert.AreEqual("development-only", planned.Mode);
+        Assert.HasCount(3, planned.Assignments);
+        CollectionAssert.AreEqual(new[] { "dev-c", "dev-d", "dev-e" },
+            planned.Assignments.Select(a => a.RunId).ToArray());
+        for (var i = 0; i < 3; i++)
+        {
+            var actual = planned.Assignments[i];
+            Assert.AreEqual("development", actual.Partition);
+            Assert.HasCount(12, actual.FrameSteps);
+            CollectionAssert.AreEqual(actual.FrameSteps.ToArray(), repeated.Assignments[i].FrameSteps.ToArray());
+            var trace = runs.Single(run => run.RunId == actual.RunId).Trace;
+            var reference = StudyPlanner.Template(actual, trace);
+            Assert.IsTrue(reference.Frames.All(f => f.Player.State == "unknown" && f.Threats.State == "unknown"));
+            Assert.IsTrue(actual.FrameSteps.SequenceEqual(actual.FrameSteps.Order()));
+        }
+    }
+
+    [TestMethod]
     public void CreateDevelopment_UnsafeAndRepeatedRunIds_RejectsWithoutTouchingHeldOut()
     {
         Assert.ThrowsExactly<InvalidDataException>(() =>
