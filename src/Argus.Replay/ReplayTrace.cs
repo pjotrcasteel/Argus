@@ -116,8 +116,8 @@ public static class ReplayTraceReader
                     foreach (var position in list.EnumerateArray())
                     {
                         if (position.ValueKind != JsonValueKind.Object ||
-                            !position.TryGetProperty("x", out var x) || !x.TryGetSingle(out var px) ||
-                            !position.TryGetProperty("y", out var y) || !y.TryGetSingle(out var py) ||
+                            !position.TryGetProperty("x", out var positionX) || !positionX.TryGetSingle(out var px) ||
+                            !position.TryGetProperty("y", out var positionY) || !positionY.TryGetSingle(out var py) ||
                             !float.IsFinite(px) || !float.IsFinite(py) ||
                             px < 0 || px >= width || py < 0 || py >= height)
                             throw new InvalidDataException("Invalid threat candidate pixel position.");
