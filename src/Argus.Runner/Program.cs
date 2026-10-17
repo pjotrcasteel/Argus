@@ -39,13 +39,18 @@ try
         var frame = await environment.ObserveAsync(cts.Token);
         var filename = $"frame-{step:D4}.png";
         await File.WriteAllBytesAsync(Path.Combine(options.Output, filename), frame.PngBytes, cts.Token);
-        var action = step == options.MaxSteps ? null : await agent.DecideAsync(frame, cts.Token);
+        // Every saved PNG must be assessed against its own pixels. Previously the final step
+        // reused LastEvidence from the PREVIOUS screenshot, corrupting blind frame scoring.
+        // Make a final observation but suppress its proposed input at the step limit.
+        var proposedAction = await agent.DecideAsync(frame, cts.Token);
+        var inputSuppressedAtStepLimit = step == options.MaxSteps;
+        var action = inputSuppressedAtStepLimit ? null : proposedAction;
         var evidence = (agent as IAgentEvidenceProvider)?.LastEvidence;
         evidenceCollector.Record(action, evidence);
 
         await JsonSerializer.SerializeAsync(trace, new
         {
-            step, frame.TimestampUtc, frame.Width, frame.Height, screenshot = filename, action, evidence
+            step, frame.TimestampUtc, frame.Width, frame.Height, screenshot = filename, action, evidence, inputSuppressedAtStepLimit
         }, jsonOptions, cts.Token);
         await trace.WriteAsync(new byte[] { (byte)'\n' }, cts.Token);
         Console.WriteLine($"[{step}] {evidence?.Phase ?? options.Agent}: {evidence?.Reason ?? "screenshot"}; action: {action?.Kind.ToString() ?? "stop"}");
