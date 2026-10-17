@@ -116,13 +116,22 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 550);
         }
 
+        var combat = profile.CombatTracking is null ? null : CombatPixelPerception.Observe(observation.PngBytes, profile.CombatTracking);
         var motion = _previousFrame is null ? (Change: 0f, Quadrants: new float[4]) : VisualMotion.Measure(_previousFrame, observation.PngBytes);
         _previousFrame = observation.PngBytes;
-        var direction = VisualMotion.ChooseDirection(motion.Quadrants, _explorationSteps);
+        var avoidance = combat is null ? null : VisualCombatSteering.SelectEvasionDirection(combat,
+            profile.CombatTracking!.ThreatAvoidanceRadius);
+        var direction = avoidance ?? VisualMotion.ChooseDirection(motion.Quadrants, _explorationSteps);
         var key = profile.MovementKeys[direction];
         _explorationSteps++;
 
-        LastEvidence = new AgentEvidence("exploring", "Experimental screen-motion steering; holding " + key, 0.2f, names, motion.Change);
+        var source = avoidance is not null ? "candidate-avoidance" : "screen-motion";
+        var screen = combat?.Player is { } player
+            ? new CombatScreenEvidence(player.X, player.Y, combat.ThreatCandidates.Count, combat.NearestThreatDistance, source)
+            : null;
+        var reason = screen is null ? "No confidently located player; " + source : $"Visual player ({screen.PlayerX:0},{screen.PlayerY:0}); {source}";
+        LastEvidence = new AgentEvidence("exploring", reason + "; holding " + key,
+            screen is null ? 0.2f : MathF.Min(0.65f, combat!.Player!.Confidence), names, motion.Change, screen);
         return new GameAction(GameActionKind.HoldKey, Key: key, DurationMs: profile.MovementMilliseconds);
     }
 }
