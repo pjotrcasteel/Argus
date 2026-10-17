@@ -23,8 +23,9 @@
 
 ## M2 — Human Minds
 - [x] M2.0 game-neutral personality vectors and seeded shadow-only action proposals, never hidden game state.
-- [ ] M2.1 deterministic per-frame disagreement metrics and comparison across independent runs; no fabricated human realism.
-- [ ] Personality vectors (risk, skill, attention, patience, exploration).
+- [x] M2.1 reproducible per-frame persona divergence reports (direction vs timing vs waits), tested on real visual traces; no human realism claim.
+- [ ] M2.2 multi-run cohort reports with per-run denominators and one-trait-at-a-time attribution controls.
+- [ ] Calibrate the existing personality trait vectors against independently observed human playing styles (no such ground truth yet).
 - [ ] Short-term and persistent local memory.
 - [ ] Full runs and decisions without hidden game state.
 
