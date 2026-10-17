@@ -8,6 +8,9 @@ on:
       - src/Argus.Agents.Visual/**
       - src/Argus.Runner/**
       - tests/Argus.Tests/**
+      - tests/Argus.Annotation.UiSmoke/**
+      - src/Argus.Replay/**
+      - src/Argus.Evaluation/**
 permissions:
   contents: read
 jobs:
@@ -62,6 +65,9 @@ jobs:
           Path('artifacts/m1-live/annotate-script.js').write_text(javascript)
           PY
           node --check artifacts/m1-live/annotate-script.js
+      - name: Verify annotation clicks and downloaded JSON in Chromium
+        run: |
+          dotnet run --project tests/Argus.Annotation.UiSmoke --configuration Release --no-build -- artifacts/m1-live
       - name: Show visual evidence report
         if: always()
         run: |
