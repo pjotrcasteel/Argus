@@ -25,18 +25,19 @@ Create a **game-independent, standalone, free-by-default autonomous visual playt
 3. [Roadmap](ROADMAP.md), [architecture](ARCHITECTURE.md), [game adapters](GAME_ADAPTERS.md), [cost guardrails](COSTS.md), [M1.4 motion evidence](M1-4-SCENE-MOTION.md), [Live Spectator design](LIVE-SPECTATOR-DESIGN.md).
 4. CI screenshot/trace artifacts from live WyrmForge runs **expire quickly** (two-day retention). If unavailable, re-run the existing bounded live workflow or run locally; do not invent a past screenshot.
 
-## Current implementation (as of main after PR #12)
+## Current implementation (as of main after PR #13)
 
 - `Argus.Core`: screenshots, actions, agent/profile interfaces, game-neutral evidence and session summary.
 - `Argus.Adapters.Browser`: black-box Playwright screenshots and ordinary keyboard/mouse; local Tesseract OCR with bounded per-frame timeout.
 - `Argus.Agents.Visual`: OCR-driven menu/magic-card clicks; visually identified circular route nodes; optional button fill detection; screen-pixel mage palette tracking with temporal prior; uncertain candidate-threat segmentation and simple evasive policy; separate **diagnostic-only** camera/background translation and scene-relative candidate-motion estimator.
 - `Argus.Runner`: bounded single-session CLI; PNG screenshots, JSONL actions + reasons, `summary.json` evidence report; optional `--require-combat-vision` gate.
 - `Argus.Analysis` + `Argus.Reporter`: **offline-only** cohort reader and reporting CLI. Read multiple independent `summary.json` runs, validate integrity, optionally compare controlled-manifest metadata, and produce local `cohort.json` / `cohort.md`. Wilson 95% interval is for visual smoke-gate frequency only. See [M1.5 cohort reports](M1-5-COHORT-REPORTS.md).
-- `Argus.Tests`: deterministic MSTest cases for visual UI, geometry, player tracking, steering, motion, evidence and cohort validation.
+- `Argus.Replay` + `Argus.Replay.Tool`: validate saved `trace.jsonl` and numbered PNG screenshots, and generate local `replay.html` with play/pause, timeline seek, frame steps, inferred player position, actions and decision reasons. No server/integration/streaming; see [M1.6 replay](M1-6-LOCAL-REPLAY.md).
+- `Argus.Tests`: deterministic MSTest cases for visual UI, geometry, player tracking, steering, motion, evidence, cohorts and secure local replay.
 - `.github/workflows/ci.yml`: .NET 10 build/tests. `m1-live-smoke.yml`: *bounded* browser WyrmForge run; collects short-lived evidence; requires evidence gate.
 - Already observed by the **external** player: open the public WyrmForge page, begin a hunt, select Arcane Orb, choose a route and enter the trail, move, choose upgrades and sometimes recognize an end screen. These are heuristic actions, NOT AI training.
 
-Recent merged work: [PR #8 combat vision](https://github.com/pjotrcasteel/Argus/pull/8), [PR #9 evidence acceptance gate](https://github.com/pjotrcasteel/Argus/pull/9), [PR #10 camera-aware motion evidence](https://github.com/pjotrcasteel/Argus/pull/10), [PR #12 offline cohort reports](https://github.com/pjotrcasteel/Argus/pull/12).
+Recent merged work: [PR #8 combat vision](https://github.com/pjotrcasteel/Argus/pull/8), [PR #9 evidence acceptance gate](https://github.com/pjotrcasteel/Argus/pull/9), [PR #10 camera-aware motion evidence](https://github.com/pjotrcasteel/Argus/pull/10), [PR #12 offline cohort reports](https://github.com/pjotrcasteel/Argus/pull/12), [PR #13 local replay](https://github.com/pjotrcasteel/Argus/pull/13).
 
 ## Prior motion evidence experiment (2026-10-17)
 
@@ -67,6 +68,14 @@ Recent merged work: [PR #8 combat vision](https://github.com/pjotrcasteel/Argus/
 - **Interpretation:** the experiment reached combat; `0/37` estimated camera shifts in this run is a major reliability issue, not a finding of zero true movement. Do not use current candidate velocity as objective balancing data.
 - No actual multi-run real-game cohort report has yet been generated from independent sessions. Reporter correctness is verified using deterministic test fixtures, not a live balancing experiment.
 
+## Latest verified replay milestone (2026-10-17)
+
+- [PR #13](https://github.com/pjotrcasteel/Argus/pull/13) merged on `main` at `c6a42867fd6c42049151a1ce6e66489e508aea58`.
+- [.NET CI run 39024084790](https://github.com/pjotrcasteel/Argus/actions/runs/39024084790): successful build and **48/48 tests**.
+- [Real WyrmForge run 39024084743](https://github.com/pjotrcasteel/Argus/actions/runs/39024084743): **52 frames**, 34 frames with inferred player, 2 route interactions, 1 visible terminal stop; existing smoke gate passed.
+- Crucially, that live workflow **generated `replay.html` from the actual saved PNG + JSONL trace** via `Argus.Replay.Tool`. Its [short-lived artifact](https://github.com/pjotrcasteel/Argus/actions/runs/39024084743/artifacts/12098166006) includes evidence and viewer. Artifact retention is two days, so recreate if unavailable.
+- **Scope:** offline HTML replay, not live streaming. The page was generated successfully by CI against real data; interactive display has not been human-reviewed in a local browser and must not be claimed to be UX-validated.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -79,14 +88,14 @@ Recent merged work: [PR #8 combat vision](https://github.com/pjotrcasteel/Argus/
 
 ## Single recommended next slice
 
-**M1.6: local post-run replay viewer**, as preparation for the user's desired Live Spectator Mode. This should be an independent, free, strictly read-only UI, not a new WyrmForge integration.
+**M1.7: evidence labeling and perception calibration** before ML training or activating camera-relative enemy tracking as an action policy.
 
-- Build a lightweight local static/ASP.NET Core replay view for **existing** `trace.jsonl` + `frame-####.png`, without editing the game or running an agent.
-- Add **play/pause, step back/forward, seek timeline**, action/phase/reason/confidence overlay and approximate player/candidate positions when recorded. Display missing evidence as unknown, not a fabricated point.
-- Validate trace ordering, screenshot filename containment/path traversal, incomplete runs, missing frames and bounded disk/CPU/memory with deterministic tests. Do not expose arbitrary local paths or public endpoints.
-- Confirm with one actual saved WyrmForge run where possible; short-lived GitHub artifacts expire quickly. Locally generated traces should remain private and Git-ignored.
-- **Important parallel research track:** manually annotate a small number of diverse screenshots and investigate why background-motion confidence fell from 8 observations in one smoke run to 0 in another. Do not wire the uncertain motion estimator into combat movement yet.
-- Longer term: repeat independent runs under known version/profile/viewport/policy metadata, categorize true win/loss from player-visible screens, then evaluate synthetic cohorts; only after replay is stable consider local live streaming per [Live Spectator design](LIVE-SPECTATOR-DESIGN.md).
+- Use the new [offline replay viewer](M1-6-LOCAL-REPLAY.md) to review a small, diverse set of WyrmForge screenshots and annotate whether player, threat, decoration, particle and background-shift detections were plausible. Keep labels **local**; no WyrmForge internals or DOM.
+- Add a validated local annotation/ground-truth format and deterministic offline scoring against annotated frames. Include unknown/occluded categories; false positives must be counted, not discarded.
+- Specifically diagnose camera/background-shift coverage: a prior run produced 8 estimates and another 0. Consider multiple resolutions, spells, procedural seeds and whether the screen actually pans between frames.
+- Do not make confident claims about balancing or self-learning based solely on visual candidates. The M1.5 reporter is *descriptive* without independently labeled outcomes and comparable run manifests.
+- Once perception has acceptable out-of-sample evidence: gather independent runs with genuine game-version/profile/viewport/policy manifests and visual outcome labels; eventually make personality profiles and genuine learning experiments.
+- **Future user-requested goal:** Live Spectator Mode, [issue #11](https://github.com/pjotrcasteel/Argus/issues/11), showing a **real-time single run** with explanations. Reuse the tested offline viewer architecture, but local stream is **not implemented** and should follow evidence validation.
 
 ## Local usage
 
@@ -95,6 +104,7 @@ dotnet restore Argus.slnx
 dotnet build Argus.slnx
 dotnet test tests/Argus.Tests/Argus.Tests.csproj
 dotnet run --project src/Argus.Reporter -- --runs results/experiments --output results/cohorts/demo
+dotnet run --project src/Argus.Replay.Tool -- --run results/local-run
 pwsh src/Argus.Runner/bin/Debug/net10.0/playwright.ps1 install chromium
 dotnet run --project src/Argus.Runner -- --url https://pjotrcasteel.github.io/Wyrmforge/ --agent visual --profile examples/wyrmforge.profile.json --max-steps 56 --timeout-seconds 180 --output results/local-run
 ```
@@ -113,4 +123,5 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 ### Status log
 
 - **2026-10-17 — Baseline:** after merged PR #10: screenshot-only visual game prototype and motion diagnostics. Live run 39022431491 was green with the numbers above. Next: M1.5 offline multi-run cohort comparison.
-- **2026-10-17 — M1.5 completed:** [PR #12](https://github.com/pjotrcasteel/Argus/pull/12) merged: offline validation, Markdown/JSON cohort reporting, controlled-manifest matching and technical-gate uncertainty. Unit tests and live smoke passed; latter had **0** inferred camera shifts. **Next: M1.6 read-only local post-run replay**; separately calibrate camera/perception uncertainty. Future live spectator is [issue #11](https://github.com/pjotrcasteel/Argus/issues/11), not implemented.
+- **2026-10-17 — M1.5 completed:** [PR #12](https://github.com/pjotrcasteel/Argus/pull/12) merged: offline validation, Markdown/JSON cohort reporting, controlled-manifest matching and technical-gate uncertainty. Unit tests and live smoke passed; latter had **0** inferred camera shifts.
+- **2026-10-17 — M1.6 completed:** [PR #13](https://github.com/pjotrcasteel/Argus/pull/13) merged: safe local offline replay generator, 48/48 tests and real game-generated `replay.html` in run 39024084743. **Next: M1.7 annotated perception quality**, then cautiously revisit local live spectator [issue #11](https://github.com/pjotrcasteel/Argus/issues/11). No live streaming yet.
