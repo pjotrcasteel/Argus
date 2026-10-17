@@ -36,8 +36,12 @@ jobs:
             --url https://pjotrcasteel.github.io/Wyrmforge/ \
             --agent visual \
             --profile examples/wyrmforge.profile.json \
-            --headless --max-steps 56 --timeout-seconds 180 \
+            --headless --require-combat-vision --max-steps 56 --timeout-seconds 180 \
             --output artifacts/m1-live
+      - name: Show visual evidence report
+        if: always()
+        run: |
+          if [ -f artifacts/m1-live/summary.json ]; then cat artifacts/m1-live/summary.json; fi
       - name: Upload screenshot evidence and JSONL trace
         if: always()
         uses: actions/upload-artifact@v4
