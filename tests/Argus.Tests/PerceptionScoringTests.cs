@@ -39,8 +39,9 @@ public sealed class PerceptionScoringTests
             Assert.AreEqual(2, report.Threats.Counts.TruePositive);
             Assert.AreEqual(1, report.Threats.Counts.FalsePositive);
             Assert.AreEqual(1, report.Threats.Counts.FalseNegative);
-            Assert.AreEqual(1, report.Threats.Counts.TrueNegative);
-            Assert.AreEqual(0, report.ThreatEvidenceUnavailableFrames);
+            Assert.AreEqual(0, report.Threats.Counts.TrueNegative);
+            Assert.AreEqual(1, report.Threats.Counts.Unknown);
+            Assert.AreEqual(1, report.ThreatEvidenceUnavailableFrames);
             Assert.IsTrue(Math.Abs(report.Threats.Precision!.Value - 2d / 3) < 0.001);
         }
         finally { Directory.Delete(folder, true); }
