@@ -84,6 +84,13 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 - [Public WyrmForge run 39025485863](https://github.com/pjotrcasteel/Argus/actions/runs/39025485863) passed browser smoke, 18 frames with an inferred player, 2 route clicks, 1 visible terminal stop, and wrote an all-`unknown` **16-frame annotation template** from the real trace. [Short-lived artifact](https://github.com/pjotrcasteel/Argus/actions/runs/39025485863/artifacts/12098656427).
 - **No manually verified ground-truth frames were created yet**. The annotation scorer is tested on synthetic fixtures only. **Do not claim player/enemy precision, recall or quality thresholds yet.** The new trace now records threat candidate screen centers in addition to counts. Some combat frames without a located player still have unavailable threat evidence, not zero detections.
 
+## Latest verified perception instrumentation (2026-10-17)
+
+- [PR #14](https://github.com/pjotrcasteel/Argus/pull/14) merged into `main` at `b27249b372109a125c2b26c54b4a44133ededcd5`.
+- [.NET CI run 39025485807](https://github.com/pjotrcasteel/Argus/actions/runs/39025485807): successful build and **54/54 tests**.
+- [External WyrmForge smoke run 39025485863](https://github.com/pjotrcasteel/Argus/actions/runs/39025485863): existing visual-combat gate passed; 18 inferred player frames, 2 route clicks, 1 terminal stop. Generated [replay and 16 all-unknown frames for manual annotation](https://github.com/pjotrcasteel/Argus/actions/runs/39025485863/artifacts/12098656427).
+- IMPORTANT: no labels were independently verified; no real precision/recall figure exists yet. New tool proves schema, input validation and deterministic scoring, not detector quality.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -96,13 +103,15 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 
 ## Single recommended next slice
 
-**M1.8: local screenshot annotation UI**: make it practical to label the reference frames for M1.7 without manually editing JSON.
+**M1.8: clickable offline visual annotation UI** to make M1.7's independent ground truth practical without manual JSON editing.
 
-- Add a small generated **offline read-only-to-game** `annotate.html` (separate from current replay). Show selected real screenshots, explicit player visible/absent/unknown, threat positions/known-none/unknown, navigation and a local **Export labels.json** action.
-- Do not silently auto-label screenshots, use external APIs, upload data, or mutate ARGUS's original trace. Exported JSON must be consumable by the **already-verified** M1.7 evaluator and validated for required fields/ranges.
-- Use a bounded real WyrmForge run in CI to prove the generator accepts its PNGs/JSONL; a browser-interaction smoke for the annotation controls is desirable before claiming polished UX.
-- **Then genuinely review a small number of real frames** from varied runs/resolutions to measure false detections and camera-shift uncertainty. Until that happens, current combat steering is still a heuristic research baseline; keep motion confidence diagnostic.
-- Later: consistent manually labeled outcomes and matched multi-run cohorts; personalities, genuine training and the user's desired local single-run Live Spectator [issue #11](https://github.com/pjotrcasteel/Argus/issues/11). No paid APIs or game-side integration.
+- Extend the local replay workflow with a separate `annotate.html` viewer using existing validated screenshot and frame data.
+- Sample up to 16 frames with all labels initially **unknown**. Annotator can select actual player center, absent player or unknown; visually mark zero/multiple threats or unknown; persist via user-triggered `labels.json` download.
+- Show inferred mage marker in a different style than **human-confirmed** labels so annotations remain independent and uncertain predictions are not mistaken for facts.
+- Export JSON conforming to the existing `GroundTruth.Validate` schema; verify generated pages in live WyrmForge artifact and test the shape against real dataset via deterministic tests.
+- No auto-labeling, hidden game state, paid AI, remote server, public stream or changes to ARGUS agent policy. Annotation must be a conscious human action.
+- Next, **manually label a diverse held-out real sample**, analyze misidentifications, calibrate thresholds and establish a baseline before learning algorithms. Camera-motion confidence and parallax remain unresolved.
+- Live Spectator Mode remains future [issue #11](https://github.com/pjotrcasteel/Argus/issues/11), not implemented.
 
 ## Local usage
 
@@ -134,3 +143,5 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 - **2026-10-17 — M1.5 completed:** [PR #12](https://github.com/pjotrcasteel/Argus/pull/12) merged: offline validation, Markdown/JSON cohort reporting, controlled-manifest matching and technical-gate uncertainty. Unit tests and live smoke passed; latter had **0** inferred camera shifts.
 - **2026-10-17 — M1.6 completed:** [PR #13](https://github.com/pjotrcasteel/Argus/pull/13) merged: safe offline replay generator, 48/48 tests and real `replay.html` from run 39024084743.
 - **2026-10-17 — M1.7 instrumented:** [PR #14](https://github.com/pjotrcasteel/Argus/pull/14) merged: human-label schema, scored pixel metrics and actual threat locations in traces; 54/54 tests + real 16-frame **unknown** template. **Still needs real human labels** before any quality claims. Next: M1.8 offline annotation UI, then held-out reference measurements. Live spectator [issue #11](https://github.com/pjotrcasteel/Argus/issues/11) remains future.
+
+- **2026-10-17 — M1.7 instrumented:** [PR #14](https://github.com/pjotrcasteel/Argus/pull/14) merged, 54/54 tests and public game smoke passed; 16 sample frames generated **all unknown**, no measured human-labeled accuracy. Next M1.8 offline point-and-click annotation UI.
