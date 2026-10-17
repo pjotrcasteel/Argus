@@ -126,7 +126,7 @@ public static class PersonaContrastMarkdown
         foreach (var pair in report.Pairs)
             builder.AppendLine($"| {Safe(pair.FirstPersona)} vs {Safe(pair.SecondPersona)} | {pair.BothProposedFrames} | " +
                 $"{pair.DifferentActionKinds} | {pair.BothMovingFrames} | {pair.DifferentDirections} | " +
-                $"{pair.SameDirectionDifferentDurations} | {pair.DifferentFullActions} | {Percent(pair.DirectionDifferenceRate)} |");
+                $"{pair.SameDirectionDifferentDurations} | {pair.DifferentFullActions} | {Percent(pair.FullActionDifferenceRate)} | {Percent(pair.DirectionDifferenceRate)} |");
 
         builder.AppendLine()
             .AppendLine("**Denominators matter:** direction disagreement is computed only when both personas proposed movement. " +
