@@ -379,5 +379,5 @@ jobs:
           assert any("distinct development runs" in blocker for blocker in report["blockers"])
           assert all(row["scoredFrames"] == 3 for row in report["runs"])
           assert all(row["enoughReferences"] is False for row in report["runs"])
-          assert "not confirmed" in (root / "appearance-readiness.md").read_text()
+          assert "confirmed enemy/non-enemy identities" in (root / "appearance-readiness.md").read_text()
           PY
