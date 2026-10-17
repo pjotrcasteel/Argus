@@ -88,6 +88,18 @@ try
             $"human-visible FALSE vetoes {study.VetoedOverHumanVisible}, " +
             $"absent-human bridges still unresolved {study.UnresolvedOverHumanAbsent}. " +
             "No verified player identities, no game input.");
+        var hardNegatives = PlayerShadowHardNegativeEvidence.Summarize(study);
+        await File.WriteAllTextAsync(Path.Combine(run, "player-shadow-hard-negatives.json"),
+            JsonSerializer.Serialize(hardNegatives, options));
+        await File.WriteAllTextAsync(Path.Combine(run, "player-shadow-hard-negatives.md"),
+            PlayerShadowHardNegativeEvidence.RenderMarkdown(hardNegatives));
+        await File.WriteAllTextAsync(Path.Combine(run, "player-shadow-feature-rows.csv"),
+            PlayerShadowHardNegativeEvidence.RenderFeatureCsv(study));
+        Console.WriteLine($"M2.12 hard negatives: {hardNegatives.CorrectlyVetoedAbsent} absent-player vetoes; " +
+            $"{hardNegatives.UnresolvedAbsentTexturedWithoutPalette} unresolved textured absences, " +
+            $"{hardNegatives.UnresolvedAbsentWithPalette} unresolved color lookalikes, " +
+            $"{hardNegatives.FalseVetoedVisible} incorrectly vetoed human-visible players. " +
+            "Rows are grouped by run; NO model trained, NO live actions changed.");
         Console.WriteLine($"Saved local offline development report: {output}");
     }
     else if (args[2] == "--occlusion-shadow")
