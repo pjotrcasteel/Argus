@@ -84,6 +84,63 @@ public sealed class ShadowTemporalCandidateTrackerTests
         Assert.HasCount(1, third.Confirmed);
     }
 
+    [TestMethod]
+    public void Observe_ThirdStationaryFrame_ExposesReviewOnlyCandidate()
+    {
+        var tracker = new ShadowTemporalCandidateTracker();
+        var first = tracker.Observe(Frame([Blob(350, 170)]));
+        var second = tracker.Observe(Frame([Blob(350, 170)]));
+        var third = tracker.Observe(Frame([Blob(350, 170)]));
+
+        Assert.HasCount(0, first.PersistentStationaryCandidates);
+        Assert.HasCount(0, second.PersistentStationaryCandidates);
+        Assert.HasCount(0, third.Confirmed);
+        Assert.HasCount(1, third.PersistentStationaryCandidates);
+        Assert.AreEqual(350f, third.PersistentStationaryCandidates[0].X);
+        Assert.AreEqual(1, third.StationaryCandidates);
+    }
+
+    [TestMethod]
+    public void Observe_ChangingAppearance_PreventsPersistentStationaryProposal()
+    {
+        var tracker = new ShadowTemporalCandidateTracker();
+        tracker.Observe(Frame([Blob(350, 170)]));
+        tracker.Observe(Frame([Blob(350, 170) with { MatchingPixels = 155 }]));
+        var third = tracker.Observe(Frame([Blob(350, 170) with { MatchingPixels = 155 }]));
+
+        Assert.HasCount(0, third.PersistentStationaryCandidates);
+        Assert.HasCount(0, third.Confirmed);
+        Assert.AreEqual(1, third.StationaryCandidates);
+    }
+
+    [TestMethod]
+    public void Observe_PersistentStillObject_ResetsAfterMissingFrameOrMenu()
+    {
+        var tracker = new ShadowTemporalCandidateTracker();
+        tracker.Observe(Frame([Blob(350, 170)]));
+        tracker.Observe(Frame([Blob(350, 170)]));
+        tracker.Observe(Frame([]));
+        var restarted = tracker.Observe(Frame([Blob(350, 170)]));
+        tracker.Reset();
+        var menuReset = tracker.Observe(Frame([Blob(350, 170)]));
+
+        Assert.HasCount(0, restarted.PersistentStationaryCandidates);
+        Assert.HasCount(0, menuReset.PersistentStationaryCandidates);
+        Assert.AreEqual(1, menuReset.PendingCandidates);
+    }
+
+    [TestMethod]
+    public void Observe_MovingSpriteNeverQualifiesAsPersistentStationary()
+    {
+        var tracker = new ShadowTemporalCandidateTracker();
+        tracker.Observe(Frame([Blob(300, 170)]));
+        tracker.Observe(Frame([Blob(307, 170)]));
+        var third = tracker.Observe(Frame([Blob(316, 170)]));
+
+        Assert.HasCount(1, third.Confirmed);
+        Assert.HasCount(0, third.PersistentStationaryCandidates);
+    }
+
     private static VisualBlob Blob(float x, float y) => new(x, y, 19, 27, 110, 0.45f);
 
     private static ShadowThreatObservation Frame(IReadOnlyList<VisualBlob> additions,
