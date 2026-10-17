@@ -9,17 +9,36 @@ namespace Argus.Evaluation;
 /// </summary>
 public static class AnnotationPageBuilder
 {
-    public static string Render(ReplayTrace replay, LabelSet template)
+    public static string Render(ReplayTrace replay, LabelSet template, bool blind = false)
     {
         GroundTruth.Validate(template, template.RunId, replay);
         if (template.Frames.Count == 0) throw new InvalidDataException("Cannot annotate a trace with no selected frames.");
 
         var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        var frames = JsonSerializer.Serialize(replay.Frames, jsonOptions);
+        // In blind mode, omit agent predictions and explanations from the embedded JSON itself,
+        // not merely from visible CSS, so reference labeling cannot accidentally copy them.
+        var displayed = blind
+            ? replay.Frames.Select(f => f with
+            {
+                PlayerX = null,
+                PlayerY = null,
+                ThreatCandidates = null,
+                ThreatLocations = null,
+                Confidence = null,
+                Action = null,
+                Reason = "Agent evidence is hidden until labels have been exported.",
+                Phase = "blind-review"
+            }).ToArray()
+            : replay.Frames;
+        var frames = JsonSerializer.Serialize(displayed, jsonOptions);
         var labels = JsonSerializer.Serialize(template, jsonOptions);
         // Default .NET JSON escaping protects embedded script text, including <, >, &, and quotes.
         return Template.Replace("/*ARGUS_TRACE_FRAMES*/", frames, StringComparison.Ordinal)
-            .Replace("/*ARGUS_ANNOTATIONS*/", labels, StringComparison.Ordinal);
+            .Replace("/*ARGUS_ANNOTATIONS*/", labels, StringComparison.Ordinal)
+            .Replace("<!--ARGUS_REVIEW_MODE-->", blind
+                ? "BLIND REVIEW: Agent predictions and explanations are omitted. Only label what the screenshot shows."
+                : "Dotted blue = ARGUS prediction; green/red = your independently checked human labels.",
+                StringComparison.Ordinal);
     }
 
     private const string Template = """
@@ -66,7 +85,7 @@ dt{color:#aebbd0}dd{margin:0;overflow-wrap:anywhere}
     <button id="next" aria-label="Next annotated frame">Next →</button>
     <span id="progress" class="small"></span>
   </div>
-  <p class="small">Dotted blue circle = ARGUS player prediction. Green = your player label. Red = your threat labels. Click the image in the selected mode.</p>
+  <p class="small"><!--ARGUS_REVIEW_MODE--> Click the image in the selected mode.</p>
 </section>
 <section>
   <div class="small" id="status"></div>
