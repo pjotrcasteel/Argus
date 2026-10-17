@@ -22,7 +22,7 @@ public sealed class AnnotationPageBuilderTests
 
         var html = AnnotationPageBuilder.Render(trace, template);
 
-        StringAssert.Contains(html, "Download");
+        StringAssert.Contains(html, "anchor.download");
         StringAssert.Contains(html, "Export labels.json");
         StringAssert.Contains(html, "frame-0001.png");
         StringAssert.Contains(html, "JSON.stringify(labels, null, 2)");
