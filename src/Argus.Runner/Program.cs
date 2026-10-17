@@ -1,61 +1,88 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Argus.Adapters.Browser;
+using Argus.Agents.Visual;
 using Argus.Core;
 
 var options = CommandOptions.Parse(args);
 if (options is null)
 {
-    Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Runner -- --url https://example.org [--headless] [--script examples/actions.example.json] [--output results/demo] [--width 390] [--height 844]");
+    Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Runner -- --url https://example.org [--agent observe|script|visual] [--profile examples/wyrmforge.profile.json] [--script examples/actions.example.json] [--headless] [--max-steps 80] [--timeout-seconds 180] [--output results/demo]");
     return 2;
 }
 
-Directory.CreateDirectory(options.Output);
-var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true };
 jsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-GameAction[] actions = options.Script is null
-    ? []
-    : JsonSerializer.Deserialize<GameAction[]>(await File.ReadAllTextAsync(options.Script), jsonOptions) ?? [];
+Directory.CreateDirectory(options.Output);
 
-await using IVisualGameEnvironment environment = new PlaywrightGameEnvironment(options.Headless, options.Width, options.Height);
-using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(options.TimeoutSeconds));
+Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+
 try
 {
-    await environment.OpenAsync(new Uri(options.Url), cts.Token);
-    IVisualAgent agent = new ScriptedAgent(actions);
-    await using var trace = new FileStream(Path.Combine(options.Output, "trace.jsonl"), FileMode.Create, FileAccess.Write);
-    var step = 0;
-
-    while (step <= actions.Length)
+    IVisualAgent agent = options.Agent switch
     {
+        "observe" => new ScriptedAgent([]),
+        "script" => new ScriptedAgent(JsonSerializer.Deserialize<GameAction[]>(await File.ReadAllTextAsync(options.Script!, cts.Token), jsonOptions) ?? []),
+        "visual" => CreateVisualAgent(options, jsonOptions),
+        _ => throw new ArgumentException("Unsupported agent mode: " + options.Agent)
+    };
+
+    await using IVisualGameEnvironment environment = new PlaywrightGameEnvironment(options.Headless, options.Width, options.Height);
+    await environment.OpenAsync(new Uri(options.Url), cts.Token);
+    await using var trace = new FileStream(Path.Combine(options.Output, "trace.jsonl"), FileMode.Create, FileAccess.Write);
+
+    for (var step = 0; step <= options.MaxSteps; step++)
+    {
+        cts.Token.ThrowIfCancellationRequested();
         var frame = await environment.ObserveAsync(cts.Token);
-        var imageFile = $"frame-{step:D4}.png";
-        await File.WriteAllBytesAsync(Path.Combine(options.Output, imageFile), frame.PngBytes, cts.Token);
-        var action = await agent.DecideAsync(frame, cts.Token);
-        var record = new { step, frame.TimestampUtc, frame.Width, frame.Height, screenshot = imageFile, action };
-        await JsonSerializer.SerializeAsync(trace, record, jsonOptions, cts.Token);
+        var filename = $"frame-{step:D4}.png";
+        await File.WriteAllBytesAsync(Path.Combine(options.Output, filename), frame.PngBytes, cts.Token);
+        var action = step == options.MaxSteps ? null : await agent.DecideAsync(frame, cts.Token);
+        var evidence = (agent as IAgentEvidenceProvider)?.LastEvidence;
+
+        await JsonSerializer.SerializeAsync(trace, new
+        {
+            step, frame.TimestampUtc, frame.Width, frame.Height, screenshot = filename, action, evidence
+        }, jsonOptions, cts.Token);
         await trace.WriteAsync(new byte[] { (byte)'\n' }, cts.Token);
-        Console.WriteLine($"Captured {imageFile}" + (action is null ? " (done)" : $"; action: {action.Kind}"));
+        Console.WriteLine($"[{step}] {evidence?.Phase ?? options.Agent}: {evidence?.Reason ?? "screenshot"}; action: {action?.Kind.ToString() ?? "stop"}");
+
         if (action is null) break;
         await environment.ExecuteAsync(action, cts.Token);
-        step++;
     }
 
-    Console.WriteLine($"Evidence written to: {Path.GetFullPath(options.Output)}");
+    Console.WriteLine("Saved local screenshots and explainable JSONL trace: " + Path.GetFullPath(options.Output));
     return 0;
+}
+catch (OperationCanceledException)
+{
+    Console.Error.WriteLine("ARGUS stopped by deadline or user. Partial local evidence may be available.");
+    return 1;
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"ARGUS runner failed: {ex.Message}");
+    Console.Error.WriteLine("ARGUS runner failed: " + ex);
     return 1;
 }
 
-internal sealed record CommandOptions(string Url, string Output, string? Script, bool Headless, int Width, int Height)
+static IVisualAgent CreateVisualAgent(CommandOptions options, JsonSerializerOptions jsonOptions)
+{
+    var json = File.ReadAllText(options.Profile!);
+    var profile = JsonSerializer.Deserialize<VisualGameProfile>(json, jsonOptions)
+        ?? throw new InvalidDataException("Invalid visual game profile.");
+    profile.Validate();
+    return new VisualGameAgent(new TesseractTextReader(), profile);
+}
+
+internal sealed record CommandOptions(string Url, string Agent, string? Script, string? Profile, string Output, bool Headless, int Width,
+    int Height, int MaxSteps, int TimeoutSeconds)
 {
     public static CommandOptions? Parse(string[] args)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var headless = false;
+
         for (var i = 0; i < args.Length; i++)
         {
             if (args[i] == "--headless") { headless = true; continue; }
@@ -63,9 +90,28 @@ internal sealed record CommandOptions(string Url, string Output, string? Script,
             values[args[i]] = args[++i];
         }
 
-        if (!values.TryGetValue("--url", out var url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http")) return null;
-        if (!int.TryParse(values.GetValueOrDefault("--width", "390"), out var width) || width is < 100 or > 3840) return null;
-        if (!int.TryParse(values.GetValueOrDefault("--height", "844"), out var height) || height is < 100 or > 2160) return null;
-        return new CommandOptions(url, values.GetValueOrDefault("--output", "results/first-observation"), values.GetValueOrDefault("--script"), headless, width, height);
+        if (!values.TryGetValue("--url", out var url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            uri.Scheme is not ("http" or "https")) return null;
+
+        var mode = values.GetValueOrDefault("--agent", "observe").ToLowerInvariant();
+        if (mode is not ("observe" or "script" or "visual")) return null;
+        var script = values.GetValueOrDefault("--script");
+        var profile = values.GetValueOrDefault("--profile");
+        if (mode == "script" && string.IsNullOrWhiteSpace(script)) return null;
+        if (mode == "visual" && string.IsNullOrWhiteSpace(profile)) return null;
+
+        if (!ParseInt(values, "--width", 390, 100, 3840, out var width) ||
+            !ParseInt(values, "--height", 844, 100, 2160, out var height) ||
+            !ParseInt(values, "--max-steps", 80, 1, 500, out var steps) ||
+            !ParseInt(values, "--timeout-seconds", 180, 5, 1800, out var seconds)) return null;
+
+        return new CommandOptions(url, mode, script, profile, values.GetValueOrDefault("--output", "results/first-observation"),
+            headless, width, height, steps, seconds);
+    }
+
+    private static bool ParseInt(Dictionary<string, string> values, string key, int defaultValue, int minimum, int maximum, out int number)
+    {
+        number = defaultValue;
+        return (!values.TryGetValue(key, out var text) || int.TryParse(text, out number)) && number >= minimum && number <= maximum;
     }
 }
