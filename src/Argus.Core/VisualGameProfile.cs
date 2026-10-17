@@ -10,6 +10,8 @@ public sealed class VisualGameProfile
     public string[] MenuActions { get; init; } = ["Begin Hunt", "Continue", "Play", "Start", "Next", "Enter"];
     public string[] GameplayCues { get; init; } = ["HP", "Health", "Wave"];
     public string[] RouteCues { get; init; } = [];
+    public string[] ChoiceScreenCues { get; init; } = [];
+    public string[] ChoiceCardTypes { get; init; } = [];
     public string[] MovementKeys { get; init; } = ["w", "a", "s", "d"];
     public int MinimumTextConfidence { get; init; } = 45;
     public int MovementMilliseconds { get; init; } = 300;
