@@ -19,6 +19,8 @@
     "Start",
     "Play"
   ],
+  "choiceScreenCues": ["Refine your magic"],
+  "choiceCardTypes": ["REFINEMENT"],
   "routeCues": ["Wyrm signs", "Choose your tra", "Choose a connected trail"],
   "gameplayCues": ["HP", "Health", "Level", "Wave", "XP", "Hunter"],
   "movementKeys": ["w", "a", "s", "d"],
