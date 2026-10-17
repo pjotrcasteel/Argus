@@ -2,9 +2,10 @@ using System.Text.Json;
 using Argus.Evaluation;
 using Argus.Replay;
 
-if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels"))
+if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate"))
 {
     Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --template results/my-run/labels.template.json");
+    Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotate results/my-run/annotate.html");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --labels results/my-run/labels.json");
     return 2;
 }
@@ -24,6 +25,16 @@ try
         await File.WriteAllTextAsync(target, JsonSerializer.Serialize(template, options));
         Console.WriteLine($"Created {template.Frames.Count} unannotated sample frames: {target}");
         Console.WriteLine("Every label is UNKNOWN. Review actual screenshots before scoring.");
+    }
+    else if (args[2] == "--annotate")
+    {
+        var target = Path.GetFullPath(args[3]);
+        if (!string.Equals(Path.GetDirectoryName(target), run, StringComparison.Ordinal))
+            throw new InvalidDataException("Annotation UI output must remain inside the selected run folder.");
+        var template = GroundTruth.CreateTemplate(run, replay);
+        await File.WriteAllTextAsync(target, AnnotationPageBuilder.Render(replay, template));
+        Console.WriteLine($"Created offline annotation UI from {template.Frames.Count} real recorded frames: {target}");
+        Console.WriteLine("Open the HTML locally, mark visible objects, download labels.json, then evaluate it offline.");
     }
     else
     {
