@@ -22,7 +22,8 @@
 - [ ] M1.9 real human-reviewed screenshots and independent held-out precision/recall with false positives and unknowns.
 
 ## M2 — Human Minds
-- [ ] M2.0 game-neutral personality vectors with seeded shadow-only decision comparison, never hidden game state.
+- [x] M2.0 game-neutral personality vectors and seeded shadow-only action proposals, never hidden game state.
+- [ ] M2.1 deterministic per-frame disagreement metrics and comparison across independent runs; no fabricated human realism.
 - [ ] Personality vectors (risk, skill, attention, patience, exploration).
 - [ ] Short-term and persistent local memory.
 - [ ] Full runs and decisions without hidden game state.
