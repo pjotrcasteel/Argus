@@ -110,6 +110,13 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 6. **Avoid hidden coupling to WyrmForge.** The first game-specific visible labels/palettes live in a profile, not in the core. New games get adapters/profiles, not integrations.
 7. **The generated public game can change between runs.** Recheck on the real website; multiple procedural seeds and screen sizes matter. One screenshot or one lucky run is not evidence of robust play.
 
+## Concurrent pull-request caution (checked 2026-10-17)
+
+- [Open PR #16](https://github.com/pjotrcasteel/Argus/pull/16) proposes **another M1.8 annotation viewer implementation**, built independently on an earlier branch. It overlaps merged [PR #15](https://github.com/pjotrcasteel/Argus/pull/15); GitHub currently marks it **not directly mergeable**.
+- It also proposes useful **additional** elements: import/resume labels.json, predicted threat overlays in replay, and a headless Chromium UI smoke test. These must be evaluated selectively with a diff against current `main`.
+- **Do not merge or overwrite PR #15 code blindly; avoid a second overlapping annotation implementation.** Prefer a fresh, narrow PR cherry-picking/reimplementing only non-duplicative, tested benefits if the owner still wants them. Preserve other contributors' work.
+- PR #16's UI smoke may supply the missing genuine browser-interaction verification. But its tests are not yet validated against current `main`, so do not claim that verification has already passed.
+
 ## Single recommended next slice
 
 **M1.9: genuine held-out visual ground-truth study**. The measurement and labeling tools are now built; do not add further combat heuristics before collecting trustworthy reference labels.
