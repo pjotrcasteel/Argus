@@ -85,6 +85,8 @@ public sealed class PerceptionScoringTests
             Assert.AreEqual(1, report.Threats.Counts.Unknown);
             Assert.AreEqual(0, report.Player.Counts.TrueNegative);
             Assert.IsNull(report.Player.Precision);
+            Assert.AreEqual(0, report.ThreatCentersOnUnavailableFrames);
+            Assert.AreEqual(0, report.ThreatFramesWithHumanCentersAndUnavailableEvidence);
         }
         finally { Directory.Delete(folder, true); }
     }
@@ -109,6 +111,41 @@ public sealed class PerceptionScoringTests
             Assert.AreEqual(1, report.Player.Counts.FalseNegative);
             Assert.AreEqual(2, report.ThreatEvidenceUnavailableFrames);
             Assert.AreEqual(2, report.Threats.Counts.Unknown);
+            Assert.AreEqual(1, report.ThreatCentersOnUnavailableFrames);
+            Assert.AreEqual(1, report.ThreatFramesWithHumanCentersAndUnavailableEvidence);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [TestMethod]
+    public async Task ScoreAsync_TwoMissingCombatFrames_CountsAllHumanCentersWithoutInventingMisses()
+    {
+        var folder = FreshFolder();
+        try
+        {
+            await WriteTrace(folder, [Row(0, null, null), Row(1, null, null),
+                Row(2, (195, 420), [(80, 300)])]);
+            var replay = await ReplayTraceReader.ReadAsync(folder, TestContext.CancellationToken);
+            var labels = new LabelSet(1, Path.GetFileName(folder), [
+                new FrameLabel(0, new PlayerLabel("visible", Point(196, 420)),
+                    new ThreatLabel("known", [Point(20, 30), Point(30, 40), Point(40, 50)])),
+                new FrameLabel(1, new PlayerLabel("visible", Point(195, 420)),
+                    new ThreatLabel("known", [Point(70, 100), Point(80, 110), Point(90, 120), Point(100, 130)])),
+                new FrameLabel(2, new PlayerLabel("visible", Point(195, 420)),
+                    new ThreatLabel("known", [Point(80, 300)]))
+            ]);
+
+            var report = await PerceptionScoring.ScoreAsync(folder, labels, replay,
+                cancellationToken: TestContext.CancellationToken);
+
+            Assert.AreEqual(2, report.ThreatEvidenceUnavailableFrames);
+            Assert.AreEqual(2, report.ThreatFramesWithHumanCentersAndUnavailableEvidence);
+            Assert.AreEqual(7, report.ThreatCentersOnUnavailableFrames);
+            Assert.AreEqual(1, report.Threats.Counts.TruePositive);
+            Assert.AreEqual(0, report.Threats.Counts.FalseNegative);
+            Assert.AreEqual(2, report.Threats.Counts.Unknown);
+            StringAssert.Contains(PerceptionScoring.RenderMarkdown(report),
+                "Human-marked threat centers without comparable detector evidence: 7 across 2 reviewed frames.");
         }
         finally { Directory.Delete(folder, true); }
     }
