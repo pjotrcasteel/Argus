@@ -1,0 +1,149 @@
+name: M2.6b independent development evidence and mobile review
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/m2-6-development.yml
+
+permissions:
+  contents: read
+
+jobs:
+  independent-development-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install free OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Build current ARGUS once
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+      - name: Install Chromium
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Capture two new independent development-only external game sessions
+        run: |
+          mkdir -p artifacts/research-development
+          for run in dev-a dev-b; do
+            folder="artifacts/research-development/$run"
+            started="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            exit_code=0
+            echo "New independent browser session: $run"
+            dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+              --url https://pjotrcasteel.github.io/Wyrmforge/ \
+              --agent visual --profile examples/wyrmforge.profile.json \
+              --headless --width 390 --height 844 --max-steps 42 --timeout-seconds 140 \
+              --output "$folder" || exit_code=$?
+            export ARGUS_DEV_FOLDER="$folder"
+            export ARGUS_DEV_STARTED="$started"
+            export ARGUS_DEV_EXIT="$exit_code"
+            python3 - <<'PY'
+          import datetime
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          folder = Path(os.environ["ARGUS_DEV_FOLDER"])
+          summary_path = folder / "summary.json"
+          summary = json.loads(summary_path.read_text()) if summary_path.is_file() else None
+          trace = folder / "trace.jsonl"
+          profile = Path("examples/wyrmforge.profile.json")
+          record = {
+              "schemaVersion": 1,
+              "partition": "development",
+              "studyRole": "independent fresh development capture, NOT HELD-OUT",
+              "startedAtUtc": os.environ["ARGUS_DEV_STARTED"],
+              "finishedAtUtc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+              "runnerExitCode": int(os.environ["ARGUS_DEV_EXIT"]),
+              "actualGameOutcome": "unknown",
+              "gameVersion": None,
+              "gameUrl": "https://pjotrcasteel.github.io/Wyrmforge/",
+              "profileSha256": hashlib.sha256(profile.read_bytes()).hexdigest(),
+              "traceSha256": hashlib.sha256(trace.read_bytes()).hexdigest() if trace.exists() else None,
+              "policyVersion": os.environ["GITHUB_SHA"],
+              "viewport": "390x844",
+              "frames": summary.get("frames") if summary else None,
+              "visualEvidenceGate": summary.get("meetsVisualCombatGate") if summary else None
+          }
+          folder.mkdir(parents=True, exist_ok=True)
+          (folder / "run-manifest.json").write_text(json.dumps(record, indent=2) + "\n")
+          print("Recorded development provenance:", json.dumps(record))
+          PY
+          done
+      - name: Freeze image-only blind sample selection before any human review
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/research-development")
+          rows = [json.loads((root / run / "run-manifest.json").read_text()) for run in ("dev-a", "dev-b")]
+          assert all(item["runnerExitCode"] == 0 and item["frames"] is not None and item["frames"] >= 12 for item in rows)
+          assert all(item["traceSha256"] for item in rows)
+          assert rows[0]["traceSha256"] != rows[1]["traceSha256"]
+          assert all(item["partition"] == "development" and item["actualGameOutcome"] == "unknown" for item in rows)
+          print("Two separate browser-process captures verified; no claim of matched procedural game state.")
+          PY
+          dotnet run --project src/Argus.Study.Tool --configuration Release --no-build -- \
+            --runs artifacts/research-development \
+            --seed argus-m26b-development-frozen-20261017 --samples 12 --development-only
+          dotnet run --project src/Argus.Study.Quality.Tool --configuration Release --no-build -- \
+            --runs artifacts/research-development
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          folder = Path("artifacts/research-development")
+          plan = json.loads((folder / "study-plan.json").read_text())
+          quality = json.loads((folder / "study-quality.json").read_text())
+          assert plan["mode"] == "development-only"
+          assert sorted(a["runId"] for a in plan["assignments"]) == ["dev-a", "dev-b"]
+          assert all(a["partition"] == "development" and len(a["frameSteps"]) == 12 for a in plan["assignments"])
+          assert quality["status"] == "NOT_EVALUATED"
+          assert quality["partitions"][1]["runs"] == 0
+          for run in ("dev-a", "dev-b"):
+              labels = json.loads((folder / run / "blind-labels.template.json").read_text())
+              assert all(f["player"]["state"] == "unknown" and f["threats"]["state"] == "unknown"
+                         for f in labels["frames"])
+          print("24 presampled BLIND development screenshots; ZERO human labels fabricated.")
+          PY
+      - name: Build independent iPhone-friendly blind review artifact (no automatic publication)
+        run: |
+          python3 tools/m26b/mobile_review.py \
+            --runs artifacts/research-development --output artifacts/m26b-review-site
+          python3 - <<'PY'
+          from pathlib import Path
+          for run in ("dev-a", "dev-b"):
+              root = Path("artifacts/m26b-review-site/annoteren") / run
+              page = (root / "index.html").read_text()
+              assert len(list(root.glob("frame-*.png"))) == 12
+              assert "/*ARGUS_FRAMES*/" not in page and "/*ARGUS_LABELS*/" not in page
+              assert "threatLocations" not in page and "playerX" not in page
+              assert "12 echte screenshots" in page
+              assert "run-01" not in page and "run-02" not in page
+          print("Only 24 original sampled PNGs plus prediction-free mobile pages included.")
+          PY
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 tools/m26b/smoke.py --site artifacts/m26b-review-site
+      - name: Preserve development evidence and frozen reference plan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m26b-independent-development-evidence
+          path: artifacts/research-development/
+          retention-days: 2
+          if-no-files-found: warn
+      - name: Preserve ready-to-host mobile review site separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m26b-mobile-blind-review
+          path: artifacts/m26b-review-site/
+          retention-days: 2
+          if-no-files-found: warn
