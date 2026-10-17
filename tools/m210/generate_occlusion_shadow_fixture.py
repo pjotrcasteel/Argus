@@ -25,9 +25,9 @@ def png(rect):
                 image[offset:offset + 3] = bytes((72, 91, 115))
     scanlines = b"".join(b"\x00" + image[y * WIDTH * 3:(y + 1) * WIDTH * 3]
                          for y in range(HEIGHT))
-    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(
         ">IIBBBBB", WIDTH, HEIGHT, 8, 2, 0, 0, 0))
-    + chunk(b"IDAT", zlib.compress(scanlines, 6)) + chunk(b"IEND", b"")
+        + chunk(b"IDAT", zlib.compress(scanlines, 6)) + chunk(b"IEND", b""))
 
 
 # Two actual observations, two artificial occlusions, two observations,
