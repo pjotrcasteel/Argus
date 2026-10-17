@@ -16,7 +16,8 @@
 - [x] M1.5 offline multi-run reports with validated technical evidence, confidence intervals and explicit unmatched-cohort warnings.
 - [x] M1.6 read-only offline replay of screenshot/trace evidence, validated against real WyrmForge run.
 - [x] M1.7 human-label schema, original threat pixel evidence and offline scorer (instrumentation, not yet verified ground truth).
-- [ ] M1.8 offline labeling UI + manually verified, held-out perception accuracy before training/using relative motion.
+- [x] M1.8 independent offline clickable annotation UI with local JSON export, tests and real screenshot generation.
+- [ ] M1.9 actual human-reviewed screenshots and held-out precision/recall with false positives and unknowns.
 
 ## M2 — Human Minds
 - [ ] Personality vectors (risk, skill, attention, patience, exploration).
