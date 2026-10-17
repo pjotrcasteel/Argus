@@ -237,3 +237,27 @@ jobs:
           assert "Experimental: temporal + persistent still" in Path(
               "artifacts/ci-shadow/run-local/shadow-edge-study.md").read_text()
           PY
+
+      - name: Verify image appearance audit end-to-end on existing synthetic reviewed PNG
+        run: |
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-shadow/run-local --appearance-audit examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, math
+          root = Path("artifacts/ci-shadow/run-local")
+          report = json.loads((root / "appearance-audit.json").read_text())
+          assert report["scoredFrames"] == 1
+          assert report["labeledFrames"] == 1
+          assert report["missedHumanCenters"] == 0
+          assert len(report["candidates"]) == 3
+          assert sum(row["matchedHuman"] for row in report["candidates"]) == 2
+          assert sum(not row["matchedHuman"] for row in report["candidates"]) == 1
+          assert {group["source"] for group in report["groups"]} == {"baseline", "shadow"}
+          assert all(0 <= v <= 1 and math.isfinite(v)
+              for c in report["candidates"]
+              for v in (c["features"]["meanLuminance"], c["features"]["luminanceStdDev"],
+                        c["features"]["contrastToSurroundings"], c["features"]["gradientDensity"],
+                        c["features"]["meanSaturation"]))
+          assert "No model was trained" in (root / "appearance-audit.md").read_text()
+          PY

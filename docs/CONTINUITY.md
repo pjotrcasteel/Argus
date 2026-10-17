@@ -211,6 +211,14 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 - **Merged after validation:** [PR #30](https://github.com/pjotrcasteel/Argus/pull/30) squash `2b9daebd357e26c438acffd83ee0ad0dec59a604`. [.NET CI 39052968102](https://github.com/pjotrcasteel/Argus/actions/runs/39052968102) **119/119 MSTest tests** and the full synthetic PNG-to-four-way-score CLI regression passed, including a counterexample where the persistent-still proposal creates a false positive. [Real external WyrmForge smoke 39052968099](https://github.com/pjotrcasteel/Argus/actions/runs/39052968099) technical PASS: **57 frames, 40 player-located, 2 route clicks, 2 upgrades, 0 terminal stops**. No win or genuine precision gain is asserted.
 - **Private development crosscheck** via local Python/Numba mirror, **not the official .NET evaluator**, scored six original human-reviewed `run-02` frames: baseline TP/FP/FN **26/4/11**, raw **30/13/7**, moving temporal **27/5/10**, persistent-still audit **27/5/10**. There were **zero persistent-still proposals at these six scored frames**. This adds diagnostic coverage, not measurable accuracy improvement on the old sample. The owner-reviewed labels and untouched held-out `run-01` remain private. A new independent human-labeled development cohort is needed before altering active behavior.
 
+## M2.6a — screenshot appearance features (PR validation pending, 2026-10-17)
+
+- **Rationale:** M2.5 experiments established that extra RGB palette matches cause false positives and simple temporal/stationary rules cannot establish enemy identity. Continue toward *measurable* visual shape, texture and context, rather than adding guessed steering behavior.
+- Added game-neutral `VisualAppearanceDescriptors` in `Argus.Agents.Visual`, measuring candidate patch mean brightness, variation, saturation, local edge density, contrast to surrounding four-pixel ring, and viewport clipping. All measured from visible PNG RGB pixels alone. Player and candidate segmentation remain unchanged.
+- Added `AppearanceAudit` to `Argus.Evaluation`: for already human-labeled development screenshots, calculate all patch descriptors **before** comparing to labels, then attribute one-to-one within 26 pixels using the existing shared `ThreatMatching`. Report separate baseline vs shadow matched/unmatched candidate feature groups and missed human centers. No new actor classification or model weights.
+- CLI `--run <private-run-02> --appearance-audit <profile.json>` generates local `appearance-audit.json` and `appearance-audit.md`. Read the [M2.6a protocol](M2-6-APPEARANCE-AUDIT.md). Original owner-review data remain private; `run-01` held-out unchanged.
+- **Validation pending**: GitHub CI .NET 10 build/MSTest, synthetic end-to-end image feature report, bounded public WyrmForge smoke. Do not claim quality improvements: current M2.6a measures new numeric evidence only. Next independent research action is collecting at least two fresh development sessions and blind human labels *per run* before considering a small learned candidate scorer.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -231,7 +239,7 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**M2.5e: use isolated stationary-candidate audits to understand recall versus false-positive costs; require new independent development annotations before any policy change**, without pretending to be a human reviewer or using detector outputs as labels.
+**M2.6a: build unbiased screenshot appearance measurements, then gather new independent development annotations before any learned classifier or live steering change**, without pretending to be a human reviewer or using detector outputs as labels.
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -271,6 +279,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.6a implementation pending validation:** game-neutral appearance patch descriptors and local human-reference source/match audit, synthetic full CLI test. No learned model and no active gameplay changes. Next: CI + real browser smoke, then independent new development captures with blind human review.
 
 - **2026-10-17 — M2.5e merged:** [PR #30](https://github.com/pjotrcasteel/Argus/pull/30) (`2b9daeb`) adds research-only persistent stationary candidates and four-way scores. [CI 39052968102](https://github.com/pjotrcasteel/Argus/actions/runs/39052968102) 119/119 tests + synthetic four-way PNG CLI checks; [live smoke 39052968099](https://github.com/pjotrcasteel/Argus/actions/runs/39052968099) PASS: 57 frames/40 player frames/2 routes/2 upgrades/0 terminal. Private independent six-frame Python study found no stable still extra detections (baseline 26/4/11, raw 30/13/7, moving 27/5/10, stationary research 27/5/10). **No gameplay changes. Next: capture independent fresh development data and assess object appearance/context beyond RGB and stationary motion.**
 
