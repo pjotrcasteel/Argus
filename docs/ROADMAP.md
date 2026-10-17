@@ -26,7 +26,8 @@
 - [x] M2.1 reproducible per-frame persona divergence reports (direction vs timing vs waits), tested on real visual traces; no human realism claim.
 - [x] M2.2 multi-run offline cohort reports, per-run denominators, duplicate-trace guard and seeded one-trait-at-a-time controls (software verified; actual multi-run WyrmForge study pending).
 - [x] M2.3 opt-in bounded two-process real WyrmForge research with provenance, two actual traces and per-run persona cohorts; no win/accuracy claim.
-- [ ] M2.4 blind human-labeled reference quality across real separately captured runs and held-out precision/recall with unknown coverage.
+- [x] M2.4 pre-registered blind annotation pages for real independently captured runs, and strict human-label-only quality evaluator (NOT_EVALUATED until reviewed).
+- [ ] M2.5 independently human-reviewed real screenshots with actual held-out pixel precision/recall and specific misidentification evidence.
 - [ ] Calibrate the existing personality trait vectors against independently observed human playing styles (no such ground truth yet).
 - [ ] Short-term and persistent local memory.
 - [ ] Full runs and decisions without hidden game state.
