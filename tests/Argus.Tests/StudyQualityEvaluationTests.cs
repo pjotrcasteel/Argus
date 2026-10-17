@@ -35,6 +35,57 @@ public sealed class StudyQualityEvaluationTests
     }
 
     [TestMethod]
+    public async Task EvaluateAsync_DevelopmentOnlyPlan_RequiresRealHumanReviewWithoutSyntheticHeldOut()
+    {
+        var root = await FixtureAsync();
+        try
+        {
+            var runs = new List<StudyRun>();
+            foreach (var name in new[] { "real-a", "real-b" })
+                runs.Add(new StudyRun(name, await ReplayTraceReader.ReadAsync(Path.Combine(root, name),
+                    TestContext.CancellationToken)));
+            var plan = StudyPlanner.CreateDevelopment(runs, "fresh-development-only", 2);
+            await File.WriteAllTextAsync(Path.Combine(root, "study-plan.json"), JsonSerializer.Serialize(plan, Json),
+                TestContext.CancellationToken);
+
+            var report = await StudyQualityEvaluation.EvaluateAsync(root, cancellationToken: TestContext.CancellationToken);
+
+            Assert.AreEqual("NOT_EVALUATED", report.Status);
+            Assert.HasCount(2, report.Runs);
+            Assert.IsTrue(report.Runs.All(r => r.Partition == "development" && r.Perception is null));
+            Assert.AreEqual(2, report.Partitions.Single(g => g.Partition == "development").Runs);
+            Assert.AreEqual(0, report.Partitions.Single(g => g.Partition == "held-out").Runs);
+            Assert.IsNull(report.Partitions.Single(g => g.Partition == "held-out").ThreatPrecision.Median);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [TestMethod]
+    public async Task EvaluateAsync_AlteredDevelopmentSample_RejectsCherryPicking()
+    {
+        var root = await FixtureAsync();
+        try
+        {
+            var runs = new List<StudyRun>();
+            foreach (var name in new[] { "real-a", "real-b" })
+                runs.Add(new StudyRun(name, await ReplayTraceReader.ReadAsync(Path.Combine(root, name),
+                    TestContext.CancellationToken)));
+            var plan = StudyPlanner.CreateDevelopment(runs, "fresh-development-only", 2);
+            var changed = plan with
+            {
+                Assignments = plan.Assignments.Select((a, i) => i != 0 ? a :
+                    a with { FrameSteps = a.FrameSteps.Reverse().ToArray() }).ToArray()
+            };
+            await File.WriteAllTextAsync(Path.Combine(root, "study-plan.json"), JsonSerializer.Serialize(changed, Json),
+                TestContext.CancellationToken);
+
+            await Assert.ThrowsExactlyAsync<InvalidDataException>(async () =>
+                await StudyQualityEvaluation.EvaluateAsync(root, cancellationToken: TestContext.CancellationToken));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [TestMethod]
     public async Task EvaluateAsync_OnePartiallyHumanReviewedRun_PreservesUnknownAndOtherRunNotEvaluated()
     {
         var root = await FixtureAsync();
