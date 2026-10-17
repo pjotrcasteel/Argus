@@ -47,6 +47,7 @@ public static class ShadowEdgeStudy
         var entries = new List<ShadowEdgeFrame>();
         var byStep = labels.Frames.ToDictionary(f => f.Step);
         var tracker = new ShadowTemporalCandidateTracker();
+        VisualBlob? previousPlayer = null;
         using var reader = new StreamReader(Path.Combine(folder, "trace.jsonl"));
         string? line;
         var step = 0;
@@ -65,12 +66,14 @@ public static class ShadowEdgeStudy
             if (frame.Phase == "exploring" && !legacy)
             {
                 var pixels = await File.ReadAllBytesAsync(Path.Combine(folder, frame.Screenshot), cancellationToken);
-                observation = CombatPixelPerception.ObserveShadow(pixels, settings);
+                observation = CombatPixelPerception.ObserveShadow(pixels, settings, previousPlayer);
+                previousPlayer = observation.Baseline.Player;
                 temporal = tracker.Observe(observation);
             }
             else
             {
                 tracker.Reset();
+                previousPlayer = null;
             }
 
             if (byStep.TryGetValue(step, out var human))
