@@ -139,6 +139,32 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void DetectRgb_CyanOutlinedTrail_LocatesNodeAcrossBiomes()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var radius = Math.Sqrt((x - 224) * (x - 224) + (y - 476) * (y - 476));
+                var ring = Math.Abs(radius - 18) <= 2;
+                rgb[p] = ring ? (byte)110 : (byte)30;
+                rgb[p + 1] = ring ? (byte)137 : (byte)26;
+                rgb[p + 2] = ring ? (byte)156 : (byte)42;
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 224) <= 6);
+        Assert.IsTrue(Math.Abs(result.Y - 476) <= 6);
+    }
+
+    [TestMethod]
     public void DetectRgb_EnabledFilledButton_FindsActionArea()
     {
         const int width = 390;
