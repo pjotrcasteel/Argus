@@ -36,6 +36,13 @@ public sealed class TesseractTextReader : IFrameTextReader
                 if (process.ExitCode != 0) throw new InvalidOperationException("Tesseract OCR failed: " + error);
                 return TesseractTsvParser.Parse(tsv);
             }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // One slow OCR frame is not a failure of the whole game experiment.
+                // Do not invent text; the agent may use pixel-only evidence or wait for the next frame.
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+                return [];
+            }
             catch
             {
                 if (!process.HasExited) process.Kill(entireProcessTree: true);

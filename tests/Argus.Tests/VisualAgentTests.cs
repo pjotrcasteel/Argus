@@ -124,6 +124,20 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_VisibleResultOverlay_StopsWithoutSendingMovement()
+    {
+        var profile = new VisualGameProfile { TerminalScreenCues = ["THE ARCANE ATLAS"] };
+        var agent = new VisualGameAgent(
+            new FakeTextReader([new VisibleText("THE ARCANE ATLAS AWAKENS", 70, 200, 250, 30, 97)]), profile);
+        var frame = new FrameObservation(DateTimeOffset.UtcNow, 390, 844, []);
+
+        var action = await agent.DecideAsync(frame, TestContext.CancellationToken);
+
+        Assert.IsNull(action);
+        Assert.AreEqual("terminal", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
     public void ParseTsv_LineWords_CombinesTextAndBoundingBoxes()
     {
         const string tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
@@ -190,6 +204,69 @@ public sealed class VisualAgentTests
         Assert.IsNotNull(result);
         Assert.IsTrue(Math.Abs(result.X - 224) <= 6);
         Assert.IsTrue(Math.Abs(result.Y - 476) <= 6);
+    }
+
+    [TestMethod]
+    public void DetectRgb_GoldOutlinedConnectedTrail_LocatesVisibleCircle()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var pixel = (y * width + x) * 3;
+                var distance = Math.Sqrt((x - 155) * (x - 155) + (y - 475) * (y - 475));
+                var ring = Math.Abs(distance - 18) <= 2;
+                rgb[pixel] = ring ? (byte)223 : (byte)39;
+                rgb[pixel + 1] = ring ? (byte)208 : (byte)33;
+                rgb[pixel + 2] = ring ? (byte)128 : (byte)45;
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 155) <= 6);
+        Assert.IsTrue(Math.Abs(result.Y - 475) <= 6);
+    }
+
+    [TestMethod]
+    public void DetectRgb_WarmConnectedTrailAndCoolDecor_PrefersActualRouteNode()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var warmDistance = Math.Sqrt((x - 230) * (x - 230) + (y - 475) * (y - 475));
+                var coolDistance = Math.Sqrt((x - 312) * (x - 312) + (y - 545) * (y - 545));
+
+                if (Math.Abs(warmDistance - 18) <= 2)
+                {
+                    rgb[p] = 238; rgb[p + 1] = 146; rgb[p + 2] = 118;
+                }
+                else if (Math.Abs(coolDistance - 18) <= 2)
+                {
+                    rgb[p] = 118; rgb[p + 1] = 150; rgb[p + 2] = 177;
+                }
+                else
+                {
+                    rgb[p] = 39; rgb[p + 1] = 32; rgb[p + 2] = 45;
+                }
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 230) <= 7);
+        Assert.IsTrue(Math.Abs(result.Y - 475) <= 7);
     }
 
     [TestMethod]

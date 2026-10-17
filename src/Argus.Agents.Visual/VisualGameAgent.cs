@@ -9,10 +9,13 @@ namespace Argus.Agents.Visual;
 public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfile profile) : IVisualAgent, IAgentEvidenceProvider
 {
     private byte[]? _previousFrame;
+    private VisualBlob? _trackedPlayer;
+    private int _missedPlayerFrames;
     private int _menuClicks;
     private int _emptyScans;
     private int _explorationSteps;
     private bool _routeNodeSelected;
+    private int _routeConfirmationAttempts;
     private bool _settling;
 
     public AgentEvidence? LastEvidence { get; private set; }
@@ -31,6 +34,13 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var labels = await textReader.ReadAsync(observation, cancellationToken);
         var names = labels.Select(t => t.Text).Take(24).ToArray();
+        var terminal = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
+            profile.TerminalScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
+        if (terminal)
+        {
+            LastEvidence = new AgentEvidence("terminal", "Detected visible result or progression screen; stopping input", 0.85f, names);
+            return null;
+        }
         var isChoiceScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.ChoiceScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
         if (isChoiceScreen)
@@ -51,7 +61,11 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var isRouteScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.RouteCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
-        if (!isRouteScreen) _routeNodeSelected = false;
+        if (!isRouteScreen)
+        {
+            _routeNodeSelected = false;
+            _routeConfirmationAttempts = 0;
+        }
 
         // "Enter Trail" may be visible but disabled until a connected route node is chosen.
         // Locate a circular map marker in screenshot pixels, without coordinates, DOM or map state.
@@ -65,6 +79,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             }
 
             _routeNodeSelected = true;
+            _routeConfirmationAttempts = 0;
             _settling = true;
             _previousFrame = observation.PngBytes;
             LastEvidence = new AgentEvidence("route", "Selecting circular route marker from visible pixels", node.Confidence, names);
@@ -73,6 +88,12 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         if (isRouteScreen && _routeNodeSelected)
         {
+            if (_routeConfirmationAttempts >= 3)
+            {
+                LastEvidence = new AgentEvidence("blocked", "Route did not advance after three visual confirmation attempts", 0, names);
+                return null;
+            }
+
             // OCR is often unreliable over bright, filled controls. The button must visibly be enabled.
             var confirmation = FilledActionButtonDetector.Detect(observation.PngBytes);
             if (confirmation is null)
@@ -81,6 +102,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
                 return new GameAction(GameActionKind.Wait, DurationMs: 550);
             }
 
+            _routeConfirmationAttempts++;
             _settling = true;
             _previousFrame = observation.PngBytes;
             LastEvidence = new AgentEvidence("route", "Activating visually enabled lower action button", confirmation.Confidence, names);
@@ -116,13 +138,32 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 550);
         }
 
+        var combat = profile.CombatTracking is null ? null : CombatPixelPerception.Observe(observation.PngBytes,
+            profile.CombatTracking, _trackedPlayer);
+        if (combat?.Player is { } currentPlayer)
+        {
+            _trackedPlayer = currentPlayer;
+            _missedPlayerFrames = 0;
+        }
+        else if (++_missedPlayerFrames >= 5)
+        {
+            _trackedPlayer = null;
+        }
         var motion = _previousFrame is null ? (Change: 0f, Quadrants: new float[4]) : VisualMotion.Measure(_previousFrame, observation.PngBytes);
         _previousFrame = observation.PngBytes;
-        var direction = VisualMotion.ChooseDirection(motion.Quadrants, _explorationSteps);
+        var avoidance = combat is null ? null : VisualCombatSteering.SelectEvasionDirection(combat,
+            profile.CombatTracking!.ThreatAvoidanceRadius);
+        var direction = avoidance ?? VisualMotion.ChooseDirection(motion.Quadrants, _explorationSteps);
         var key = profile.MovementKeys[direction];
         _explorationSteps++;
 
-        LastEvidence = new AgentEvidence("exploring", "Experimental screen-motion steering; holding " + key, 0.2f, names, motion.Change);
+        var source = avoidance is not null ? "candidate-avoidance" : "screen-motion";
+        var screen = combat?.Player is { } player
+            ? new CombatScreenEvidence(player.X, player.Y, combat.ThreatCandidates.Count, combat.NearestThreatDistance, source)
+            : null;
+        var reason = screen is null ? "No confidently located player; " + source : $"Visual player ({screen.PlayerX:0},{screen.PlayerY:0}); {source}";
+        LastEvidence = new AgentEvidence("exploring", reason + "; holding " + key,
+            screen is null ? 0.2f : MathF.Min(0.65f, combat!.Player!.Confidence), names, motion.Change, screen);
         return new GameAction(GameActionKind.HoldKey, Key: key, DurationMs: profile.MovementMilliseconds);
     }
 }

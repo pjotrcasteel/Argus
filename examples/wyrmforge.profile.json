@@ -19,11 +19,51 @@
     "Start",
     "Play"
   ],
+  "terminalScreenCues": ["IT DOESN'T END", "THE ARCANE ATLAS", "CODEX UNLOCKED", "Wyrmrealm remembers you"],
   "choiceScreenCues": ["Refine your magic"],
   "choiceCardTypes": ["REFINEMENT"],
   "routeCues": ["Wyrm signs", "Choose your tra", "Choose a connected trail"],
   "gameplayCues": ["HP", "Health", "Level", "Wave", "XP", "Hunter"],
   "movementKeys": ["w", "a", "s", "d"],
+  "combatTracking": {
+    "minimumPlayerPixels": 70,
+    "minimumThreatPixels": 75,
+    "threatAvoidanceRadius": 115,
+    "maxPlayerDistanceFromScreenCenter": 155,
+    "playerPalette": {
+      "minRed": 35,
+      "minGreen": 54,
+      "minBlue": 82,
+      "minBlueMinusRed": 24,
+      "minBlueMinusGreen": 14
+    },
+    "threatPalettes": [
+      {
+        "minRed": 55,
+        "minGreen": 35,
+        "minBlue": 78,
+        "minBlueMinusRed": 10,
+        "minBlueMinusGreen": 19,
+        "minRedMinusGreen": 6
+      },
+      {
+        "minRed": 74,
+        "minGreen": 30,
+        "minBlue": 35,
+        "minRedMinusGreen": 18,
+        "minRedMinusBlue": 18
+      },
+      {
+        "minRed": 100,
+        "minGreen": 105,
+        "minBlue": 95,
+        "minBlueMinusRed": -36,
+        "minBlueMinusGreen": -36,
+        "minRedMinusGreen": -28,
+        "minRedMinusBlue": -28
+      }
+    ]
+  },
   "minimumTextConfidence": 45,
   "movementMilliseconds": 300
 }
