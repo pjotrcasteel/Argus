@@ -15,7 +15,8 @@
 - [ ] Separate true gameplay progression from mere screen-action success before balancing.
 - [x] M1.5 offline multi-run reports with validated technical evidence, confidence intervals and explicit unmatched-cohort warnings.
 - [x] M1.6 read-only offline replay of screenshot/trace evidence, validated against real WyrmForge run.
-- [ ] M1.7 labeled, held-out perception quality evaluation before relying on enemy/camera velocity.
+- [x] M1.7 human-label schema, original threat pixel evidence and offline scorer (instrumentation, not yet verified ground truth).
+- [ ] M1.8 offline labeling UI + manually verified, held-out perception accuracy before training/using relative motion.
 
 ## M2 — Human Minds
 - [ ] Personality vectors (risk, skill, attention, patience, exploration).
