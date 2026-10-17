@@ -11,6 +11,7 @@ public sealed record PerceptionReport(string RunId, int TotalFrames, int Labeled
     QualityMetrics Threats, int ThreatEvidenceUnavailableFrames, float MatchingRadiusPixels)
 {
     public int PlayerEvidenceUnavailableFrames { get; init; }
+    public int LegacyFinalUnverifiedFrames { get; init; }
 }
 
 public static class PerceptionScoring
@@ -31,6 +32,7 @@ public static class PerceptionScoring
         var threat = new Accumulator();
         var unavailable = 0;
         var playerUnavailable = 0;
+        var legacyFinalUnavailable = 0;
         var annotations = truth.Frames.ToDictionary(f => f.Step);
         var tracePath = Path.Combine(folder, "trace.jsonl");
 
@@ -51,16 +53,17 @@ public static class PerceptionScoring
                     combatValue.ValueKind == JsonValueKind.Object ? combatValue : default;
 
                 var frame = replay.Frames[step];
+                var legacy = TraceEvidenceReliability.IsUnverifiedLegacyFinal(record, step, replay.Frames.Count);
                 var detected = frame.PlayerX is not null && frame.PlayerY is not null
                     ? new VisualCandidatePoint(frame.PlayerX.Value, frame.PlayerY.Value) : null;
-                // A menu/transition screenshot can visibly contain a mage without the agent
-                // ever attempting combat perception. This is unavailable evidence, not a miss.
-                // During exploration an unsuccessful detection IS a false negative if reviewed.
+                // A missing attempted measurement and a legacy last-frame stale observation
+                // must never appear as genuine detector misses or false positives.
                 var perceptionAttempted = combat.ValueKind == JsonValueKind.Object ||
                     evidence.ValueKind == JsonValueKind.Object &&
                     evidence.TryGetProperty("phase", out var phase) &&
                     phase.ValueKind == JsonValueKind.String && phase.GetString() == "exploring";
-                if (label.Player.State != "unknown" && !perceptionAttempted)
+                if (legacy) legacyFinalUnavailable++;
+                if (label.Player.State != "unknown" && (legacy || !perceptionAttempted))
                 {
                     player.Unknown++;
                     playerUnavailable++;
@@ -71,7 +74,7 @@ public static class PerceptionScoring
                 {
                     threat.Unknown++;
                 }
-                else if (combat.ValueKind != JsonValueKind.Object ||
+                else if (legacy || combat.ValueKind != JsonValueKind.Object ||
                     !combat.TryGetProperty("threatLocations", out var list) || list.ValueKind != JsonValueKind.Array)
                 {
                     unavailable++;
@@ -90,7 +93,8 @@ public static class PerceptionScoring
         return new PerceptionReport(truth.RunId, replay.Frames.Count, truth.Frames.Count,
             player.Metrics(), threat.Metrics(), unavailable, radius)
         {
-            PlayerEvidenceUnavailableFrames = playerUnavailable
+            PlayerEvidenceUnavailableFrames = playerUnavailable,
+            LegacyFinalUnverifiedFrames = legacyFinalUnavailable
         };
     }
 
@@ -102,7 +106,8 @@ public static class PerceptionScoring
             .AppendLine()
             .AppendLine($"Frames in trace: {report.TotalFrames}. Annotated: {report.LabeledFrames}. " +
                 $"Player evidence unavailable: {report.PlayerEvidenceUnavailableFrames}. " +
-                $"Threat evidence unavailable: {report.ThreatEvidenceUnavailableFrames}.")
+                $"Threat evidence unavailable: {report.ThreatEvidenceUnavailableFrames}. " +
+                $"Legacy final frames excluded: {report.LegacyFinalUnverifiedFrames}.")
             .AppendLine()
             .AppendLine("| Object | TP | FP | FN | TN | Unknown | Precision | Recall | F1 |")
             .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
@@ -136,26 +141,10 @@ public static class PerceptionScoring
     private static void ScoreThreats(IReadOnlyList<VisualCandidatePoint> expected,
         IReadOnlyList<VisualCandidatePoint> detected, float radius, Accumulator target)
     {
-        // Global closest-pair greedy matching; each annotated and predicted candidate can match at most once.
-        var pairs = new List<(int Actual, int Predicted, float Distance)>();
-        for (var i = 0; i < expected.Count; i++)
-            for (var j = 0; j < detected.Count; j++)
-            {
-                var distance = Distance(expected[i], detected[j]);
-                if (distance <= radius) pairs.Add((i, j, distance));
-            }
-
-        var seenActual = new HashSet<int>();
-        var seenPredicted = new HashSet<int>();
-        foreach (var pair in pairs.OrderBy(p => p.Distance).ThenBy(p => p.Actual).ThenBy(p => p.Predicted))
-        {
-            if (!seenActual.Add(pair.Actual)) continue;
-            if (!seenPredicted.Add(pair.Predicted)) { seenActual.Remove(pair.Actual); continue; }
-            target.Tp++;
-        }
-
-        target.Fp += detected.Count - seenPredicted.Count;
-        target.Fn += expected.Count - seenActual.Count;
+        var matches = ThreatMatching.Match(expected, detected, radius);
+        target.Tp += matches.TruePositives;
+        target.Fp += matches.FalsePositives.Count;
+        target.Fn += matches.FalseNegatives.Count;
         if (expected.Count == 0 && detected.Count == 0) target.Tn++;
     }
 

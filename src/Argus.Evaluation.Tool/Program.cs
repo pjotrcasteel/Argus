@@ -50,8 +50,13 @@ try
         var markdownPath = Path.Combine(run, "perception-report.md");
         await File.WriteAllTextAsync(jsonPath, JsonSerializer.Serialize(report, options));
         await File.WriteAllTextAsync(markdownPath, PerceptionScoring.RenderMarkdown(report));
-        Console.WriteLine($"Scored {report.LabeledFrames} labeled frames. Threat evidence unavailable in {report.ThreatEvidenceUnavailableFrames} labeled frames.");
-        Console.WriteLine($"Report: {markdownPath}");
+        var failures = await PerceptionFailureAnalysis.AnalyzeAsync(run, labels, replay);
+        await File.WriteAllTextAsync(Path.Combine(run, "perception-failures.json"), JsonSerializer.Serialize(failures, options));
+        await File.WriteAllTextAsync(Path.Combine(run, "perception-failures.md"), PerceptionFailureAnalysis.RenderMarkdown(failures));
+        Console.WriteLine($"Scored {report.LabeledFrames} labeled frames; {failures.ScoredThreatFrames} comparable threat frames.");
+        Console.WriteLine($"Unavailable threat frames: {report.ThreatEvidenceUnavailableFrames}; " +
+            $"excluded legacy final frames: {report.LegacyFinalUnverifiedFrames}.");
+        Console.WriteLine($"Reports: {markdownPath}, {Path.Combine(run, "perception-failures.md")}");
     }
     return 0;
 }
