@@ -107,6 +107,10 @@ dotnet run --project src/Argus.Persona.Cohort.Tool -- --runs results/experiments
 
 This produces `persona-cohort.json` and `persona-cohort.md` with one entry per genuinely recorded session, descriptive run-level distributions, unknown evidence and five controlled 0-versus-1 trait ablations. The existing single-run persona tool also writes `persona-ablation.json`. **None of the hypothetical persona decisions is sent to the game.** See [M2.2 cohort and attribution guide](docs/M2-2-COHORT-ABLATIONS.md).
 
+## Capture two real independent browser sessions (M2.3, opt-in)
+
+Open **GitHub Actions → M2.3 opt-in two-session WyrmForge research → Run workflow** to record two separate bounded game sessions and generate real multi-run shadow-persona reports. This does **not** run on every code change. The artifacts are retained for only two days and cannot prove identical procedural conditions. See [M2.3 real research capture](docs/M2-3-REAL-RESEARCH.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
@@ -120,6 +124,7 @@ This produces `persona-cohort.json` and `persona-cohort.md` with one entry per g
 - [Personality proposals in shadow mode (M2.0)](docs/M2-0-PERSONA-SHADOW.md)
 - [Measuring persona action differences (M2.1)](docs/M2-1-PERSONA-CONTRAST.md)
 - [Multi-run personas and one-trait attribution (M2.2)](docs/M2-2-COHORT-ABLATIONS.md)
+- [Opt-in real two-session WyrmForge research (M2.3)](docs/M2-3-REAL-RESEARCH.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
