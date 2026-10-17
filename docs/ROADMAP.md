@@ -24,7 +24,8 @@
 ## M2 — Human Minds
 - [x] M2.0 game-neutral personality vectors and seeded shadow-only action proposals, never hidden game state.
 - [x] M2.1 reproducible per-frame persona divergence reports (direction vs timing vs waits), tested on real visual traces; no human realism claim.
-- [ ] M2.2 multi-run cohort reports with per-run denominators and one-trait-at-a-time attribution controls.
+- [x] M2.2 multi-run offline cohort reports, per-run denominators, duplicate-trace guard and seeded one-trait-at-a-time controls (software verified; actual multi-run WyrmForge study pending).
+- [ ] M2.3 opt-in bounded capture of 2+ genuinely separate WyrmForge runs with trace provenance and real multi-session persona cohorts.
 - [ ] Calibrate the existing personality trait vectors against independently observed human playing styles (no such ground truth yet).
 - [ ] Short-term and persistent local memory.
 - [ ] Full runs and decisions without hidden game state.
