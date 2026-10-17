@@ -31,6 +31,24 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var labels = await textReader.ReadAsync(observation, cancellationToken);
         var names = labels.Select(t => t.Text).Take(24).ToArray();
+        var isChoiceScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
+            profile.ChoiceScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
+        if (isChoiceScreen)
+        {
+            var selected = ChoiceCardMatcher.FindFirst(labels, profile.ChoiceCardTypes, profile.MinimumTextConfidence);
+            if (selected is null)
+            {
+                LastEvidence = new AgentEvidence("choice", "Visible choice screen, but no confidently located card title; waiting", 0, names);
+                return new GameAction(GameActionKind.Wait, DurationMs: 600);
+            }
+
+            _settling = true;
+            _previousFrame = observation.PngBytes;
+            LastEvidence = new AgentEvidence("choice", "Choosing first visible upgrade card title: " + selected.Text,
+                selected.Confidence / 100f, names);
+            return new GameAction(GameActionKind.Click, X: selected.CenterX, Y: selected.CenterY);
+        }
+
         var isRouteScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.RouteCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
         if (!isRouteScreen) _routeNodeSelected = false;
