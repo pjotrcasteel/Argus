@@ -79,6 +79,16 @@ dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotat
 
 Open `annotate.html` to click the real mage and visual threats, explicitly mark unknown/absent, export `labels.json`, and later re-import that file to resume labeling for the existing offline scorer. No account, internet, game source access or cloud required. See [local annotation guide](docs/M1-8-ANNOTATION-STUDIO.md).
 
+## Blind held-out perception study (M1.9)
+
+Use a collection of **independent** saved ARGUS runs. The study tool assigns whole sessions to development or held-out partitions using a fixed seed and generates prediction-free review pages:
+
+```bash
+dotnet run --project src/Argus.Study.Tool -- --runs results/experiments --seed fixed-experiment-1 --samples 12
+```
+
+For just one existing run, generate a blind review page with `Argus.Evaluation.Tool --blind-annotate`. **No labels are inferred, and no real detection accuracy is claimed yet.** See [M1.9 blind study protocol](docs/M1-9-BLIND-STUDY.md).
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
@@ -88,6 +98,7 @@ Open `annotate.html` to click the real mage and visual threats, explicitly mark 
 - [Local session replay (M1.6)](docs/M1-6-LOCAL-REPLAY.md)
 - [Human-labeled perception quality (M1.7)](docs/M1-7-PERCEPTION-EVALUATION.md)
 - [Local annotation studio (M1.8)](docs/M1-8-ANNOTATION-STUDIO.md)
+- [Blind independent-run perception study (M1.9)](docs/M1-9-BLIND-STUDY.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)

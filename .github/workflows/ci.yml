@@ -21,3 +21,42 @@ jobs:
         run: dotnet build Argus.slnx --configuration Release --no-restore
       - name: Test
         run: dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build --logger trx
+      - name: Verify reproducible offline study CLI with generated fixtures
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          base = Path("artifacts/ci-study")
+          for name in ("independent-a", "independent-b"):
+              folder = base / name
+              folder.mkdir(parents=True, exist_ok=True)
+              (folder / "frame-0000.png").write_bytes(bytes([137,80,78,71,13,10,26,10]) + bytes(12))
+              record = {
+                  "step": 0, "timestampUtc": "2026-10-17T10:00:00Z",
+                  "width": 390, "height": 844, "screenshot": "frame-0000.png",
+                  "evidence": {
+                      "phase": "exploring", "reason": "fixture " + name,
+                      "combat": {"playerX": 195, "playerY": 420, "threatCandidates": 0, "threatLocations": []}
+                  }
+              }
+              (folder / "trace.jsonl").write_text(json.dumps(record) + "\n")
+          PY
+          dotnet run --project src/Argus.Study.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-study --seed fixture-stable-seed --samples 1
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/ci-study")
+          plan = json.loads((root / "study-plan.json").read_text())
+          assert len(plan["assignments"]) == 2
+          assert sorted(a["partition"] for a in plan["assignments"]) == ["development", "held-out"]
+          for assignment in plan["assignments"]:
+              folder = root / assignment["runId"]
+              html = (folder / "blind-annotate.html").read_text()
+              labels = json.loads((folder / "blind-labels.template.json").read_text())
+              assert "BLIND REVIEW" in html
+              assert "\"playerX\":195" not in html
+              assert "fixture " + assignment["runId"] not in html
+              assert labels["frames"][0]["player"]["state"] == "unknown"
+              assert labels["frames"][0]["threats"]["state"] == "unknown"
+          PY
