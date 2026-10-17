@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" Version="1.63.0" />
+    <ProjectReference Include="../Argus.Core/Argus.Core.csproj" />
+  </ItemGroup>
+</Project>

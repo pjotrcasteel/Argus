@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/Argus.Core/Argus.Core.csproj" />
+  <Project Path="src/Argus.Adapters.Browser/Argus.Adapters.Browser.csproj" />
+  <Project Path="src/Argus.Runner/Argus.Runner.csproj" />
+</Solution>

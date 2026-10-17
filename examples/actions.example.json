@@ -1,0 +1,5 @@
+[
+  { "kind": "wait", "durationMs": 1500 },
+  { "kind": "movePointer", "x": 195, "y": 420 },
+  { "kind": "wait", "durationMs": 350 }
+]
