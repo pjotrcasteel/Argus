@@ -259,6 +259,14 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 - New `AppearanceReadiness` reports **NOT_READY** unless there are >=3 independent development run identities and each has >=5 scored frames, >=10 matched centers and >=10 unmatched candidates. A positive result means offline exploration only, **never** acceptance for steering. The enhanced `Argus.Study.Quality.Tool --runs <private-study> --appearance-readiness` reads **development** audits only, verifies the frozen human study and produces local `appearance-readiness.json/md`.
 - **Validated and merged:** [PR #35](https://github.com/pjotrcasteel/Argus/pull/35), squash `b627392be5af2c4eb8a3f0441fd342b9205654d9`. [.NET 10 CI 39060043563](https://github.com/pjotrcasteel/Argus/actions/runs/39060043563): **136/136 MSTest**, full synthetic two-run screenshots → appearance audits → frozen study → `NOT_READY` gate PASS. [Real WyrmForge smoke 39060043682](https://github.com/pjotrcasteel/Argus/actions/runs/39060043682) PASS: **44 frames, 26 player-located, 2 route clicks, 2 upgrades, visible terminal stop**. No active policy or model change; no real human files committed. [Research protocol](M2-6-APPEARANCE-READINESS.md). **Next:** at least one more independent *development* run with richer negative examples, then private official .NET measurements, leakage-safe run-level experimental learning and a separate future untouched held-out test before any active integration.
 
+## M2.7 — three additional development sessions and blind mobile review (2026-10-17; validation pending)
+
+- Latest merged baseline is [PR #35](https://github.com/pjotrcasteel/Argus/pull/35) M2.6e; 136/136 tests and bounded real-game smoke passed. Owner-human **dev-a/dev-b** coordinates are private. M2.6e's readiness gate is **NOT_READY** because there are only two distinct dev runs and dev-b has just two unmatched shadow candidates; new runs do **not** retroactively remove that issue.
+- New opt-in [M2.7 development capture workflow](../.github/workflows/m2-7-development.yml) records **three NEW** independent screenshot-only WyrmForge browser sessions `dev-c/dev-d/dev-e` (max 48 steps and 150 seconds each; original 390×844 viewport). Stores UTC manifests and distinct trace hashes, all marked `development`; only the preregistered seed `argus-m27-independent-development-frozen-20261017` selects 12 screenshots per run, for **36 original screenshots** and 36 empty/UNKNOWN labels. Human-reviewed truth is not fabricated.
+- Extended `tools/m26b/mobile_review.py` from exactly two to **2–5** separate development review pages, preserving old two-run behavior. Extended independent Chrome/touch/export/reload smoke to accept a list of run IDs. New workflow validates all 3, persists original complete research evidence and a separate three-page blind mobile review artifact **7 days**, and does not publish those new images publicly.
+- Owner's earlier publication consent applied to **24 specific M2.6b screenshots**, not these 36 new ones. Keep old `/annoteren/run-02/`, `/annoteren/dev-a/`, `/annoteren/dev-b/` GitHub Pages paths intact; ask before publishing M2.7. Actual human annotations remain unavailable until owner review, no official .NET accuracy claims or learned models.
+- [.NET CI](../.github/workflows/ci.yml) adds three-run synthetic study-plan/quality/HTML/JS verification, MSTest explicitly tests stable 3-session frame assignment. [M2.7 protocol](M2-7-NEW-DEVELOPMENT-COHORT.md). **Pending**: PR GitHub Actions CI + real three-session workflow, independently inspect evidence and merge only when green. Next: owner-controlled iPhone review of new frames, then per-run audited negative examples and official private .NET evaluation.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -279,7 +287,7 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**M2.7: record additional independent development screenshots featuring ambiguous negative candidates, obtain blind manual reviews, run the official private .NET appearance audit, and only then consider a frozen offline classifier; never open the existing run-01 held-out for tuning.**
+**M2.7: validate three additional standalone development screenshot runs with 36 frozen blinded samples, then request approval for private/public mobile review access and independent human labels; do not train or alter steering yet.**
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -319,6 +327,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.7 under validation:** three new dev-c/d/e screenshot-only browser processes, 36 seeded blind screenshots, 3 mobile annotation pages, 7-day private artifacts; no new public photo publication or model/steering changes. Verify real cohort + .NET CI before merge; preserve original run-01 held-out.
 
 - **2026-10-17 — M2.6e merged:** [PR #35](https://github.com/pjotrcasteel/Argus/pull/35) `b627392`; [CI 39060043563](https://github.com/pjotrcasteel/Argus/actions/runs/39060043563) **136/136 tests** and end-to-end artificial-data `NOT_READY` result; [live smoke 39060043682](https://github.com/pjotrcasteel/Argus/actions/runs/39060043682) PASS with 44 frames/26 visually located player frames/2 routes/2 upgrades/1 terminal. Private real run A/B: dev-a 30 positive/16 unmatched, dev-b 43 positive/only 2 unmatched candidates; too few distinct runs and B negatives, no generalization claim. No active agent changes. Next: new development review with hard negatives, official local .NET score and fresh untouched held-out cohort.
 

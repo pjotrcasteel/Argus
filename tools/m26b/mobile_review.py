@@ -20,8 +20,8 @@ def prepare(source: Path, destination: Path) -> None:
     if plan.get("schemaVersion") != 1 or plan.get("mode") != "development-only":
         raise ValueError("Only explicitly preselected development-only runs can be packaged.")
     assignments = plan.get("assignments")
-    if not isinstance(assignments, list) or len(assignments) != 2:
-        raise ValueError("Exactly two independent development runs are required.")
+    if not isinstance(assignments, list) or not 2 <= len(assignments) <= 5:
+        raise ValueError("The review package requires 2–5 independent development runs.")
     template = TEMPLATE.read_text(encoding="utf-8")
     if template.count("/*ARGUS_FRAMES*/") != 1 or template.count("/*ARGUS_LABELS*/") != 1:
         raise ValueError("Mobile template injection tokens are missing or ambiguous.")
@@ -93,7 +93,7 @@ def prepare(source: Path, destination: Path) -> None:
                 'geen automatisch gepubliceerde website. Labels worden uitsluitend op het toestel opgeslagen '
                 'tot je ze zelf exporteert.</p></body></html>')
     (destination / "index.html").write_text(homepage, encoding="utf-8")
-    print("Prepared two distinct development mobile review pages; zero human labels inferred.")
+    print(f"Prepared {len(assignments)} distinct development mobile review pages; zero human labels inferred.")
 
 
 if __name__ == "__main__":

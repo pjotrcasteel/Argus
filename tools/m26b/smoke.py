@@ -9,14 +9,14 @@ from threading import Thread
 from playwright.sync_api import sync_playwright
 
 
-def verify(site: Path) -> None:
+def verify(site: Path, runs: tuple[str, ...] = ("dev-a", "dev-b")) -> None:
     handler = partial(SimpleHTTPRequestHandler, directory=str(site.resolve()))
     with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
         Thread(target=server.serve_forever, daemon=True).start()
         with sync_playwright() as browser_engine:
             browser = browser_engine.chromium.launch(channel="chrome", headless=True)
             try:
-                for name in ("dev-a", "dev-b"):
+                for name in runs:
                     context = browser.new_context(viewport={"width": 390, "height": 844},
                                                   is_mobile=True, has_touch=True, accept_downloads=True)
                     page = context.new_page()
@@ -46,7 +46,7 @@ def verify(site: Path) -> None:
                     assert "gemarkeerd" in page.locator("#player-state").inner_text()
                     assert not errors, errors
                     context.close()
-                print("PASS: two real mobile review sites, taps, navigation, JSON export and reload persistence.")
+                print(f"PASS: {len(runs)} real mobile review sites, taps, navigation, JSON export and reload persistence.")
             finally:
                 browser.close()
 
@@ -54,5 +54,6 @@ def verify(site: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", type=Path, required=True)
+    parser.add_argument("--runs", nargs="+", default=["dev-a", "dev-b"])
     options = parser.parse_args()
-    verify(options.site)
+    verify(options.site, tuple(options.runs))
