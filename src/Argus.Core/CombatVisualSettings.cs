@@ -25,6 +25,7 @@ public sealed class CombatVisualSettings
     public int MinimumPlayerPixels { get; init; } = 70;
     public int MinimumThreatPixels { get; init; } = 70;
     public int ThreatAvoidanceRadius { get; init; } = 120;
+    public int MaxPlayerDistanceFromScreenCenter { get; init; } = 0;
 
     public void Validate()
     {
@@ -32,5 +33,7 @@ public sealed class CombatVisualSettings
         if (MinimumPlayerPixels is < 10 or > 1000 || MinimumThreatPixels is < 10 or > 1000)
             throw new ArgumentOutOfRangeException(nameof(MinimumPlayerPixels));
         if (ThreatAvoidanceRadius is < 25 or > 500) throw new ArgumentOutOfRangeException(nameof(ThreatAvoidanceRadius));
+        if (MaxPlayerDistanceFromScreenCenter is < 0 or > 1500)
+            throw new ArgumentOutOfRangeException(nameof(MaxPlayerDistanceFromScreenCenter));
     }
 }
