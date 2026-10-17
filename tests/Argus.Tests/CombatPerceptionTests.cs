@@ -74,6 +74,21 @@ public sealed class CombatPerceptionTests
     }
 
     [TestMethod]
+    public void ObserveRgb_CenterPriorRejectsDecorativeSpriteAwayFromPlayerRegion()
+    {
+        var rgb = MakeEmptyFrame();
+        Paint(rgb, 330, 635, 24, 30, 72, 91, 115);
+        var settings = new CombatVisualSettings
+        {
+            MinimumPlayerPixels = 70,
+            PlayerPalette = Settings.PlayerPalette,
+            MaxPlayerDistanceFromScreenCenter = 155
+        };
+
+        Assert.IsNull(CombatPixelPerception.ObserveRgb(rgb, 390, 844, settings).Player);
+    }
+
+    [TestMethod]
     public void ObserveRgb_MageOnlyInTopHud_IsNotMistakenForPlayer()
     {
         var rgb = MakeEmptyFrame();
