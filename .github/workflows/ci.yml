@@ -182,3 +182,58 @@ jobs:
           assert item["stationary"] == 1
           assert item["pending"] == 0
           PY
+
+      - name: Verify stationary candidate audit exposes both recovery and decoration risks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, shutil
+          folder = Path("artifacts/ci-shadow/run-local")
+          shutil.copyfile(folder / "frame-0001.png", folder / "frame-0002.png")
+          record = {"step": 2, "timestampUtc": "2026-10-17T10:00:02Z",
+                    "width": 390, "height": 844, "screenshot": "frame-0002.png",
+                    "evidence": {"phase": "exploring", "reason": "synthetic still test"}}
+          with (folder / "trace.jsonl").open("a") as file:
+              file.write(json.dumps(record) + "\n")
+          point = lambda x, y: {"x": x, "y": y}
+          labels = {"schemaVersion": 1, "runId": "run-local",
+                    "frames": [{"step": 2, "player": {"state": "visible", "center": point(189, 420)},
+                                "threats": {"state": "known",
+                                            "centers": [point(130, 413), point(315, 122), point(380, 398)]}}]}
+          (folder / "labels.json").write_text(json.dumps(labels))
+          PY
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-shadow/run-local --shadow-edges examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p = Path("artifacts/ci-shadow/run-local/shadow-edge-study.json")
+          report = json.loads(p.read_text())
+          assert report["scoredFrames"] == 1
+          assert (report["temporal"]["truePositive"], report["temporal"]["falseNegative"]) == (2, 1)
+          assert (report["persistentStationaryTrial"]["truePositive"],
+                  report["persistentStationaryTrial"]["falsePositive"],
+                  report["persistentStationaryTrial"]["falseNegative"]) == (3, 0, 0)
+          assert report["frames"][0]["persistentStationaryProposals"] == 1
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          folder = Path("artifacts/ci-shadow/run-local")
+          p = folder / "labels.json"
+          label = json.loads(p.read_text())
+          label["frames"][0]["threats"]["centers"].pop()
+          p.write_text(json.dumps(label))
+          PY
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-shadow/run-local --shadow-edges examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          report = json.loads(Path("artifacts/ci-shadow/run-local/shadow-edge-study.json").read_text())
+          assert (report["temporal"]["truePositive"], report["temporal"]["falsePositive"]) == (2, 0)
+          assert (report["persistentStationaryTrial"]["truePositive"],
+                  report["persistentStationaryTrial"]["falsePositive"]) == (2, 1)
+          assert "Experimental: temporal + persistent still" in Path(
+              "artifacts/ci-shadow/run-local/shadow-edge-study.md").read_text()
+          PY
