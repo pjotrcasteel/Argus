@@ -22,7 +22,7 @@ Requires **.NET 10**, Playwright Chromium and **Tesseract OCR** installed locall
 
     dotnet restore Argus.slnx
     dotnet build Argus.slnx
-    pwsh src/Argus.Adapters.Browser/bin/Debug/net10.0/playwright.ps1 install chromium
+    pwsh src/Argus.Runner/bin/Debug/net10.0/playwright.ps1 install chromium
 
 ### Observe only (default, no input)
 

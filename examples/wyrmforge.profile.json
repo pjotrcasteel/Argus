@@ -1,13 +1,17 @@
 {
   "name": "WyrmForge visual black-box baseline",
   "menuActions": [
+    "Begin First Hunt",
     "Begin Hunt",
     "Continue Hunt",
+    "Arcane Orb",
+    "Fire Bolt",
+    "Frost Shard",
+    "Chain Lightning",
     "Continue",
     "Enter Trail",
     "Enter",
     "Select Route",
-    "Choose",
     "Confirm",
     "Claim",
     "Next",
@@ -15,6 +19,7 @@
     "Start",
     "Play"
   ],
+  "routeCues": ["Wyrm signs", "Choose your tra", "Choose a connected trail"],
   "gameplayCues": ["HP", "Health", "Level", "Wave", "XP", "Hunter"],
   "movementKeys": ["w", "a", "s", "d"],
   "minimumTextConfidence": 45,

@@ -26,6 +26,39 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void FindBest_InterveningWords_RecognizesRealVisibleHuntLabel()
+    {
+        var result = MenuTextMatcher.FindBest([new VisibleText("BEGIN FIRST HUNT", 16, 322, 358, 56, 94)],
+            new VisualGameProfile { MenuActions = ["Begin Hunt"] });
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual("BEGIN FIRST HUNT", result.Text);
+        Assert.AreEqual(195f, result.CenterX);
+    }
+
+    [TestMethod]
+    public void FindBest_GenericWordInsideInstruction_DoesNotClick()
+    {
+        var profile = new VisualGameProfile { MenuActions = ["Choose"] };
+        var heading = new VisibleText("Choose your primary magic", 79, 240, 222, 20, 95);
+
+        Assert.IsNull(MenuTextMatcher.FindBest([heading], profile));
+    }
+
+    [TestMethod]
+    public void FindBest_RealSpellOption_ChoosesButtonNotHeading()
+    {
+        var profile = new VisualGameProfile { MenuActions = ["Arcane Orb", "Choose"] };
+        var lines = new[]
+        {
+            new VisibleText("Choose your primary magic", 79, 240, 222, 20, 95),
+            new VisibleText("Arcane Orb", 60, 410, 120, 30, 87)
+        };
+
+        Assert.AreEqual("Arcane Orb", MenuTextMatcher.FindBest(lines, profile)?.Text);
+    }
+
+    [TestMethod]
     public void FindBest_LowConfidence_DoesNotClick()
     {
         var result = MenuTextMatcher.FindBest([new VisibleText("Begin Hunt", 0, 0, 100, 20, 10)], new VisualGameProfile());
@@ -75,6 +108,103 @@ public sealed class VisualAgentTests
         Assert.AreEqual("Begin Hunt", result[0].Text);
         Assert.AreEqual(100, result[0].X);
         Assert.AreEqual(100, result[0].Width);
+    }
+
+    [TestMethod]
+    public void DetectRgb_VisibleLavenderRing_LocatesCircleWithoutCoordinates()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var distance = Math.Sqrt((x - 155) * (x - 155) + (y - 475) * (y - 475));
+                var ring = Math.Abs(distance - 18) <= 2;
+                rgb[p] = ring ? (byte)190 : (byte)30;
+                rgb[p + 1] = ring ? (byte)156 : (byte)26;
+                rgb[p + 2] = ring ? (byte)228 : (byte)42;
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 155) <= 5);
+        Assert.IsTrue(Math.Abs(result.Y - 475) <= 5);
+        Assert.IsTrue(result.Confidence >= 0.6f);
+    }
+
+    [TestMethod]
+    public void DetectRgb_CyanOutlinedTrail_LocatesNodeAcrossBiomes()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var radius = Math.Sqrt((x - 224) * (x - 224) + (y - 476) * (y - 476));
+                var ring = Math.Abs(radius - 18) <= 2;
+                rgb[p] = ring ? (byte)110 : (byte)30;
+                rgb[p + 1] = ring ? (byte)137 : (byte)26;
+                rgb[p + 2] = ring ? (byte)156 : (byte)42;
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 224) <= 6);
+        Assert.IsTrue(Math.Abs(result.Y - 476) <= 6);
+    }
+
+    [TestMethod]
+    public void DetectRgb_EnabledFilledButton_FindsActionArea()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var active = x >= 16 && x < 374 && y >= 786 && y < 829;
+                rgb[p] = active ? (byte)104 : (byte)32;
+                rgb[p + 1] = active ? (byte)68 : (byte)22;
+                rgb[p + 2] = active ? (byte)129 : (byte)43;
+            }
+        }
+
+        var result = FilledActionButtonDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(195f, result.X);
+        Assert.IsTrue(result.Y >= 786 && result.Y < 829);
+        Assert.IsTrue(result.Confidence > 0.8f);
+    }
+
+    [TestMethod]
+    public void DetectRgb_DisabledDarkButton_DoesNotClick()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+        for (var i = 0; i < rgb.Length; i += 3)
+        {
+            rgb[i] = 48;
+            rgb[i + 1] = 34;
+            rgb[i + 2] = 59;
+        }
+
+        Assert.IsNull(FilledActionButtonDetector.DetectRgb(rgb, width, height));
     }
 
     [TestMethod]

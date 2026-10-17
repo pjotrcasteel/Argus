@@ -1,0 +1,48 @@
+name: M1 public WyrmForge visual smoke
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/m1-live-smoke.yml
+      - examples/wyrmforge.profile.json
+      - src/Argus.Agents.Visual/**
+      - src/Argus.Runner/**
+      - tests/Argus.Tests/**
+permissions:
+  contents: read
+jobs:
+  first-live-observation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install free OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Build ARGUS
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+      - name: Install Chromium
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Run bounded visual-agent smoke against public game
+        run: |
+          dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+            --url https://pjotrcasteel.github.io/Wyrmforge/ \
+            --agent visual \
+            --profile examples/wyrmforge.profile.json \
+            --headless --max-steps 28 --timeout-seconds 180 \
+            --output artifacts/m1-live
+      - name: Upload screenshot evidence and JSONL trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m1-live-visual-evidence
+          path: artifacts/m1-live/
+          if-no-files-found: warn
+          retention-days: 2
