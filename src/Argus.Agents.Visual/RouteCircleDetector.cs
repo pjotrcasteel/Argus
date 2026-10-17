@@ -64,7 +64,8 @@ public static class RouteCircleDetector
             var blue = rgb[p + 2];
             var violet = red >= 95 && blue >= 110 && blue * 10 > green * 11 && red * 100 > green * 107;
             var cyan = green >= 88 && blue >= 100 && blue * 10 > red * 12 && green * 10 > red * 12;
-            if (violet || cyan) return true;
+            var gold = red >= 125 && green >= 105 && red - blue >= 35 && green - blue >= 15;
+            if (violet || cyan || gold) return true;
         }
 
         return false;
