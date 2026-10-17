@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Argus.Personas;
 using Argus.Replay;
 
@@ -23,6 +24,7 @@ try
     var path = Path.Combine(folder, "persona-shadow.jsonl");
     await using var output = new FileStream(path, FileMode.Create, FileAccess.Write);
     var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     var proposals = new Dictionary<string, int>(StringComparer.Ordinal);
     foreach (var frame in replay.Frames)
     {
