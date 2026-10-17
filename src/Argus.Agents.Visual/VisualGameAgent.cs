@@ -9,6 +9,8 @@ namespace Argus.Agents.Visual;
 public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfile profile) : IVisualAgent, IAgentEvidenceProvider
 {
     private byte[]? _previousFrame;
+    private VisualBlob? _trackedPlayer;
+    private int _missedPlayerFrames;
     private int _menuClicks;
     private int _emptyScans;
     private int _explorationSteps;
@@ -123,7 +125,17 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 550);
         }
 
-        var combat = profile.CombatTracking is null ? null : CombatPixelPerception.Observe(observation.PngBytes, profile.CombatTracking);
+        var combat = profile.CombatTracking is null ? null : CombatPixelPerception.Observe(observation.PngBytes,
+            profile.CombatTracking, _trackedPlayer);
+        if (combat?.Player is { } currentPlayer)
+        {
+            _trackedPlayer = currentPlayer;
+            _missedPlayerFrames = 0;
+        }
+        else if (++_missedPlayerFrames >= 5)
+        {
+            _trackedPlayer = null;
+        }
         var motion = _previousFrame is null ? (Change: 0f, Quadrants: new float[4]) : VisualMotion.Measure(_previousFrame, observation.PngBytes);
         _previousFrame = observation.PngBytes;
         var avoidance = combat is null ? null : VisualCombatSteering.SelectEvasionDirection(combat,
