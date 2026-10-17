@@ -25,7 +25,7 @@ jobs:
           dotnet build Argus.slnx --configuration Release --no-restore
       - name: Install Chromium
         shell: pwsh
-        run: ./src/Argus.Adapters.Browser/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
       - name: Run bounded visual-agent smoke against public game
         run: |
           dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
