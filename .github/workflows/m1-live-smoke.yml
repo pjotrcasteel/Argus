@@ -47,6 +47,11 @@ jobs:
           dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
             --run artifacts/m1-live --template artifacts/m1-live/labels.template.json
           test -s artifacts/m1-live/labels.template.json
+      - name: Render offline annotation UI from real saved screenshots
+        run: |
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/m1-live --annotate artifacts/m1-live/annotate.html
+          test -s artifacts/m1-live/annotate.html
       - name: Show visual evidence report
         if: always()
         run: |
