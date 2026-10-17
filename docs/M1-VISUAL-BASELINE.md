@@ -14,7 +14,6 @@ ARGUS drives an **unmodified** browser game via Playwright screenshots, ordinary
 
 - It does not learn, infer game state, solve boss mechanics, optimize builds or certify UX.
 - It cannot yet reliably distinguish route maps, inventory, menus and combat without better perception. Its experimental movement can be wrong.
-- There has been no validated human-equivalent playthrough or actual WyrmForge browser run.
 - Gameplay success and game completeness must be measured from visual video/screenshots, never inferred from a button click.
 
 ## Local run
@@ -33,14 +32,20 @@ Start a bounded visual experiment:
 
 Default mode is observation only. Add --headless to suppress the browser window. Stop with Ctrl+C.
 
+## Public, free CI browser check
+
+The separate workflow [M1 public WyrmForge visual smoke](../.github/workflows/m1-live-smoke.yml) installs Tesseract + Playwright Chromium on a standard Ubuntu GitHub runner and opens the public, logged-out game. It saves a short PNG/JSONL artifact for developer visual inspection, with two-day retention and a nine-minute job limit. It runs only when explicitly dispatched, or when the workflow definition itself changes in a pull request. Do not add signed-in games, secrets, private saves, personalized browser state or user-data collection to this workflow.
+
+The smoke verifies transport and screen evidence, not victory. Inspect the artifacts to confirm whether OCR and screen decisions were accurate.
+
 ## Free-first constraints
 
-No paid model or SaaS; screenshots/trace remain in ignored local results. CI only builds/tests pure logic; live browser testing and model training run locally. Future AI modules will consume the same external observation/action contract.
+No paid model or SaaS; screenshots/trace remain in ignored local results, except the explicit public game CI smoke artifacts. CI only runs short build/unit tests or a short opt-in visual run; model training stays local. Future AI modules will consume the same external observation/action contract.
 
 ## Next practical gates
 
-- Verify the screenshot-to-Tesseract OCR alignment in a real WyrmForge session.
-- Add image-first control detection for labels which OCR misses.
+- Verify screenshot-to-Tesseract OCR alignment in the real WyrmForge session and examine saved evidence.
+- Add image-first controls detection for labels which OCR misses.
 - Distinguish static menu, route map and active combat without assuming gameplay.
 - Add credible perception of player/enemy/hazard positions before calling movement intelligent.
 - Test with held-out visual scenarios on portrait/mobile and desktop.
