@@ -381,3 +381,58 @@ jobs:
           assert all(row["enoughReferences"] is False for row in report["runs"])
           assert "confirmed enemy/non-enemy identities" in (root / "appearance-readiness.md").read_text()
           PY
+
+      - name: Verify new 3-run blind development study and mobile preview integrity
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, shutil
+          source = Path("artifacts/ci-shadow/run-local")
+          destination = Path("artifacts/ci-m27")
+          original = [json.loads(line) for line in (source / "trace.jsonl").read_text().splitlines()]
+          for name in ("dev-c", "dev-d", "dev-e"):
+              folder = destination / name
+              folder.mkdir(parents=True, exist_ok=True)
+              for image in source.glob("frame-*.png"):
+                  shutil.copyfile(image, folder / image.name)
+              trace = [dict(row, evidence=dict(row["evidence"], reason="m27 synthetic " + name))
+                       for row in original]
+              (folder / "trace.jsonl").write_text("\n".join(json.dumps(row) for row in trace) + "\n")
+          PY
+          dotnet run --project src/Argus.Study.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-m27 --seed argus-m27-independent-development-frozen-20261017 \
+            --samples 3 --development-only
+          dotnet run --project src/Argus.Study.Quality.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-m27
+          python3 tools/m26b/mobile_review.py --runs artifacts/ci-m27 --output artifacts/ci-m27-mobile
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib
+          root = Path("artifacts/ci-m27")
+          plan = json.loads((root / "study-plan.json").read_text())
+          report = json.loads((root / "study-quality.json").read_text())
+          assert plan["mode"] == "development-only"
+          assert sorted(a["runId"] for a in plan["assignments"]) == ["dev-c","dev-d","dev-e"]
+          assert all(a["partition"] == "development" and len(a["frameSteps"]) == 3 for a in plan["assignments"])
+          assert report["status"] == "NOT_EVALUATED"
+          assert report["partitions"][0]["runs"] == 3
+          assert report["partitions"][1]["runs"] == 0
+          traces = set()
+          for name in ("dev-c","dev-d","dev-e"):
+              traces.add(hashlib.sha256((root / name / "trace.jsonl").read_bytes()).hexdigest())
+              template = json.loads((root / name / "blind-labels.template.json").read_text())
+              assert all(x["player"]["state"] == "unknown" and x["threats"]["state"] == "unknown"
+                         for x in template["frames"])
+              folder = Path("artifacts/ci-m27-mobile/annoteren") / name
+              assert len(list(folder.glob("frame-*.png"))) == 3
+              html = (folder / "index.html").read_text()
+              assert "3 echte screenshots" in html
+              assert "threatLocations" not in html and "playerX" not in html
+              assert "run-01" not in html and "run-02" not in html
+              Path("artifacts/ci-m27-mobile/" + name + ".js").write_text(
+                  html.split("<script>", 1)[1].split("</script>", 1)[0])
+          assert len(traces) == 3
+          PY
+          node --check artifacts/ci-m27-mobile/dev-c.js
+          node --check artifacts/ci-m27-mobile/dev-d.js
+          node --check artifacts/ci-m27-mobile/dev-e.js
