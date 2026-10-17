@@ -251,6 +251,14 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 - **Merged and verified:** [PR #34](https://github.com/pjotrcasteel/Argus/pull/34), merge `6f9b91e25acbe7883dcdbaec61f253b176cf770d`. [.NET CI 39058801576](https://github.com/pjotrcasteel/Argus/actions/runs/39058801576) **132/132 MSTest passed**, including synthetic five-frame screenshot→.NET appearance/shadow CLI causal edge detection; [real external WyrmForge smoke 39058801533](https://github.com/pjotrcasteel/Argus/actions/runs/39058801533) technical PASS with 51 frames, 34 player-located, 2 route clicks, 2 upgrades and 1 visible terminal. Active gameplay unchanged. Real owner-review labels remain private in an owner-downloadable research archive and were **not** submitted to public GitHub CI; official .NET real-label measurements still need local .NET 10. Next: compare official per-run appearance/edge false positives to independently reproduced reports and obtain a **fresh untouched held-out** before any new steering.
 
+## M2.6e — evidence sufficiency gate for learned perception (2026-10-17; PR validation pending)
+
+- After [M2.6d PR #34](https://github.com/pjotrcasteel/Argus/pull/34) landed, 132/132 MSTests + 51-frame real WyrmForge black-box smoke passed. Private M2.6b dev-a / dev-b human labels were recovered and analyzed without touching the original M2.4 run-01 held-out.
+- The two development runs have **30 matched / 16 unmatched candidate centers** in dev-a and **43 matched / only 2 unmatched** in dev-b when using the raw expanded shadow pixel detector on annotated screenshots; 6 and 14 genuine manually marked threat centers remain unmatched respectively. These are local independent **Python** reproductions, not official private-data .NET CLI measurements.
+- A preliminary **development-only leave-one-run-out** Python logistic probe (fixed threshold 0.5, no model deployment) trained on dev-a and tested on dev-b scored 42/1/15 versus unfiltered shadow 43/2/14 TP/FP/FN; F1 did not improve. The reverse direction trained on just two negative examples and is *not* trustworthy. Do not overstate candidate-level accuracy, classification training, or game competence.
+- New `AppearanceReadiness` reports **NOT_READY** unless there are >=3 independent development run identities and each has >=5 scored frames, >=10 matched centers and >=10 unmatched candidates. A positive result means offline exploration only, **never** acceptance for steering. The enhanced `Argus.Study.Quality.Tool --runs <private-study> --appearance-readiness` reads **development** audits only, verifies the frozen human study and produces local `appearance-readiness.json/md`.
+- Four deterministic MSTests + a full artificial two-run CLI gate in free GitHub CI; [M2.6e research protocol](M2-6-APPEARANCE-READINESS.md). **Pending actual CI/smoke; do not merge before gates are green.** Private original data stays off GitHub, and no active gameplay logic changes. Next: collect **one or more additional independent development runs** with manual review of ambiguous scenery, then train/test with run-level separation and acquire fresh untouched held-out data.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -271,7 +279,7 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**M2.6d: validate all 15 comparable human-reviewed combatframes in the corrected .NET appearance scorer, analyze true matches and false-positive visual descriptors per development run, then evaluate a locked future model on a fresh untouched held-out cohort before any steering changes**, without pretending to be a human reviewer or using detector outputs as labels.
+**M2.6e: complete and verify independent-run/negative-class readiness gate, then collect at least one more manually reviewed development run with realistic false-positive cases before training or changing active steering**, without pretending to be a human reviewer or using detector outputs as labels.
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -311,6 +319,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.6e in review:** deterministic candidate class-balance and independent-run readiness gate. Real human dev-a 30 matched/16 unmatched; dev-b 43 matched/2 unmatched. Insufficient negatives in B, only two independent development runs. Expect NOT_READY; cross-run Python logistic probe has no reliable quality improvement. No steering change; official .NET on private labels remains pending.
 
 - **2026-10-17 — M2.6d merged:** [PR #34](https://github.com/pjotrcasteel/Argus/pull/34) `6f9b91e`, [CI 39058801576](https://github.com/pjotrcasteel/Argus/actions/runs/39058801576) 132/132 tests including official .NET CLI on synthetic five-PNG edge tracking; [live WyrmForge 39058801533](https://github.com/pjotrcasteel/Argus/actions/runs/39058801533) PASS 51 frames, 34 player-located, 2 route clicks, 2 upgrades, visible terminal. Owner-human dev-a/B labels PRIVATE, old run-01 held-out untouched. Python mirror 58/15/35 baseline, 73/18/20 raw shadow; official .NET on private real reference still pending local runtime, not claimed. No game steering changes.
 

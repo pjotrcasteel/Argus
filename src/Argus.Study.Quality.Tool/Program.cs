@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Argus.Evaluation;
 
-if (args.Length != 2 || args[0] != "--runs")
+if (args.Length is not (2 or 3) || args[0] != "--runs" ||
+    args.Length == 3 && args[2] != "--appearance-readiness")
 {
     Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Study.Quality.Tool -- --runs results/experiments");
+    Console.Error.WriteLine("Optional: --appearance-readiness after --runs requires per-development-run appearance-audit.json and real human labels.");
     Console.Error.WriteLine("First generate study-plan.json and blind-annotate.html with Argus.Study.Tool.");
     return 2;
 }
@@ -24,6 +26,31 @@ try
             $"human reviewed player {run.HumanReviewedPlayerFrames}/{run.SelectedFrames}, " +
             $"threats {run.HumanReviewedThreatFrames}/{run.SelectedFrames}.");
     Console.WriteLine($"Research files: {jsonPath} and {markdownPath}.");
+    if (args.Length == 3)
+    {
+        var development = new List<AppearanceAuditReport>();
+        foreach (var run in quality.Runs.Where(r => r.Partition == "development"))
+        {
+            if (run.Perception is null)
+                throw new InvalidDataException("Appearance readiness needs genuine human review for " + run.RunId);
+            var file = Path.Combine(root, run.RunId, "appearance-audit.json");
+            var audit = JsonSerializer.Deserialize<AppearanceAuditReport>(await File.ReadAllTextAsync(file), options)
+                ?? throw new InvalidDataException("Invalid appearance audit: " + run.RunId);
+            if (audit.RunId != run.RunId || audit.LabeledFrames != run.SelectedFrames)
+                throw new InvalidDataException("Appearance audit is inconsistent with study plan: " + run.RunId);
+            development.Add(audit);
+        }
+
+        var readiness = AppearanceReadiness.Assess(development);
+        await File.WriteAllTextAsync(Path.Combine(root, "appearance-readiness.json"),
+            JsonSerializer.Serialize(readiness, options));
+        await File.WriteAllTextAsync(Path.Combine(root, "appearance-readiness.md"),
+            AppearanceReadiness.RenderMarkdown(readiness));
+        Console.WriteLine($"Appearance data readiness: {readiness.Status}; " +
+            $"{readiness.DevelopmentRuns} independent development run identities, " +
+            $"{readiness.UnmatchedCandidateCenters} unmatched candidate examples. " +
+            "Never infer classifier accuracy from this gate.");
+    }
     return 0;
 }
 catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException or JsonException

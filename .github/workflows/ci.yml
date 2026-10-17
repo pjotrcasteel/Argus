@@ -339,3 +339,45 @@ jobs:
           assert shadow["baseline"]["falseNegative"] == 0
           assert "Causal player tracking" in (root / "appearance-audit.md").read_text()
           PY
+
+      - name: Verify offline classifier readiness gate on synthetic development-only reviews
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("artifacts/ci-dev")
+          plan = json.loads((root / "study-plan.json").read_text())
+          assert plan["mode"] == "development-only"
+          for assignment in plan["assignments"]:
+              assert assignment["partition"] == "development"
+              folder = root / assignment["runId"]
+              point = lambda x, y: {"x": x, "y": y}
+              labels = {
+                  "schemaVersion": 1, "runId": assignment["runId"],
+                  "frames": [{
+                      "step": index,
+                      "player": {"state": "visible", "center": point(189, 420)},
+                      "threats": {"state": "known", "centers": [point(130, 413)]}
+                  } for index in assignment["frameSteps"]]
+              }
+              (folder / "labels.json").write_text(json.dumps(labels))
+          PY
+          for run in dev-a dev-b; do
+            dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+              --run "artifacts/ci-dev/$run" --appearance-audit examples/wyrmforge.profile.json
+          done
+          dotnet run --project src/Argus.Study.Quality.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-dev --appearance-readiness
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("artifacts/ci-dev")
+          report = json.loads((root / "appearance-readiness.json").read_text())
+          assert report["status"] == "NOT_READY", report
+          assert report["developmentRuns"] == 2
+          assert len(report["runs"]) == 2
+          assert any("distinct development runs" in blocker for blocker in report["blockers"])
+          assert all(row["scoredFrames"] == 3 for row in report["runs"])
+          assert all(row["enoughReferences"] is False for row in report["runs"])
+          assert "confirmed enemy/non-enemy identities" in (root / "appearance-readiness.md").read_text()
+          PY
