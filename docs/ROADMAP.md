@@ -18,9 +18,11 @@
 - [x] M1.7 human-label schema, original threat pixel evidence and offline scorer (instrumentation, not yet verified ground truth).
 - [x] M1.8 independent offline clickable annotation UI with local JSON export, tests and real screenshot generation.
 - [x] M1.8.1 local saved-label import, visual threat prediction overlays and real Chromium click/export/import verification.
-- [ ] M1.9 actual human-reviewed screenshots and held-out precision/recall with false positives and unknowns.
+- [x] M1.9 blind local annotation protocol, whole-run held-out split and reproducible temporal sampling.
+- [ ] M1.9 real human-reviewed screenshots and independent held-out precision/recall with false positives and unknowns.
 
 ## M2 — Human Minds
+- [ ] M2.0 game-neutral personality vectors with seeded shadow-only decision comparison, never hidden game state.
 - [ ] Personality vectors (risk, skill, attention, patience, exploration).
 - [ ] Short-term and persistent local memory.
 - [ ] Full runs and decisions without hidden game state.
