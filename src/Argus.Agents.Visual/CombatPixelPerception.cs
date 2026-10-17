@@ -14,6 +14,15 @@ public sealed record CombatVisualObservation(VisualBlob? Player, IReadOnlyList<V
 }
 
 /// <summary>
+/// Shadow-only candidates are never supplied to active steering. Compare them with the original
+/// baseline from the same screenshot before deciding whether the extended region is trustworthy.
+/// </summary>
+public sealed record ShadowThreatObservation(CombatVisualObservation Baseline, IReadOnlyList<VisualBlob> AddedCandidates)
+{
+    public IReadOnlyList<VisualBlob> CombinedCandidates => [.. Baseline.ThreatCandidates, .. AddedCandidates];
+}
+
+/// <summary>
 /// Experimental color segmentation, restricted to the middle of the visible viewport.
 /// Decorative objects may match threat palettes: they are candidates, not known enemies.
 /// </summary>
@@ -69,11 +78,51 @@ public static class CombatPixelPerception
         return new CombatVisualObservation(player, unique);
     }
 
-    private static IEnumerable<VisualBlob> Locate(byte[] rgb, int width, int height, VisualColorRule rule, int minimumPixels,
-        bool includeEdges = false)
+    /// <summary>
+    /// Independent offline probe. It does not change Observe/ObserveRgb or the active game agent.
+    /// Supplemental candidates must be centered outside the original 19%-82%/1-29/30 viewport.
+    /// A fixed 11%-93% scan still excludes top HUD and extreme footer by design.
+    /// </summary>
+    public static ShadowThreatObservation ObserveShadow(byte[] pngBytes, CombatVisualSettings settings,
+        VisualBlob? previousPlayer = null)
     {
-        var worldTop = height * 19 / 100;
-        var worldBottom = height * 82 / 100;
+        var image = ImageResult.FromMemory(pngBytes, ColorComponents.RedGreenBlue);
+        return ObserveShadowRgb(image.Data, image.Width, image.Height, settings, previousPlayer);
+    }
+
+    public static ShadowThreatObservation ObserveShadowRgb(byte[] rgb, int width, int height, CombatVisualSettings settings,
+        VisualBlob? previousPlayer = null)
+    {
+        var baseline = ObserveRgb(rgb, width, height, settings, previousPlayer);
+        if (baseline.Player is null) return new ShadowThreatObservation(baseline, []);
+
+        var extended = settings.ThreatPalettes
+            .SelectMany(rule => Locate(rgb, width, height, rule, settings.MinimumThreatPixels, includeEdges: true,
+                worldTopPercent: 11, worldBottomPercent: 93))
+            .Where(candidate => OutsideOriginalScan(candidate, width, height))
+            .Where(candidate => Distance(candidate, baseline.Player) > 14)
+            .Where(candidate => baseline.ThreatCandidates.All(existing => Distance(existing, candidate) >= 18))
+            .OrderByDescending(candidate => candidate.MatchingPixels);
+
+        var added = new List<VisualBlob>();
+        foreach (var candidate in extended)
+        {
+            if (added.All(existing => Distance(existing, candidate) >= 18))
+                added.Add(candidate with { Confidence = MathF.Min(0.50f, candidate.Confidence) });
+        }
+
+        return new ShadowThreatObservation(baseline, added);
+    }
+
+    private static bool OutsideOriginalScan(VisualBlob blob, int width, int height) =>
+        blob.X < width / 30f || blob.X >= width * 29 / 30f ||
+        blob.Y < height * 19 / 100f || blob.Y >= height * 82 / 100f;
+
+    private static IEnumerable<VisualBlob> Locate(byte[] rgb, int width, int height, VisualColorRule rule, int minimumPixels,
+        bool includeEdges = false, int worldTopPercent = 19, int worldBottomPercent = 82)
+    {
+        var worldTop = height * worldTopPercent / 100;
+        var worldBottom = height * worldBottomPercent / 100;
         var firstX = includeEdges ? 0 : width / 30;
         var lastX = includeEdges ? width : width * 29 / 30;
         var mask = new bool[width * height];
