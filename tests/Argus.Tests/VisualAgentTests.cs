@@ -139,6 +139,49 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void DetectRgb_EnabledFilledButton_FindsActionArea()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var active = x >= 16 && x < 374 && y >= 786 && y < 829;
+                rgb[p] = active ? (byte)104 : (byte)32;
+                rgb[p + 1] = active ? (byte)68 : (byte)22;
+                rgb[p + 2] = active ? (byte)129 : (byte)43;
+            }
+        }
+
+        var result = FilledActionButtonDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(195f, result.X);
+        Assert.IsTrue(result.Y >= 786 && result.Y < 829);
+        Assert.IsTrue(result.Confidence > 0.8f);
+    }
+
+    [TestMethod]
+    public void DetectRgb_DisabledDarkButton_DoesNotClick()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+        for (var i = 0; i < rgb.Length; i += 3)
+        {
+            rgb[i] = 48;
+            rgb[i + 1] = 34;
+            rgb[i + 2] = 59;
+        }
+
+        Assert.IsNull(FilledActionButtonDetector.DetectRgb(rgb, width, height));
+    }
+
+    [TestMethod]
     public void ChooseDirection_IdenticalActivity_RotatesEveryFourActions()
     {
         var empty = new float[4];
