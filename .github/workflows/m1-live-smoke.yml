@@ -11,6 +11,7 @@ on:
       - tests/Argus.Annotation.UiSmoke/**
       - src/Argus.Replay/**
       - src/Argus.Evaluation/**
+      - src/Argus.Study.Tool/**
 permissions:
   contents: read
 jobs:
@@ -68,6 +69,20 @@ jobs:
       - name: Verify annotation clicks and downloaded JSON in Chromium
         run: |
           dotnet run --project tests/Argus.Annotation.UiSmoke --configuration Release --no-build -- artifacts/m1-live
+      - name: Generate blinded review page from a real public WyrmForge screenshot trace
+        run: |
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/m1-live --blind-annotate artifacts/m1-live/blind-annotate.html
+          test -s artifacts/m1-live/blind-annotate.html
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path("artifacts/m1-live/blind-annotate.html").read_text()
+          assert "BLIND REVIEW" in html
+          assert html.count("<script>") == 1
+          assert html.count("</script>") == 1
+          Path("artifacts/m1-live/blind-script.js").write_text(html.split("<script>",1)[1].split("</script>",1)[0])
+          PY
+          node --check artifacts/m1-live/blind-script.js
       - name: Show visual evidence report
         if: always()
         run: |
