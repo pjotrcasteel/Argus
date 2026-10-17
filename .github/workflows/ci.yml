@@ -60,3 +60,22 @@ jobs:
               assert labels["frames"][0]["player"]["state"] == "unknown"
               assert labels["frames"][0]["threats"]["state"] == "unknown"
           PY
+      - name: Verify persona cohort CLI and attribution on two offline fixture runs
+        run: |
+          dotnet run --project src/Argus.Persona.Cohort.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-study --movement-keys w,a,s,d --seed 42
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/ci-study")
+          report = json.loads((root / "persona-cohort.json").read_text())
+          markdown = (root / "persona-cohort.md").read_text()
+          assert report["runCount"] == 2
+          assert report["matchedContext"] is False
+          assert [r["runId"] for r in report["runs"]] == ["independent-a", "independent-b"]
+          assert len(report["pairs"]) == 3
+          assert len(report["traits"]) == 5
+          assert all(p["directionDifferences"]["totalRuns"] == 2 for p in report["pairs"])
+          assert "DESCRIPTIVE, SHADOW ONLY" in markdown
+          assert "riskAppetite" in markdown
+          PY
