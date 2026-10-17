@@ -36,7 +36,7 @@ jobs:
             --url https://pjotrcasteel.github.io/Wyrmforge/ \
             --agent visual \
             --profile examples/wyrmforge.profile.json \
-            --headless --max-steps 16 --timeout-seconds 150 \
+            --headless --max-steps 28 --timeout-seconds 180 \
             --output artifacts/m1-live
       - name: Upload screenshot evidence and JSONL trace
         if: always()
