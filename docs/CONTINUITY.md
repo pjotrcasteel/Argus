@@ -25,7 +25,7 @@ Create a **game-independent, standalone, free-by-default autonomous visual playt
 3. [Roadmap](ROADMAP.md), [architecture](ARCHITECTURE.md), [game adapters](GAME_ADAPTERS.md), [cost guardrails](COSTS.md), [M1.4 motion evidence](M1-4-SCENE-MOTION.md), [Live Spectator design](LIVE-SPECTATOR-DESIGN.md).
 4. CI screenshot/trace artifacts from live WyrmForge runs **expire quickly** (two-day retention). If unavailable, re-run the existing bounded live workflow or run locally; do not invent a past screenshot.
 
-## Current implementation (as of main after PR #15)
+## Current implementation (as of main after PR #18)
 
 - `Argus.Core`: screenshots, actions, agent/profile interfaces, game-neutral evidence and session summary.
 - `Argus.Adapters.Browser`: black-box Playwright screenshots and ordinary keyboard/mouse; local Tesseract OCR with bounded per-frame timeout.
@@ -117,11 +117,19 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 - **Do not merge or overwrite PR #15 code blindly; avoid a second overlapping annotation implementation.** Prefer a fresh, narrow PR cherry-picking/reimplementing only non-duplicative, tested benefits if the owner still wants them. Preserve other contributors' work.
 - PR #16's UI smoke may supply the missing genuine browser-interaction verification. But its tests are not yet validated against current `main`, so do not claim that verification has already passed.
 
+## Latest M1.8.1 browser UI validation (2026-10-17)
+
+- [PR #18](https://github.com/pjotrcasteel/Argus/pull/18) merged onto `main` at `ad275710a4da8dd6721415d90797c9acb5406a19`, following the independently merged annotation baseline PR #15. Earlier duplicate PR #16 was closed without merge; no separate competing annotation system remains.
+- [.NET CI 39026791218](https://github.com/pjotrcasteel/Argus/actions/runs/39026791218) passed **61/61 tests** and the full .NET solution build.
+- [Real WyrmForge + Chromium UI 39026791236](https://github.com/pjotrcasteel/Argus/actions/runs/39026791236) passed. The agent's visual-combat smoke passed (40 inferred player frames, 2 route clicks). The separate headless browser loaded the generated real-game `annotate.html`, clicked manual player/threat points, downloaded `labels.json`, validated its schema and successfully **re-imported** it. These test labels were discarded, not counted as ground truth. [Short-lived screenshots + viewer artifact](https://github.com/pjotrcasteel/Argus/actions/runs/39026791236/artifacts/12098479280).
+- New recorded threat coordinates can be drawn as **unverified predictions** in offline replay/annotation, visually distinct from manually confirmed positions. Legacy traces where `threatLocations` is `null` remain supported; unknown evidence is not silently converted to empty.
+- **Not yet proven:** human ease-of-use, precision/recall against independently reviewed screens, machine learning, real-time spectator. Future work must acquire actual held-out labels.
+
 ## Single recommended next slice
 
-**M1.9: genuine held-out visual ground-truth study**. The measurement and labeling tools are now built; do not add further combat heuristics before collecting trustworthy reference labels.
+**M1.9: genuine held-out visual ground-truth study**. The measurement and labeling tools are now built and mechanically browser-verified; do not add further combat heuristics before collecting trustworthy reference labels.
 
-1. Download/extract the newest short-lived WyrmForge Actions evidence, open `annotate.html` on a desktop browser, and **test that clicking, navigation and local JSON export actually work**. Leave incorrect UI interactions as bugs to be fixed in a focused PR.
+1. The automated Chromium UI smoke now verifies image click → visible player/threat labels → JSON export → schema validation → import restore. **Next have a real human review the ergonomics** and independently inspect images instead of trusting synthetic-click tests.
 2. Independently label a small, diverse sample of real screenshots (different procedural seeds, combat intensity, colors, effects, viewport sizes). Keep run folders and labels Git-ignored; do not upload private game sessions.
 3. Use `Argus.Evaluation.Tool --labels` on those real labels. Calculate TP/FP/FN, and precision/recall with denominators and unknown coverage for player and candidate threats. Keep calibration and held-out evaluation frames/runs strictly separated. If no actual labels exist, report **no real accuracy**.
 4. Investigate the observed instability of camera-shift estimates (historical 8 frames, then 0, latest 7). Do not infer motion=false from unknown estimation, and do not feed relative enemy velocity into the action policy until measured.
@@ -160,5 +168,4 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 - **2026-10-17 — M1.6 completed:** [PR #13](https://github.com/pjotrcasteel/Argus/pull/13) merged: safe offline replay generator, 48/48 tests and real `replay.html` from run 39024084743.
 - **2026-10-17 — M1.7 instrumented:** [PR #14](https://github.com/pjotrcasteel/Argus/pull/14) merged: human-label schema, scored pixel metrics and actual threat locations in traces; 54/54 tests and a real all-unknown template.
 - **2026-10-17 — M1.8 implemented:** [PR #15](https://github.com/pjotrcasteel/Argus/pull/15) merged: offline clickable annotation studio with per-frame labels and local JSON export, 58/58 tests, real WyrmForge HTML generation + JavaScript syntax check. **Not yet tested interactively by a human**; no manually verified reference dataset or WyrmForge precision/recall. **Next:** M1.9 small independent held-out annotation study; local Live Spectator [issue #11](https://github.com/pjotrcasteel/Argus/issues/11) remains future.
-
-- **2026-10-17 — M1.7 instrumented:** [PR #14](https://github.com/pjotrcasteel/Argus/pull/14) merged, 54/54 tests and public game smoke passed; 16 sample frames generated **all unknown**, no measured human-labeled accuracy. Next M1.8 offline point-and-click annotation UI.
+- **2026-10-17 — M1.8.1 browser-verified:** [PR #18](https://github.com/pjotrcasteel/Argus/pull/18) merged after 61/61 tests and real Chromium screenshot click/export/import success in run 39026791236. Still **no human-reviewed held-out detection accuracy**. Next M1.9 label real frames and score uncertainty.
