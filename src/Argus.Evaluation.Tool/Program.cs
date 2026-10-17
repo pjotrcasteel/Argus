@@ -3,13 +3,14 @@ using Argus.Core;
 using Argus.Evaluation;
 using Argus.Replay;
 
-if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate" or "--shadow-edges"))
+if (args.Length != 4 || args[0] != "--run" || args[2] is not ("--template" or "--labels" or "--annotate" or "--blind-annotate" or "--shadow-edges" or "--appearance-audit"))
 {
     Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --template results/my-run/labels.template.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --annotate results/my-run/annotate.html");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --labels results/my-run/labels.json");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --blind-annotate results/my-run/blind-annotate.html");
     Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --shadow-edges examples/wyrmforge.profile.json");
+    Console.Error.WriteLine("   or: dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --appearance-audit examples/wyrmforge.profile.json");
     return 2;
 }
 
@@ -43,6 +44,25 @@ try
         Console.WriteLine(blind
             ? "Blind mode: agent predictions/explanations are removed. Label only visible screenshot evidence."
             : "Open the HTML locally, mark visible objects, download labels.json, then evaluate it offline.");
+    }
+    else if (args[2] == "--appearance-audit")
+    {
+        var labels = await GroundTruth.ReadAsync(Path.Combine(run, "labels.json"), run, replay);
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
+        var profile = JsonSerializer.Deserialize<VisualGameProfile>(await File.ReadAllTextAsync(args[3]), json)
+            ?? throw new InvalidDataException("Invalid visual game profile.");
+        profile.Validate();
+        if (profile.CombatTracking is null)
+            throw new InvalidDataException("Appearance analysis requires combat tracking settings.");
+
+        var audit = await AppearanceAudit.AnalyzeAsync(run, labels, replay, profile.CombatTracking);
+        var output = Path.Combine(run, "appearance-audit.json");
+        await File.WriteAllTextAsync(output, JsonSerializer.Serialize(audit, options));
+        await File.WriteAllTextAsync(Path.Combine(run, "appearance-audit.md"), AppearanceAudit.RenderMarkdown(audit));
+        Console.WriteLine($"Appearance audit: {audit.ScoredFrames}/{audit.LabeledFrames} comparable reviewed frames, " +
+            $"{audit.Candidates.Count(c => c.MatchedHuman)} matched candidates and " +
+            $"{audit.Candidates.Count(c => !c.MatchedHuman)} unmatched candidates.");
+        Console.WriteLine($"Saved local feature audit: {output}");
     }
     else if (args[2] == "--shadow-edges")
     {
