@@ -52,9 +52,9 @@ public static class CohortReader
         foreach (var field in required)
             values[field] = Nonnegative(json, field, id, required: true);
 
-        var camera = Nonnegative(json, "cameraEstimatedFrames", id, required: false);
-        var moving = Nonnegative(json, "framesWithMovingCandidates", id, required: false);
-        var stationary = Nonnegative(json, "framesWithStationaryCandidates", id, required: false);
+        var camera = Nonnegative(json, "cameraEstimatedFrames", id, required: true);
+        var moving = Nonnegative(json, "framesWithMovingCandidates", id, required: true);
+        var stationary = Nonnegative(json, "framesWithStationaryCandidates", id, required: true);
         if (!json.TryGetProperty("meetsVisualCombatGate", out var gate) ||
             gate.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
             throw new InvalidDataException($"Run '{id}' is missing a valid visual-gate bool.");
