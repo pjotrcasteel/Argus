@@ -178,7 +178,8 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
                 BackgroundShiftConfidence = relativeMotion?.Background?.Confidence,
                 MotionMatchedCandidates = relativeMotion?.Matched ?? 0,
                 MotionMovingCandidates = relativeMotion?.Moving ?? 0,
-                MotionStationaryCandidates = relativeMotion?.Stationary ?? 0
+                MotionStationaryCandidates = relativeMotion?.Stationary ?? 0,
+                ThreatLocations = combat!.ThreatCandidates.Select(t => new VisualCandidatePoint(t.X, t.Y)).ToArray()
             }
             : null;
         var reason = screen is null ? "No confidently located player; " + source : $"Visual player ({screen.PlayerX:0},{screen.PlayerY:0}); {source}";
