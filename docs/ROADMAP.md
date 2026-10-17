@@ -13,6 +13,8 @@
 - [x] Visual mage tracking and candidate avoidance baseline, with confidence/evidence traces.
 - [ ] M1.4 validate camera-relative candidate motion on multiple game runs and held-out screenshots.
 - [ ] Separate true gameplay progression from mere screen-action success before balancing.
+- [x] M1.5 offline multi-run reports with validated technical evidence, confidence intervals and explicit unmatched-cohort warnings.
+- [ ] M1.6 read-only local replay for screenshot/trace evidence (precursor to Live Spectator Mode).
 
 ## M2 — Human Minds
 - [ ] Personality vectors (risk, skill, attention, patience, exploration).
