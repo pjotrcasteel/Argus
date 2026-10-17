@@ -8,6 +8,10 @@ on:
       - src/Argus.Agents.Visual/**
       - src/Argus.Runner/**
       - tests/Argus.Tests/**
+      - tests/Argus.Annotation.UiSmoke/**
+      - src/Argus.Evaluation/**
+      - src/Argus.Evaluation.Tool/**
+      - src/Argus.Replay/**
 permissions:
   contents: read
 jobs:
@@ -63,6 +67,9 @@ jobs:
           Path("artifacts/m1-live/annotate-script.js").write_text(javascript)
           PY
           node --check artifacts/m1-live/annotate-script.js
+      - name: Interact with annotator in real headless Chromium (no labels retained)
+        run: |
+          dotnet run --project tests/Argus.Annotation.UiSmoke --configuration Release --no-build -- artifacts/m1-live
       - name: Show visual evidence report
         if: always()
         run: |
