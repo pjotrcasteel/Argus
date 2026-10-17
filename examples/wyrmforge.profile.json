@@ -19,7 +19,7 @@
     "Start",
     "Play"
   ],
-  "routeCues": ["Choose your trail", "Choose a connected trail"],
+  "routeCues": ["Wyrm signs", "Choose your tra", "Choose a connected trail"],
   "gameplayCues": ["HP", "Health", "Level", "Wave", "XP", "Hunter"],
   "movementKeys": ["w", "a", "s", "d"],
   "minimumTextConfidence": 45,
