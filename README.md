@@ -60,6 +60,17 @@ dotnet run --project src/Argus.Replay.Tool -- --run results/your-run
 
 Open `results/your-run/replay.html` in your local browser to replay screenshot decisions with a timeline. This is **not live streaming**; see [M1.6 local replay](docs/M1-6-LOCAL-REPLAY.md).
 
+## Evaluate visual detections against your own screen annotations
+
+Generate an annotation template from a recorded run, fill it from the visible screenshots, then score actual recorded decisions. **No game-state access or paid AI is required.**
+
+```bash
+dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --template results/my-run/labels.template.json
+dotnet run --project src/Argus.Evaluation.Tool -- --run results/my-run --labels results/my-run/labels.json
+```
+
+See [M1.7: perception ground truth](docs/M1-7-PERCEPTION-EVALUATION.md). The template is **not automatically labeled**.
+
 ## Architecture and research
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
@@ -67,6 +78,7 @@ Open `results/your-run/replay.html` in your local browser to replay screenshot d
 - [Scene-relative movement evidence](docs/M1-4-SCENE-MOTION.md)
 - [Offline multi-run cohort reports](docs/M1-5-COHORT-REPORTS.md)
 - [Local session replay (M1.6)](docs/M1-6-LOCAL-REPLAY.md)
+- [Human-labeled perception quality (M1.7)](docs/M1-7-PERCEPTION-EVALUATION.md)
 - [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
