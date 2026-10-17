@@ -7,7 +7,7 @@ using Argus.Core;
 var options = CommandOptions.Parse(args);
 if (options is null)
 {
-    Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Runner -- --url https://example.org [--agent observe|script|visual] [--profile examples/wyrmforge.profile.json] [--script examples/actions.example.json] [--headless] [--max-steps 80] [--timeout-seconds 180] [--output results/demo]");
+    Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Runner -- --url https://example.org [--agent observe|script|visual] [--profile examples/wyrmforge.profile.json] [--script examples/actions.example.json] [--headless] [--require-combat-vision] [--max-steps 80] [--timeout-seconds 180] [--output results/demo]");
     return 2;
 }
 
@@ -31,6 +31,7 @@ try
     await using IVisualGameEnvironment environment = new PlaywrightGameEnvironment(options.Headless, options.Width, options.Height);
     await environment.OpenAsync(new Uri(options.Url), cts.Token);
     await using var trace = new FileStream(Path.Combine(options.Output, "trace.jsonl"), FileMode.Create, FileAccess.Write);
+    var evidenceCollector = new RunEvidenceCollector();
 
     for (var step = 0; step <= options.MaxSteps; step++)
     {
@@ -40,6 +41,7 @@ try
         await File.WriteAllBytesAsync(Path.Combine(options.Output, filename), frame.PngBytes, cts.Token);
         var action = step == options.MaxSteps ? null : await agent.DecideAsync(frame, cts.Token);
         var evidence = (agent as IAgentEvidenceProvider)?.LastEvidence;
+        evidenceCollector.Record(action, evidence);
 
         await JsonSerializer.SerializeAsync(trace, new
         {
@@ -52,7 +54,17 @@ try
         await environment.ExecuteAsync(action, cts.Token);
     }
 
-    Console.WriteLine("Saved local screenshots and explainable JSONL trace: " + Path.GetFullPath(options.Output));
+    var summary = evidenceCollector.Snapshot();
+    await File.WriteAllTextAsync(Path.Combine(options.Output, "summary.json"),
+        JsonSerializer.Serialize(summary, jsonOptions), cts.Token);
+    Console.WriteLine("Saved local screenshots, trace and evidence summary: " + Path.GetFullPath(options.Output));
+    Console.WriteLine($"Evidence gate: {(summary.MeetsVisualCombatGate ? "PASS" : "NOT MET")} — " +
+        $"{summary.PlayerLocatedFrames} visual player frames, {summary.RouteClicks} route clicks, {summary.TerminalStops} terminal stops.");
+    if (options.RequireCombatVision && !summary.MeetsVisualCombatGate)
+    {
+        Console.Error.WriteLine("ARGUS M1 visual-combat evidence gate not met: see summary.json and screenshots.");
+        return 1;
+    }
     return 0;
 }
 catch (OperationCanceledException)
@@ -76,16 +88,18 @@ static IVisualAgent CreateVisualAgent(CommandOptions options, JsonSerializerOpti
 }
 
 internal sealed record CommandOptions(string Url, string Agent, string? Script, string? Profile, string Output, bool Headless, int Width,
-    int Height, int MaxSteps, int TimeoutSeconds)
+    int Height, int MaxSteps, int TimeoutSeconds, bool RequireCombatVision)
 {
     public static CommandOptions? Parse(string[] args)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var headless = false;
+        var requireCombatVision = false;
 
         for (var i = 0; i < args.Length; i++)
         {
             if (args[i] == "--headless") { headless = true; continue; }
+            if (args[i] == "--require-combat-vision") { requireCombatVision = true; continue; }
             if (i + 1 >= args.Length || !args[i].StartsWith("--", StringComparison.Ordinal)) return null;
             values[args[i]] = args[++i];
         }
@@ -106,7 +120,7 @@ internal sealed record CommandOptions(string Url, string Agent, string? Script, 
             !ParseInt(values, "--timeout-seconds", 180, 5, 1800, out var seconds)) return null;
 
         return new CommandOptions(url, mode, script, profile, values.GetValueOrDefault("--output", "results/first-observation"),
-            headless, width, height, steps, seconds);
+            headless, width, height, steps, seconds, requireCombatVision);
     }
 
     private static bool ParseInt(Dictionary<string, string> values, string key, int defaultValue, int minimum, int maximum, out int number)
