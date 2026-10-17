@@ -203,6 +203,13 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 - **Independent private real-development crosscheck** (Python/Numba RGB + temporal association reimplementation, **not the official .NET CLI**, six comparable human-reviewed run-02 frames): baseline **26 TP / 4 FP / 11 FN** (precision 86.7%, recall 70.3%); raw expanded **30 / 13 / 7** (69.8%, 81.1%); causal temporal **27 / 5 / 10** (84.4%, 73.0%). The filter discards 8 of 9 raw-shadow extra false positives but also loses 3 of 4 recovered hits. Frame 11 had no identified player, 26 was noncombat, 42 was an untrusted old final frame. These adjacent samples are not independent trials. **Do not activate the temporal proposals for steering yet.**
 - **Next:** official .NET evaluation on the privately retained run-02 screenshot/label directory if a .NET 10 environment is available, then independent new development runs to study false positives and stationary/fast threats. The run-01 held-out reference remains untouched.
 
+## M2.5e — stationary-candidate audit in progress (2026-10-17)
+
+- Following M2.5d [PR #29](https://github.com/pjotrcasteel/Argus/pull/29), the official .NET shadow CLI now has an additional **research-only stationary proposal** score column, comparing the exact same labeled screenshots with baseline/raw/moving-temporal alternatives.
+- `ShadowTemporalCandidateTracker` preserves the existing moving-only `Confirmed` behavior, and independently exposes `PersistentStationaryCandidates` after three consecutive valid frames, cumulative movement under 3 px, similar visual width/height, and matching RGB-mask pixel counts. Reset rules remain in place. This is *not* a true-enemy classification: visually identical scenery also qualifies.
+- Local [experimental protocol](M2-5-STATIONARY-CANDIDATE-AUDIT.md); full CI includes a three-frame synthetic end-to-end CLI check scored twice with different *synthetic* human references, verifying both stationary enemy recall recovery **and** the possibility of new false positives. No private images/labels enter GitHub.
+- No active game agent, default detection, steering, or held-out reference was changed. Real-human `run-02` fourth-column metrics and independent development replication are pending; do not claim an accuracy gain before official private CLI evaluation.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -223,7 +230,7 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**M2.5e: measure human-reviewed false positives, stationary enemies and rapid movement across independent development sessions before considering any active policy integration**, without pretending to be a human reviewer or using detector outputs as labels.
+**M2.5e: use isolated stationary-candidate audits to understand recall versus false-positive costs; require new independent development annotations before any policy change**, without pretending to be a human reviewer or using detector outputs as labels.
 
 1. Provide the owner a convenient copy of the M2.4 actual research artifact with `run-02/blind-annotate.html` (**development**) and `run-01/blind-annotate.html` (**held-out**). The user/reviewer can mark visible player center, threats, known empty, or unknown. If unsure, use **unknown**. Export `labels.json` into each corresponding run directory.
 2. Prefer reviewing the **development** images first. Collect `run-01` held-out reference independently and avoid repeatedly tuning thresholds to it; after using a held-out sample for iterative decisions, collect a new untouched holdout.
@@ -263,6 +270,8 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 6. Before answering the user, check that this file is actually on GitHub **main** and direct the user to its permalink.
 
 ### Status log
+
+- **2026-10-17 — M2.5e implementation pending CI:** fourth research-only stationary-candidate column, geometric/pixel-count appearance consistency, deterministic and synthetic end-to-end checks. No game actions changed and no actual human-label gain asserted. Next: green .NET 10 CI and bounded public-game smoke; merge only after both succeed.
 
 - **2026-10-17 — M2.5d merged:** [PR #29](https://github.com/pjotrcasteel/Argus/pull/29) (squash `379d2d8`); causal moving-candidate confirmation stays shadow-only. [CI 39052368992](https://github.com/pjotrcasteel/Argus/actions/runs/39052368992): **115/115 tests**, synthetic CLI A/B PASS. [Live smoke 39052369001](https://github.com/pjotrcasteel/Argus/actions/runs/39052369001): **57 frames, 41 player located, 2 routes, 2 upgrades, 0 terminal stops**, technical gate PASS. Private development Python mirror (not official .NET): baseline 26/4/11, raw 30/13/7, temporal 27/5/10 TP/FP/FN. Next: official private .NET run, then independent development review to learn whether stationary/fast real enemies are filtered out.
 
