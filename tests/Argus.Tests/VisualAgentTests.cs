@@ -26,6 +26,17 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void FindBest_InterveningWords_RecognizesRealVisibleHuntLabel()
+    {
+        var result = MenuTextMatcher.FindBest([new VisibleText("BEGIN FIRST HUNT", 16, 322, 358, 56, 94)],
+            new VisualGameProfile { MenuActions = ["Begin Hunt"] });
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual("BEGIN FIRST HUNT", result.Text);
+        Assert.AreEqual(195f, result.CenterX);
+    }
+
+    [TestMethod]
     public void FindBest_LowConfidence_DoesNotClick()
     {
         var result = MenuTextMatcher.FindBest([new VisibleText("Begin Hunt", 0, 0, 100, 20, 10)], new VisualGameProfile());
