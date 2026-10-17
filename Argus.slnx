@@ -10,4 +10,5 @@
   <Project Path="src/Argus.Adapters.Browser/Argus.Adapters.Browser.csproj" />
   <Project Path="src/Argus.Runner/Argus.Runner.csproj" />
   <Project Path="tests/Argus.Tests/Argus.Tests.csproj" />
+  <Project Path="tests/Argus.Annotation.UiSmoke/Argus.Annotation.UiSmoke.csproj" />
 </Solution>
