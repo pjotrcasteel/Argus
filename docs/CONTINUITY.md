@@ -25,7 +25,7 @@ Create a **game-independent, standalone, free-by-default autonomous visual playt
 3. [Roadmap](ROADMAP.md), [architecture](ARCHITECTURE.md), [game adapters](GAME_ADAPTERS.md), [cost guardrails](COSTS.md), [M1.4 motion evidence](M1-4-SCENE-MOTION.md), [Live Spectator design](LIVE-SPECTATOR-DESIGN.md).
 4. CI screenshot/trace artifacts from live WyrmForge runs **expire quickly** (two-day retention). If unavailable, re-run the existing bounded live workflow or run locally; do not invent a past screenshot.
 
-## Current implementation (as of main after PR #21)
+## Current implementation (as of main after PR #22)
 
 - `Argus.Core`: screenshots, actions, agent/profile interfaces, game-neutral evidence and session summary.
 - `Argus.Adapters.Browser`: black-box Playwright screenshots and ordinary keyboard/mouse; local Tesseract OCR with bounded per-frame timeout.
@@ -38,11 +38,12 @@ Create a **game-independent, standalone, free-by-default autonomous visual playt
 - `Argus.Evaluation.StudyPlanner` + `Argus.Study.Tool`: SHA-256-seeded full-run development/held-out splits, temporal-bin sampling and local `study-plan.json` plus `blind-annotate.html` review pages. Blinded pages **remove** prediction coordinates, actions and reasons before serialization. See [M1.9 blind study protocol](M1-9-BLIND-STUDY.md).
 - `Argus.Personas` + `Argus.Persona.Tool`: game-neutral typed playstyle traits (risk, exploration, patience, attention, motor precision), conservative/adventurer/daredevil presets, and purely **offline shadow-only** proposals on the **same** already-recorded screen observations. Outputs `persona-shadow.jsonl` without executing any game input; [M2.0 docs](M2-0-PERSONA-SHADOW.md).
 - `Argus.Personas.PersonaContrastAnalyzer`: explicit per-frame/per-persona action counts and pairwise wait-vs-move, direction, timing and full-action divergence; shows missing detection evidence separately. Existing offline CLI writes `persona-contrast.json` and `persona-contrast.md` without alternative game input. See [M2.1 metrics](M2-1-PERSONA-CONTRAST.md).
-- `Argus.Tests`: deterministic MSTest tests for visual UI, geometry, tracking, motion, cohorts, replay, perception scoring, persona contrast and HTML/JS safety.
+- `Argus.Persona.Cohort.Tool` + `PersonaCohortStudy`: multiple recorded external-game sessions (2–128), exact duplicate trace rejection, optionally matched game/profile/viewport/policy metadata and **per-run** unweighted distributions of action/direction differences; results `persona-cohort.json` and `persona-cohort.md`. `PersonaTraitAblations` compares the five traits from 0→1 with a fixed random stream, so profile IDs don't masquerade as effects. The old single-run persona CLI now adds `persona-ablation.json`; [M2.2 docs](M2-2-COHORT-ABLATIONS.md).
+- `Argus.Tests`: deterministic MSTest tests for visual UI, geometry, tracking, motion, cohorts, replay, perception scoring, persona contrast, controlled trait ablation and HTML/JS safety.
 - `.github/workflows/ci.yml`: .NET 10 build/tests. `m1-live-smoke.yml`: *bounded* browser WyrmForge run; collects short-lived evidence; requires evidence gate.
 - Already observed by the **external** player: open the public WyrmForge page, begin a hunt, select Arcane Orb, choose a route and enter the trail, move, choose upgrades and sometimes recognize an end screen. These are heuristic actions, NOT AI training.
 
-Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Argus/pull/10), [PR #12 offline cohort reports](https://github.com/pjotrcasteel/Argus/pull/12), [PR #13 local replay](https://github.com/pjotrcasteel/Argus/pull/13), [PR #14 perception label scoring](https://github.com/pjotrcasteel/Argus/pull/14), [PR #15 local annotation studio](https://github.com/pjotrcasteel/Argus/pull/15), [PR #18 verified label re-import](https://github.com/pjotrcasteel/Argus/pull/18), [PR #19 blinded run studies](https://github.com/pjotrcasteel/Argus/pull/19), [PR #20 persona shadow hypotheses](https://github.com/pjotrcasteel/Argus/pull/20), [PR #21 measured persona contrasts](https://github.com/pjotrcasteel/Argus/pull/21).
+Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Argus/pull/10), [PR #12 offline cohort reports](https://github.com/pjotrcasteel/Argus/pull/12), [PR #13 local replay](https://github.com/pjotrcasteel/Argus/pull/13), [PR #14 perception label scoring](https://github.com/pjotrcasteel/Argus/pull/14), [PR #15 local annotation studio](https://github.com/pjotrcasteel/Argus/pull/15), [PR #18 verified label re-import](https://github.com/pjotrcasteel/Argus/pull/18), [PR #19 blinded run studies](https://github.com/pjotrcasteel/Argus/pull/19), [PR #20 persona shadow hypotheses](https://github.com/pjotrcasteel/Argus/pull/20), [PR #21 measured persona contrasts](https://github.com/pjotrcasteel/Argus/pull/21), [PR #22 multi-run cohorts and trait controls](https://github.com/pjotrcasteel/Argus/pull/22).
 
 ## Prior motion evidence experiment (2026-10-17)
 
@@ -127,6 +128,14 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 - Each persona proposed **22 actions**. Pairwise **movement-direction** disagreement when both were moving: conservative vs adventurer **10/19**, conservative vs daredevil **19/19**, adventurer vs daredevil **16/21**. Each pair had **21/22** full-action differences. Counts differ from denominators for waits/movement timing; see M2.1 report for definitions.
 - **No independent replications or blind human labels** were used for these behavioral differences. A 19/19 contrast is **designed shadow policy divergence**, not a verified risk trait or 100% competence improvement. No alternative actions were executed, no game outcomes counterfactually observed, no learning occurred.
 
+## Latest M2.2 cohort and controlled trait experiments (2026-10-17)
+
+- [PR #22](https://github.com/pjotrcasteel/Argus/pull/22) merged to `main` at `d063c98ab786621f29654030a53c7a46fa3f7f70`.
+- [.NET CI 39030722181](https://github.com/pjotrcasteel/Argus/actions/runs/39030722181) passed **92/92 deterministic MSTest tests**, solution build and a real invocation of the new `Argus.Persona.Cohort.Tool` with two separate **synthetic** trace fixtures. The first test attempt had one mistaken fixture where exploration couldn't happen under low confidence; it was corrected by testing attention and exploration under separate appropriate observations.
+- [Real external WyrmForge visual smoke 39030722177](https://github.com/pjotrcasteel/Argus/actions/runs/39030722177) passed: **57 recorded frames**, 38 visually located player frames, 2 route clicks; 0 terminal stops. Three profiles each generated **41 offline hypothetical actions**. New `persona-ablation.json` was generated successfully on those genuinely recorded frames. The [short-lived artifact](https://github.com/pjotrcasteel/Argus/actions/runs/39030722177/artifacts/12100302475) holds screenshots and all reports.
+- M2.2 **does NOT yet supply actual measured across-run WyrmForge data**: the cohort CLI was verified against artificial fixtures, and ablations were verified against one real trace. Neither demonstrates actual held-out accuracy, player realism, balanced combat, or learned AI.
+- Non-ablated persona behavior remains unchanged: when no shared random-stream override is supplied, deterministic hashing still uses the persona ID. The new override is exclusively for controlled comparisons.
+
 ## Current engineering judgement / active hypotheses
 
 1. **Perception is the primary bottleneck, not learning algorithms yet.** Stabilize player identity and player-vs-effects-vs-scenery classification before training policies or doing statistical balancing. Image colors alone are fragile.
@@ -147,13 +156,13 @@ Recent merged work: [PR #10 motion evidence](https://github.com/pjotrcasteel/Arg
 
 ## Single recommended next slice
 
-**M2.2: multi-run shadow cohort + trait attribution tests**, building on M2.1 reports without accidentally treating correlated frames as independent experiments.
+**M2.3: reproducible real-world multi-run evidence collection**, followed by a carefully verified independent human-label study.
 
-1. Add a local **multi-run cohort** mode consuming 2+ independent recorded runs, keeping each run's counts separate and reporting distributions of *per-run* direction/action differences (not just naive pooled percentages).
-2. Add trait ablation experiments that vary **one personality dimension at a time** with a controlled seed and identical visible candidate data. Current personality ID is part of deterministic exploration hashing, so apparent differences might arise from identifiers rather than the intended trait; explicitly isolate this before interpreting "risk-taker" behavior.
-3. Keep no-op, wait, same-key different-duration, unknown candidate evidence and actual candidate-proximity frames distinct in all reports.
-4. **Critical independent prerequisite:** collect a small held-out set of human-reviewed WyrmForge screenshots under [M1.9](M1-9-BLIND-STUDY.md), score actual player/enemy precision and recall, and only then test actual autonomous persona control. Do not create synthetic labels and present them as human ground truth.
-5. Once reliable observations and real outcomes exist, experiment with locally trained free policies versus a frozen heuristic baseline. Future spectator [issue #11](https://github.com/pjotrcasteel/Argus/issues/11) remains a separate, read-only, local-first deliverable.
+1. Add an **opt-in, bounded, free GitHub Actions workflow** to run a small number (initially two) **separate WyrmForge browser sessions** using ordinary screen pixels/input only, each in a newly created process/context with a fixed maximum steps/time. Record independent run IDs, UTC start time, browser viewport, public game URL/version when actually observable, ARGUS SHA, persona policy SHA and result paths. Do not invent a release version or procedural seed.
+2. Preserve the two trace directories and a cohort report as a short-retention artifact. Reject exact trace duplicates; report whether experiment metadata matches, and explicitly state it does not prove causal comparability. Do **not** make the research action run automatically on every PR to avoid gratuitous Actions minutes.
+3. Apply the M2.2 CLI to these **actual** independently recorded sessions; show per-run direction/timing effects and uncertainties rather than a fake combined sample size of 100 frames. If a session fails its observation gate, record the failure instead of silently replacing it.
+4. Use M1.9 blind review pages to obtain *real human-verified labels* from held-out screenshots. No synthetic "ground truth", and do not calibrate on held-out runs.
+5. Only after confidence/accuracy and observable game outcomes are grounded should live personality-controlled play or local learning be enabled. **Future local Live Spectator** remains [issue #11](https://github.com/pjotrcasteel/Argus/issues/11); current playback is recorded/offline only.
 
 ## Local usage
 
@@ -168,6 +177,7 @@ dotnet run --project src/Argus.Evaluation.Tool -- --run results/local-run --anno
 dotnet run --project src/Argus.Evaluation.Tool -- --run results/local-run --blind-annotate results/local-run/blind-annotate.html
 dotnet run --project src/Argus.Study.Tool -- --runs results/experiments --seed fixed-experiment-1 --samples 12
 dotnet run --project src/Argus.Persona.Tool -- --run results/local-run --movement-keys w,a,s,d --seed 42
+dotnet run --project src/Argus.Persona.Cohort.Tool -- --runs results/experiments --movement-keys w,a,s,d --seed 42
 # writes persona-shadow.jsonl, persona-contrast.json, persona-contrast.md
 pwsh src/Argus.Runner/bin/Debug/net10.0/playwright.ps1 install chromium
 dotnet run --project src/Argus.Runner -- --url https://pjotrcasteel.github.io/Wyrmforge/ --agent visual --profile examples/wyrmforge.profile.json --max-steps 56 --timeout-seconds 180 --output results/local-run
@@ -195,3 +205,4 @@ The local **visual** mode requires Tesseract installed. Screenshots and traces a
 - **2026-10-17 — M1.9 blind protocol complete:** [PR #19](https://github.com/pjotrcasteel/Argus/pull/19) merged, 68/68 tests and real WyrmForge blind-page generation. Development/test split is at the run level, not adjacent frames; no actual human labels yet. **Next:** independent annotation study plus game-neutral persona shadow policies.
 - **2026-10-17 — M2.0 personality shadow policies:** [PR #20](https://github.com/pjotrcasteel/Argus/pull/20) merged, 75/75 tests, 49-frame real WyrmForge trace read with 33 hypothetical actions per preset. **No actions executed**, no accuracy/realism claims. **Next:** contrast metrics + independent human labels.
 - **2026-10-17 — M2.1 quantitative persona comparisons:** [PR #21](https://github.com/pjotrcasteel/Argus/pull/21) merged, 82/82 tests and real 36-frame WyrmForge smoke. Conservative/daredevil varied direction on 19/19 mutually moving frames, but this is **one non-independent shadow trace, not verified human realism**. Next M2.2 multi-run/trait ablation and M1.9 manual held-out labels.
+- **2026-10-17 — M2.2 independent-run cohort + trait ablation infrastructure:** [PR #22](https://github.com/pjotrcasteel/Argus/pull/22) merged, 92/92 tests, synthetic two-run full CLI verification and one 57-frame real WyrmForge ablation run. **No real WyrmForge two-run cohort exists yet.** Next M2.3 opt-in, bounded, real two-session collection and blind human labeling.
