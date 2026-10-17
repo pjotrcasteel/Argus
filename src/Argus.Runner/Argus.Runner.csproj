@@ -5,5 +5,6 @@
   <ItemGroup>
     <ProjectReference Include="../Argus.Core/Argus.Core.csproj" />
     <ProjectReference Include="../Argus.Adapters.Browser/Argus.Adapters.Browser.csproj" />
+    <ProjectReference Include="../Argus.Agents.Visual/Argus.Agents.Visual.csproj" />
   </ItemGroup>
 </Project>

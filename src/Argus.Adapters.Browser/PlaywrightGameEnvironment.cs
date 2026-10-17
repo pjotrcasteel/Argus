@@ -56,6 +56,17 @@ public sealed class PlaywrightGameEnvironment(bool headless, int width, int heig
             case GameActionKind.KeyUp:
                 await page.Keyboard.UpAsync(RequiredKey(action));
                 break;
+            case GameActionKind.HoldKey:
+                await page.Keyboard.DownAsync(RequiredKey(action));
+                try
+                {
+                    await Task.Delay(Math.Clamp(action.DurationMs, 50, 1500), cancellationToken);
+                }
+                finally
+                {
+                    await page.Keyboard.UpAsync(RequiredKey(action));
+                }
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(action), action.Kind, "Unsupported player action.");
         }

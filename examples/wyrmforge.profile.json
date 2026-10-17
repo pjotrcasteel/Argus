@@ -1,0 +1,22 @@
+{
+  "name": "WyrmForge visual black-box baseline",
+  "menuActions": [
+    "Begin Hunt",
+    "Continue Hunt",
+    "Continue",
+    "Enter Trail",
+    "Enter",
+    "Select Route",
+    "Choose",
+    "Confirm",
+    "Claim",
+    "Next",
+    "Retry",
+    "Start",
+    "Play"
+  ],
+  "gameplayCues": ["HP", "Health", "Level", "Wave", "XP", "Hunter"],
+  "movementKeys": ["w", "a", "s", "d"],
+  "minimumTextConfidence": 45,
+  "movementMilliseconds": 300
+}

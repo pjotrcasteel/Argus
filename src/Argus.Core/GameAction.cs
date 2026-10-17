@@ -6,7 +6,8 @@ public enum GameActionKind
     MovePointer,
     Click,
     KeyDown,
-    KeyUp
+    KeyUp,
+    HoldKey
 }
 
 public sealed record GameAction(GameActionKind Kind, string? Key = null, float X = 0, float Y = 0, int DurationMs = 0);

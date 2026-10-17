@@ -1,4 +1,4 @@
-name: CI - zero-cost baseline
+name: CI - free build and deterministic tests
 on:
   push:
     branches: [main]
@@ -7,9 +7,9 @@ on:
 permissions:
   contents: read
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -19,3 +19,5 @@ jobs:
         run: dotnet restore Argus.slnx
       - name: Build
         run: dotnet build Argus.slnx --configuration Release --no-restore
+      - name: Test
+        run: dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build --logger trx
