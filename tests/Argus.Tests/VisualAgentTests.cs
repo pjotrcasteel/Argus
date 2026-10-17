@@ -207,6 +207,32 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void DetectRgb_GoldOutlinedConnectedTrail_LocatesVisibleCircle()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var pixel = (y * width + x) * 3;
+                var distance = Math.Sqrt((x - 155) * (x - 155) + (y - 475) * (y - 475));
+                var ring = Math.Abs(distance - 18) <= 2;
+                rgb[pixel] = ring ? (byte)223 : (byte)39;
+                rgb[pixel + 1] = ring ? (byte)208 : (byte)33;
+                rgb[pixel + 2] = ring ? (byte)128 : (byte)45;
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 155) <= 6);
+        Assert.IsTrue(Math.Abs(result.Y - 475) <= 6);
+    }
+
+    [TestMethod]
     public void DetectRgb_EnabledFilledButton_FindsActionArea()
     {
         const int width = 390;
