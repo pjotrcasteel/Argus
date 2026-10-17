@@ -233,6 +233,43 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void DetectRgb_WarmConnectedTrailAndCoolDecor_PrefersActualRouteNode()
+    {
+        const int width = 390;
+        const int height = 844;
+        var rgb = new byte[width * height * 3];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var p = (y * width + x) * 3;
+                var warmDistance = Math.Sqrt((x - 230) * (x - 230) + (y - 475) * (y - 475));
+                var coolDistance = Math.Sqrt((x - 312) * (x - 312) + (y - 545) * (y - 545));
+
+                if (Math.Abs(warmDistance - 18) <= 2)
+                {
+                    rgb[p] = 238; rgb[p + 1] = 146; rgb[p + 2] = 118;
+                }
+                else if (Math.Abs(coolDistance - 18) <= 2)
+                {
+                    rgb[p] = 118; rgb[p + 1] = 150; rgb[p + 2] = 177;
+                }
+                else
+                {
+                    rgb[p] = 39; rgb[p + 1] = 32; rgb[p + 2] = 45;
+                }
+            }
+        }
+
+        var result = RouteCircleDetector.DetectRgb(rgb, width, height);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(Math.Abs(result.X - 230) <= 7);
+        Assert.IsTrue(Math.Abs(result.Y - 475) <= 7);
+    }
+
+    [TestMethod]
     public void DetectRgb_EnabledFilledButton_FindsActionArea()
     {
         const int width = 390;
