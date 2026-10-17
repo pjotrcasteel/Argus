@@ -106,6 +106,33 @@ jobs:
           print("Two real sessions processed; game victory, threats and player realism remain unverified.")
           PY
 
+      - name: Pre-register blind review samples and declare evaluation status without human labels
+        run: |
+          dotnet run --project src/Argus.Study.Tool --configuration Release --no-build -- \
+            --runs artifacts/research-runs --seed argus-m2-4-first-blind-research --samples 12
+          dotnet run --project src/Argus.Study.Quality.Tool --configuration Release --no-build -- \
+            --runs artifacts/research-runs
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/research-runs")
+          report = json.loads((root / "study-quality.json").read_text())
+          plan = json.loads((root / "study-plan.json").read_text())
+          assert report["status"] == "NOT_EVALUATED"
+          assert sorted(a["partition"] for a in plan["assignments"]) == ["development", "held-out"]
+          assert len(report["runs"]) == 2
+          for run in report["runs"]:
+              assert run["status"] == "NOT_EVALUATED"
+              assert run["perception"] is None
+              folder = root / run["runId"]
+              html = (folder / "blind-annotate.html").read_text()
+              assert "BLIND REVIEW" in html
+              labels = json.loads((folder / "blind-labels.template.json").read_text())
+              assert all(frame["player"]["state"] == "unknown" and frame["threats"]["state"] == "unknown"
+                         for frame in labels["frames"])
+              assert (folder / "blind-labels.template.json").stat().st_size > 0
+          print("Ground truth is NOT_EVALUATED; human independent review remains required.")
+          PY
       - name: Always report factual game evidence status
         if: always()
         run: |

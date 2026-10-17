@@ -79,3 +79,18 @@ jobs:
           assert "DESCRIPTIVE, SHADOW ONLY" in markdown
           assert "riskAppetite" in markdown
           PY
+      - name: Confirm synthetic blind studies without human labels are NOT_EVALUATED
+        run: |
+          dotnet run --project src/Argus.Study.Quality.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-study
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("artifacts/ci-study/study-quality.json").read_text())
+          assert report["status"] == "NOT_EVALUATED"
+          assert len(report["runs"]) == 2
+          assert all(r["status"] == "NOT_EVALUATED" and r["perception"] is None for r in report["runs"])
+          assert sorted(p["partition"] for p in report["partitions"]) == ["development","held-out"]
+          assert all(p["playerPrecision"]["median"] is None for p in report["partitions"])
+          assert "NOT_EVALUATED" in Path("artifacts/ci-study/study-quality.md").read_text()
+          PY
