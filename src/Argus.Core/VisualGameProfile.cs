@@ -11,6 +11,7 @@ public sealed class VisualGameProfile
     public string[] GameplayCues { get; init; } = ["HP", "Health", "Wave"];
     public string[] RouteCues { get; init; } = [];
     public string[] ChoiceScreenCues { get; init; } = [];
+    public string[] TerminalScreenCues { get; init; } = [];
     public string[] ChoiceCardTypes { get; init; } = [];
     public string[] MovementKeys { get; init; } = ["w", "a", "s", "d"];
     public CombatVisualSettings? CombatTracking { get; init; } = null;
