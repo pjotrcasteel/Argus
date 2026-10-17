@@ -44,10 +44,22 @@ try
         await output.WriteAsync(new byte[] { (byte)'\n' });
     }
 
+    var contrast = PersonaContrastAnalyzer.Analyze(Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar)),
+        replay, profiles, keys, seed);
+    var reportOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+    await File.WriteAllTextAsync(Path.Combine(folder, "persona-contrast.json"),
+        JsonSerializer.Serialize(contrast, reportOptions));
+    await File.WriteAllTextAsync(Path.Combine(folder, "persona-contrast.md"),
+        PersonaContrastMarkdown.Render(contrast));
+
     Console.WriteLine($"ARGUS shadow personas analyzed {replay.Frames.Count} previously saved visual frames.");
     foreach (var profile in profiles)
         Console.WriteLine($"{profile.Id}: {proposals.GetValueOrDefault(profile.Id)} hypothetical actions (not executed).");
-    Console.WriteLine($"Saved local offline proposals to {path}. No game input or training took place.");
+    foreach (var pair in contrast.Pairs)
+        Console.WriteLine($"{pair.FirstPersona} vs {pair.SecondPersona}: " +
+            $"{pair.DifferentDirections}/{pair.BothMovingFrames} different movement directions, " +
+            $"{pair.DifferentFullActions}/{pair.BothProposedFrames} any action differences.");
+    Console.WriteLine($"Saved local shadow proposals and contrast.json/.md alongside {path}. No game input or training took place.");
     return 0;
 }
 catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException)
