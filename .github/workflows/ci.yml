@@ -436,3 +436,33 @@ jobs:
           node --check artifacts/ci-m27-mobile/dev-c.js
           node --check artifacts/ci-m27-mobile/dev-d.js
           node --check artifacts/ci-m27-mobile/dev-e.js
+
+      - name: Verify pixel-only player loss diagnostic in full offline CLI with fake reference screenshots
+        run: |
+          python3 tools/m29/generate_player_loss_fixture.py
+          dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+            --run artifacts/ci-player-loss/run-local --player-visibility examples/wyrmforge.profile.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          folder = Path("artifacts/ci-player-loss/run-local")
+          output = json.loads((folder / "player-visibility-audit.json").read_text())
+          assert output["reviewedFrames"] == 5
+          assert output["comparablePlayerFrames"] == 4
+          assert output["recordedPlayerFrames"] == 2
+          assert output["missingRecordedPlayerFrames"] == 2
+          assert output["nonCombatVisiblePlayerFrames"] == 1
+          rows = {f["step"]: f for f in output["frames"]}
+          assert rows[0]["status"] == "NOT_COMBAT_PHASE"
+          assert rows[1]["status"] == "RECORDED_PLAYER"
+          assert rows[2]["status"] == "PLAYER_NOT_RECORDED"
+          assert rows[2]["pixelComponentStatus"] == "TOO_WIDE"
+          assert rows[2]["nearestComponent"]["width"] == 60
+          assert rows[3]["status"] == "PLAYER_NOT_RECORDED"
+          assert rows[3]["pixelComponentStatus"] == "BELOW_MINIMUM_PIXELS"
+          assert rows[3]["nearestComponent"]["matchingPixels"] == 63
+          assert rows[4]["status"] == "RECORDED_PLAYER"
+          report = (folder / "player-visibility-audit.md").read_text()
+          assert "TOO_WIDE" in report and "BELOW_MINIMUM_PIXELS" in report
+          print("PASS: player-loss cause evidence, transition exclusion and original scorer untouched.")
+          PY
