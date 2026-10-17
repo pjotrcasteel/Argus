@@ -42,6 +42,8 @@ All screenshots and JSONL decisions are kept in local ignored results/ directori
 
 - [Architecture and independent visual-only boundary](docs/ARCHITECTURE.md)
 - [Multi-game adapters, permissions and desktop roadmap](docs/GAME_ADAPTERS.md)
+- [Scene-relative movement evidence](docs/M1-4-SCENE-MOTION.md)
+- [Future zero-cost Live Spectator Mode](docs/LIVE-SPECTATOR-DESIGN.md)
 - [Milestones](docs/ROADMAP.md)
 - [Cost policy](docs/COSTS.md)
 
