@@ -37,6 +37,43 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_ExternalTitleStartGame_ReadableVisualButton_ClicksActualOcrCenter()
+    {
+        // The updated external title screen uses small black text on gold. The
+        // real M2.38 390x844 screenshot OCR with sparse orientation mode
+        // yielded START (115,759,58,10) and GAME (184,759,52,10).
+        // No screen coordinate may be encoded into the navigation policy.
+        var profile = new VisualGameProfile { MenuActions = ["Start Game", "Begin Hunt"] };
+        var visible = new VisibleText("START GAME", 115, 759, 121, 10, 96);
+        var agent = new VisualGameAgent(new FakeTextReader([visible]), profile);
+
+        var action = await agent.DecideAsync(new FrameObservation(DateTimeOffset.UtcNow, 390, 844, []),
+            TestContext.CancellationToken);
+
+        Assert.IsNotNull(action);
+        Assert.AreEqual(GameActionKind.Click, action.Kind);
+        Assert.AreEqual(175.5f, action.X);
+        Assert.AreEqual(764f, action.Y);
+        Assert.AreEqual("menu", agent.LastEvidence?.Phase);
+        StringAssert.Contains(agent.LastEvidence!.Reason, "START GAME");
+    }
+
+    [TestMethod]
+    public void ParseTsv_NewTitleSparseOcr_WordsMergeIntoClickableLine()
+    {
+        const string tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
+            "5\t1\t2\t1\t1\t1\t115\t759\t58\t10\t96.55\tSTART\n" +
+            "5\t1\t2\t1\t1\t2\t184\t759\t52\t10\t96.88\tGAME\n";
+        var lines = TesseractTsvParser.Parse(tsv);
+        var detected = MenuTextMatcher.FindBest(lines, new VisualGameProfile { MenuActions = ["Start Game"] });
+
+        Assert.IsNotNull(detected);
+        Assert.AreEqual("START GAME", detected.Text);
+        Assert.AreEqual(115, detected.X);
+        Assert.AreEqual(759, detected.Y);
+    }
+
+    [TestMethod]
     public void FindFirst_RefinementCard_SelectsVisibleTitleNotInstruction()
     {
         var labels = new[]
