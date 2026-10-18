@@ -1,3 +1,4 @@
+using Argus.Core;
 using StbImageSharp;
 
 namespace Argus.Adapters.Browser;
