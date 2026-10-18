@@ -17,7 +17,7 @@ from zipfile import ZipFile
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.m221.publish_consented_public import verify as verify_original_site
 
-SOURCE_ARCHIVE_SHA256 = "PIN_AFTER_M223_CAPTURE"
+SOURCE_ARCHIVE_SHA256 = "400b9df3233ab0cf1af20d2e57d9cef84ffb48bbdd7a40f98bc4d4700f1c303d"
 PUBLIC_TREE_SHA256 = "PIN_AFTER_M224_BUILD"
 SOURCE_SEED = "argus-m223-fresh-development-20261018-v1"
 PROSPECTIVE_SEED = "argus-m223-sealed-prospective-20261018-v1"
