@@ -96,7 +96,7 @@ class PrivateOriginalUVWAuditTests(unittest.TestCase):
         record=json.loads(path.read_text())
         record["frames"][6]["player"]["center"]["x"]=390
         path.write_text(json.dumps(record))
-        with self.assertRaisesRegex(ValueError,"in-bounds"):
+        with self.assertRaisesRegex(ValueError,"valid original-pixel player center"):
             self.admit()
 
     def test_absent_cannot_carry_hallucinated_point(self):
