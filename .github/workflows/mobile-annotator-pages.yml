@@ -8,9 +8,12 @@ on:
       - tools/m219/**
       - tools/m221/**
       - tools/m224/**
+      - tools/m228/**
       - tests/m218/**
       - tests/m223/**
       - tests/m220/**
+      - tests/m227/**
+      - tests/m228/**
       - .github/workflows/mobile-annotator-pages.yml
   push:
     branches: [main]
@@ -20,9 +23,12 @@ on:
       - tools/m218/**
       - tools/m221/**
       - tools/m224/**
+      - tools/m228/**
       - tests/m218/**
       - tests/m223/**
       - tests/m220/**
+      - tests/m227/**
+      - tests/m228/**
       - .github/workflows/mobile-annotator-pages.yml
   workflow_dispatch:
 
@@ -35,25 +41,30 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Retrieve permanent, byte-verified 237-file development-only Git checkpoint and validate every source byte
+      - name: Retrieve immutable byte-verified 294-file development-only Git checkpoint and validate every source byte
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=1 origin \
-            refs/heads/public-annotator-site-m223-development:refs/remotes/origin/public-annotator-site-m223-development
+            refs/heads/public-annotator-site-m227-development:refs/remotes/origin/public-annotator-site-m227-development
           mkdir -p _site
-          git archive refs/remotes/origin/public-annotator-site-m223-development | tar -xf - -C _site
-          python3 tools/m224/publish_development_only.py verify --site _site
+          git archive refs/remotes/origin/public-annotator-site-m227-development | tar -xf - -C _site
+          python3 tools/m228/consented_public_rst.py verify --site _site
       - name: Prove forbidden local owner exports and hidden material cannot enter this build
         run: |
           python3 - <<'PY'
           from pathlib import Path
           root = Path("_site")
-          assert len(list(root.glob("annoteren/*/frame-*.png"))) == 216
-          assert len(list(root.glob("annoteren/*/index.html"))) == 18
+          assert len(list(root.glob("annoteren/*/frame-*.png"))) == 270
+          assert len(list(root.glob("annoteren/*/index.html"))) == 21
           assert len(list(root.glob("**/*.json"))) == 1
           assert not list(root.glob("**/*.jsonl"))
           assert not list(root.glob("**/*weights*"))
           assert not list(root.glob("annoteren/run-01/*"))
+          assert not list(root.glob("annoteren/dev-o/*"))
+          assert not list(root.glob("annoteren/dev-p/*"))
+          assert not list(root.glob("annoteren/dev-q/*"))
+          assert not list(root.rglob("context"))
+          assert not list(root.rglob("prev-for-*.png"))
           print("PASS: site has zero owner JSON, model, trace or held-out game files.")
           PY
       - name: Check real screenshots, blind ground truth, and page JavaScript
@@ -88,7 +99,7 @@ jobs:
             assert "run-01" not in doc and "run-02" not in doc
             Path(f"{name}-mobile-script.js").write_text(
               doc.split("<script>",1)[1].split("</script>",1)[0])
-          assert len(list(Path("_site/annoteren").glob("*/frame-*.png"))) == 216
+          assert len(list(Path("_site/annoteren").glob("*/frame-*.png"))) == 270
           assert len(manifest["screenshots"]) == 8
           for name in ("dev-c", "dev-d", "dev-e"):
             assert len(manifest["screenshots"][name]) == 12
@@ -144,7 +155,20 @@ jobs:
           assert not Path("_site/annoteren/dev-o").exists()
           assert not Path("_site/annoteren/dev-p").exists()
           assert not Path("_site/annoteren/dev-q").exists()
-          print("Verified 15 old reviewer routes + 3 new original M2.23 BLANK reviewers, 216 authentic PNGs.")
+          assert manifest["m227SourceStudySeed"] == "argus-m227-temporal-context-rst-20261018-v1"
+          assert manifest["m227PointRoutes"] == [f"annoteren/dev-{run}/" for run in "rst"]
+          assert manifest["m227HumanTruth"] == "ALL_UNKNOWN"
+          for suffix in "rst":
+            name = "dev-" + suffix
+            folder = Path("_site/annoteren") / name
+            doc = (folder / "index.html").read_text()
+            assert len(list(folder.glob("frame-*.png"))) == 18
+            assert len(manifest["m227Screenshots"][name]) == 18
+            assert '"state":"visible"' not in doc and "fetch(" not in doc
+            assert "localStorage.setItem(storageKey" in doc and "run-01" not in doc
+            Path(f"{name}-m227-public-script.js").write_text(
+              doc.split("<script>",1)[1].split("</script>",1)[0])
+          print("Verified 18 old + 3 new UNKNOWN reviewers, 270 authentic images; no private contexts/prospectives.")
 
           PY
           node --check mobile-script.js
@@ -165,6 +189,9 @@ jobs:
           node --check dev-l-m223-public-script.js
           node --check dev-m-m223-public-script.js
           node --check dev-n-m223-public-script.js
+          node --check dev-r-m227-public-script.js
+          node --check dev-s-m227-public-script.js
+          node --check dev-t-m227-public-script.js
       - name: Verify navigation, tap annotations and JSON download in mobile Chromium
         run: |
           python3 -m pip install --quiet --break-system-packages playwright
@@ -175,6 +202,7 @@ jobs:
           python3 tests/m218/mobile_smoke.py --site _site
           python3 tests/m220/mobile_smoke.py --site _site
           python3 tests/m223/mobile_smoke.py --site _site
+          python3 tests/m227/mobile_smoke.py --site _site
       - name: Upload build for deployment
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
