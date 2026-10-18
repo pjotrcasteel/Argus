@@ -573,8 +573,8 @@ jobs:
           assert len(rows) == 8
           assert all(x["run_id"] == "run-local" for x in rows)
           assert [int(x["step"]) for x in rows] == [3, 4, 7, 8, 12, 13, 17, 18]
-          assert all(x["reviewed_player_label"] == "1" for x in rows[:2])
-          assert all(x["reviewed_player_label"] == "0" for x in rows[2:])
+          assert all(x["reviewed_candidate_local_label_v2"] == "1" for x in rows[:2])
+          assert all(x["reviewed_candidate_local_label_v2"] == "0" for x in rows[2:])
           assert all(int(x["player_palette_pixels"]) == 0 for x in rows[4:6])
           assert all(int(x["player_palette_pixels"]) > 0 for x in rows[6:])
           assert "NOT a trained AI" in (root / "player-shadow-hard-negatives.md").read_text() or (
