@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.m228.consented_public_rst import verify as verify_previous_checkpoint
 
 ARCHIVE_SHA256 = "ab1c338aea8af582b0c93de2f7c7b4f11528b62c50cf03ce1fd3e013dff7e26f"
-SITE_TREE_SHA256 = "0000000000000000000000000000000000000000000000000000000000000000"
+SITE_TREE_SHA256 = "e8bbe08b8f4cc1310b3c1322bb0a0517743772899a14bfe1880e85d9611cffee"
 SOURCE_SEED = "argus-m232-independent-uvw-development-20261018-v1"
 RUNS = ("dev-u", "dev-v", "dev-w")
 PNG = b"\x89PNG\r\n\x1a\n"
