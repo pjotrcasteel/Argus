@@ -1,0 +1,45 @@
+name: M2.25 private owner research admission (synthetic only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m225/**
+      - tests/m225/**
+      - .github/workflows/m2-25-private-admission.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m225/**
+      - tests/m225/**
+      - .github/workflows/m2-25-private-admission.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  entirely-fictitious-owner-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install only free offline image dependencies
+        run: python3 -m pip install --quiet --break-system-packages 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Strict artificial PNG and fictional owner JSON evidence validation
+        run: python3 -m unittest discover -s tests/m225 -p 'test_private_study.py' -v
+      - name: Guard sealed prospectives, owner references, trained weights and original run-01
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("tools/m225/private_source_study.py").read_text()
+          assert "validate_and_load(" in p
+          assert 'sha(archive.read_bytes()) == SOURCE_ARCHIVE_SHA256' in p
+          assert '"Conflicting human labels for byte-identical source PNG."' in p
+          assert "learner.independent_folds(by_run)" in p
+          assert "learner.train(fold" in p and "learner.locate(frame" in p
+          assert '"prospectiveOriginalsAccessed": False' not in p
+          assert "https://" not in p and "requests." not in p and "run-01" in p
+          assert not list(Path("tests/m225").glob("*.json"))
+          print("PASS: synthetic only; no genuine human truth, prospectives, model weights or game APIs.")
+          PY
