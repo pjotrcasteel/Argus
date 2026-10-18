@@ -1,0 +1,54 @@
+name: M2.30 offline learned appearance research (synthetic only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m230/**
+      - tests/m230/**
+      - .github/workflows/m2-30-offline-identity.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m230/**
+      - tests/m230/**
+      - .github/workflows/m2-30-offline-identity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-image-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free local numeric dependencies only
+        run: python -m pip install 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Execute deterministic artificial 390x844 player / blank scene tests
+        env:
+          PYTHONPATH: .
+          OPENBLAS_NUM_THREADS: 1
+        run: python -m unittest discover -s tests/m230 -p 'test_*.py' -v
+      - name: Assert no private owner labels, prospective images, trace or models are committed
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          roots = (Path("tools/m230"), Path("tests/m230"))
+          assert not [p for root in roots for p in root.rglob("*")
+                      if p.suffix in (".png",".zip",".json",".jsonl",".pkl",".pt",".onnx")]
+          text = Path("tools/m230/identity_study.py").read_text()
+          ast.parse(text)
+          assert "verify_source(archive, labels_dir)" in text
+          assert "MIN_ABSENT_CAL = 3" in text
+          assert "EXCLUDE_RADIUS = 72" in text
+          assert "originalProspectiveOpened': False" in text
+          assert "liveAgentChanged': False" in text
+          assert "Contradictory identical PNG" in text
+          print("PASS: only synthetic model tests run in Actions; all genuine owner data remains private.")
+          PY
