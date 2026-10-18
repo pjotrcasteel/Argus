@@ -74,6 +74,36 @@ any additional newly introduced town, preparation, or magic-selection
 screen. Do not report the decorative town sprite as 52 successful
 combat player detections.
 
+## WyrmForge changed again during live validation
+
+On 2026-10-18 WyrmForge merged [PR #122](https://github.com/pjotrcasteel/Wyrmforge/pull/122),
+main SHA `54a522eaedaf403ff841891819da9e5454113425`,
+redesigning the welcome/courtyard and consolidating audio settings.
+The new actual PR screenshot changed to a `START GAME >`
+button around source y=697, rather than the previous `START GAME`
+at y=759. The first updated `--psm 12` PR live browser on this *new*
+version once again waited all 57 frames with **0 menu clicks**;
+[run 39158699139](https://github.com/pjotrcasteel/Argus/actions/runs/39158699139),
+real original image evidence artifact `12147678823`.
+
+Repeating exact local OCR on both original screenshots shows:
+- Previous 0.0.118 title before #122: `--psm 3` recognizes
+  `START GAME`; `--psm 11` misses it.
+- New #122 title: `--psm 3` recognizes `START GAME >`
+  (START original box x117/y697 confidence 96%, GAME x183/y697
+  confidence 76%); `--psm 12` misses it.
+- The earlier #121 Refuge `BEGIN FIRST HUNT` appears in original
+  390x844 `--psm 3` as high-confidence `FIRST HUNT`.
+
+Consequently M2.39 switches to **ordinary automatic full-page
+Tesseract `--psm 3`**, no fixed click location, and keeps the small
+source-observed `Start Game` and `First Hunt` external profile labels.
+New deterministic tests cover the actual original OCR text boxes for
+both title revisions, the first-hunt partial word grouping, and
+failure-to-start-combat protection in town. **Neither old nor new
+smoke failures may be hidden by selecting a convenient site version.**
+A fresh genuine browser run is required after this change.
+
 ## Important limitations
 
 - M2.38 failure remains a true fail; do not rewrite or delete original
