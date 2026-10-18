@@ -119,6 +119,7 @@ public sealed class SpatialProbeLearningTests
 
     private sealed class SyntheticReview : IDisposable
     {
+        private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
         private readonly string folder = Path.Combine(Path.GetTempPath(), "argus-m216-" + Guid.NewGuid().ToString("N"));
         public string Archive => Path.Combine(folder, "source-review.zip");
         public string[] LabelPaths { get; } = new string[3];
