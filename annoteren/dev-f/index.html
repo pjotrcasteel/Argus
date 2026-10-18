@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ARGUS — Privé locaties beoordelen</title>
+<style>
+  :root {color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}
+  body {margin:0;background:#101522;color:#f4f7ff}
+  header {padding:14px 18px;background:#1b2434}
+  header strong {font-size:18px}
+  p {margin:8px 0;font-size:13px;line-height:1.5;color:#b7c7d8}
+  main {max-width:520px;margin:auto;padding:12px}
+  .frame {width:min(100%,390px);margin:0 auto;position:relative;aspect-ratio:390/844;overflow:hidden;background:#0d111b;border-radius:12px;border:1px solid #39465f}
+  .frame img {width:100%;height:100%;display:block}
+  /* A single image-coordinate SVG overlay scales uniformly with the original 390x844 PNG.
+     Do not use CSS percentage widths/positions or pseudo-elements for annotation geometry. */
+  .probe-overlay {position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;overflow:hidden}
+  .probe-ring {fill:none;stroke:#ffe16d;stroke-width:3;stroke-linejoin:round}
+  .probe-halo {fill:none;stroke:#12151d;stroke-width:7;opacity:.9}
+  .controls {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+  button {min-height:48px;color:#f4f7ff;border:1px solid #465670;border-radius:12px;background:#273245;padding:8px 7px;font:600 14px system-ui;cursor:pointer}
+  button.selected {border:3px solid #ffe16d;background:#475876}
+  button:disabled {opacity:.4}
+  .nav {display:flex;gap:8px;margin-top:9px}
+  .nav button {flex:1}
+  .info {padding:10px 4px 0;font-size:15px;text-align:center}
+  #status {font-size:13px;color:#a8d0ff}
+  .bar {height:5px;background:#3e4d68;border-radius:4px;margin:9px 2px}
+  #progress-bar {height:100%;width:0;background:#b3d7ff;border-radius:4px}
+  .foot {padding:12px 0 30px}
+  .foot button {width:100%;margin-top:8px}
+  .warn {color:#f5d383}
+  #import {width:100%;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <strong id="title">ARGUS — kandidaatreview</strong>
+  <p>Bekijk de <b>gele cirkel</b>: is de speler <b>op die plek</b> zichtbaar?
+  Ook als de speler elders op het scherm staat, kies hier <b>Nee</b>.
+  Twijfel? Kies <b>Onbekend</b>.</p>
+</header>
+<main>
+  <div id="status" aria-live="polite"></div>
+  <div class="bar"><div id="progress-bar"></div></div>
+  <div class="frame"><img id="shot" alt="Originele WyrmForge screenshot met gele kandidaatcirkel">
+    <svg class="probe-overlay" id="probe-overlay" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+      <circle class="probe-halo" id="ring-halo" cx="195" cy="422" r="26"></circle>
+      <circle class="probe-ring" id="ring" cx="195" cy="422" r="26"></circle>
+    </svg>
+  </div>
+  <div class="info" id="location-info"></div>
+  <div class="controls">
+    <button id="present" type="button" aria-label="Speler zichtbaar in cirkel">Ja, hier</button>
+    <button id="absent" type="button" aria-label="Geen speler in cirkel">Nee, niet hier</button>
+    <button id="unknown" type="button" aria-label="Onzeker, onbekend">Onbekend</button>
+  </div>
+  <div class="nav">
+    <button id="previous" type="button">← Vorige</button>
+    <button id="next" type="button">Volgende →</button>
+  </div>
+  <section class="foot">
+    <p>Alle labels beginnen bij <b>Onbekend</b>. Alleen jouw keuze telt; er
+      worden geen ARGUS-voorspellingen of spel-internals getoond.
+      Annotaties blijven op dit apparaat totdat je JSON zelf exporteert.</p>
+    <button id="download" type="button">Exporteer mijn JSON</button>
+    <label for="import">Eerder geëxporteerde beoordelingen terugzetten</label>
+    <input id="import" type="file" accept=".json,application/json">
+    <p class="warn">Dit is een privaat ontwikkelonderzoek, geen bewijs dat een AI al betrouwbaar speelt.</p>
+  </section>
+</main>
+<script>
+"use strict";
+const study={"seed":"argus-m215-independent-spatial-probes-20261018-v1","schemaVersion":1,"runId":"dev-f","partition":"development","traceSha256":"68246e45174ec764a73bcb15b9946e30db8e8d0ac51fa054b3fb9f8c6dd2249a","images":[{"step":12,"file":"frame-0012.png","sha256":"e53c59032968b65e10cb9f7752ec6c3c206495899132be6477ad05e7badf6b41"},{"step":13,"file":"frame-0013.png","sha256":"79ac778b1ebe16a61cbbd84f246cd999a677bf9d4a1820ce640c1fb91db34703"},{"step":15,"file":"frame-0015.png","sha256":"dacfdee8231e03f10f6ae73eb45d3086e79434ffe3cc9be210bfc88f5dfab23a"},{"step":17,"file":"frame-0017.png","sha256":"302732b19f8f8d09d2a9f469205ccbc7423f3df6f21d64e6150c2e57cca1b3cf"},{"step":20,"file":"frame-0020.png","sha256":"6106f1a3a01e1b148b93c35b92a492be15d2d2ca1a4317fc5af2dd70c299f806"},{"step":22,"file":"frame-0022.png","sha256":"215c735ac4edcf1e56cd6e3735dc4d0f3bb827fcf7b2984a278100fac3788545"},{"step":23,"file":"frame-0023.png","sha256":"23734d3774c4797d5cfc96a02c874825a9d7973be43a668feaa3520f42c377fd"},{"step":27,"file":"frame-0027.png","sha256":"8bd13d13efed097d1e7b272903070f2a514499066a6e9566c49a6c9d8ffc6d32"},{"step":31,"file":"frame-0031.png","sha256":"c8c7a5e568eaf6c8ac1f8bbd854f793df36e97d7eef8fcdf7c83ba8c834f4a6d"},{"step":33,"file":"frame-0033.png","sha256":"5c6fe05c6a5a3cf082053f92a88b195e0155ec4278504df41f0225e995bf30ba"},{"step":34,"file":"frame-0034.png","sha256":"04784efe420dd993c2345ba9b3a9702828af24d578c2f8b3c40a10fde85ef502"},{"step":35,"file":"frame-0035.png","sha256":"20a19ef958c57dd526c37af3ab19a5a5cbf7d1f7073ca4f1547ac2e297d9f650"}],"candidateCount":24,"candidates":[{"sampleId":"dev-f-step0012-center-anchor","step":12,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0012-spatial-control","step":12,"x":195,"y":180,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0013-center-anchor","step":13,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0013-spatial-control","step":13,"x":195,"y":650,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0015-center-anchor","step":15,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0015-spatial-control","step":15,"x":318,"y":180,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0017-center-anchor","step":17,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0017-spatial-control","step":17,"x":72,"y":180,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0020-center-anchor","step":20,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0020-spatial-control","step":20,"x":72,"y":422,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0022-center-anchor","step":22,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0022-spatial-control","step":22,"x":318,"y":422,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0023-center-anchor","step":23,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0023-spatial-control","step":23,"x":318,"y":422,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0027-center-anchor","step":27,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0027-spatial-control","step":27,"x":72,"y":180,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0031-center-anchor","step":31,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0031-spatial-control","step":31,"x":195,"y":180,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0033-center-anchor","step":33,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0033-spatial-control","step":33,"x":318,"y":422,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0034-center-anchor","step":34,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0034-spatial-control","step":34,"x":195,"y":650,"radius":26,"role":"spatial-control","label":"unknown"},{"sampleId":"dev-f-step0035-center-anchor","step":35,"x":195,"y":422,"radius":26,"role":"center-anchor","label":"unknown"},{"sampleId":"dev-f-step0035-spatial-control","step":35,"x":72,"y":422,"radius":26,"role":"spatial-control","label":"unknown"}]};
+const samples=study.candidates;
+const key="argus-m215-local-reference-"+study.seed+"-"+study.runId;
+const allowed=new Set(["present","absent","unknown"]);
+const byId=new Map(samples.map(x=>[x.sampleId,x]));
+const images=new Map(study.images.map(x=>[x.step,x.file]));
+if(samples.length!==24||byId.size!==24||study.partition!=="development")
+  throw Error("Invalid precommitted sample plan");
+function fresh(){return Object.fromEntries(samples.map(x=>[x.sampleId,"unknown"]));}
+let labels=fresh();
+try {
+  const stored=JSON.parse(localStorage.getItem(key)||"null");
+  if(stored&&typeof stored==="object"&&
+    Object.keys(stored).length===samples.length&&
+    Object.keys(stored).every(k=>byId.has(k)&&allowed.has(stored[k]))) labels=stored;
+} catch { labels=fresh(); }
+let index=0;
+const el=id=>document.getElementById(id);
+function display(){
+  const x=samples[index];
+  const file=images.get(x.step);
+  if(!file||!/^frame-\d{4}\.png$/.test(file))throw Error("Screenshot missing from frozen plan");
+  el("shot").src=file;
+  const ring=el("ring");
+  // Image coordinates, not page CSS percentages; both strokes share the same circle.
+  for (const node of [ring, el("ring-halo")]) {
+    node.setAttribute("cx", String(x.x));
+    node.setAttribute("cy", String(x.y));
+    node.setAttribute("r", String(x.radius));
+  }
+  const reviewed=Object.values(labels).filter(v=>v!=="unknown").length;
+  el("status").textContent=study.runId+" · locatie "+(index+1)+" / "+samples.length+
+    " · "+reviewed+" handmatig beoordeeld";
+  el("location-info").textContent="Frame "+x.step+
+    " · "+(x.role==="center-anchor"?"middenpositie":"andere positie")+
+    " · cirkelstraal 26 pixels";
+  for(const state of allowed){
+    const btn=el(state);
+    const selected=labels[x.sampleId]===state;
+    btn.classList.toggle("selected",selected);
+    btn.setAttribute("aria-pressed",String(selected));
+  }
+  el("previous").disabled=index===0;
+  el("next").disabled=index===samples.length-1;
+  el("progress-bar").style.width=reviewed/samples.length*100+"%";
+}
+function save(state){
+  const current=samples[index];
+  labels[current.sampleId]=state;
+  localStorage.setItem(key,JSON.stringify(labels));
+  display();
+}
+for(const label of allowed)el(label).addEventListener("click",()=>save(label));
+el("previous").addEventListener("click",()=>{if(index>0){index--;display();}});
+el("next").addEventListener("click",()=>{if(index<samples.length-1){index++;display();}});
+document.addEventListener("keydown",e=>{
+  if(e.target instanceof HTMLInputElement)return;
+  if(e.key==="ArrowRight")el("next").click();
+  if(e.key==="ArrowLeft")el("previous").click();
+});
+function exportData(){
+  return {schemaVersion:1,studySeed:study.seed,runId:study.runId,
+    probes:samples.map(s=>({sampleId:s.sampleId,step:s.step,x:s.x,y:s.y,
+      radius:s.radius,role:s.role,label:labels[s.sampleId]}))};
+}
+el("download").addEventListener("click",()=>{
+  const url=URL.createObjectURL(new Blob([JSON.stringify(exportData(),null,2)],
+    {type:"application/json"}));
+  const link=document.createElement("a");link.href=url;link.download="m215-"+study.runId+"-labels.json";
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+});
+el("import").addEventListener("change",async event=>{
+  const file=event.target.files[0];if(!file)return;
+  try {
+    const received=JSON.parse(await file.text());
+    if(received.schemaVersion!==1||received.studySeed!==study.seed||
+       received.runId!==study.runId||!Array.isArray(received.probes)||
+       received.probes.length!==samples.length)throw Error("Andere run of onderzoeksversie");
+    const copy={};for(const probe of received.probes){
+      const known=byId.get(probe.sampleId);
+      if(!known||Object.hasOwn(copy,probe.sampleId)||
+         !["step","x","y","radius","role"].every(k=>probe[k]===known[k])||
+         !allowed.has(probe.label))throw Error("Verplaatste of onbekende cirkel");
+      copy[probe.sampleId]=probe.label;
+    }
+    if(Object.keys(copy).length!==samples.length)throw Error("Onvolledige export");
+    labels=copy;localStorage.setItem(key,JSON.stringify(labels));display();
+  }catch(err){alert("Import geweigerd: "+err.message);}
+  event.target.value="";
+});
+el("title").textContent="ARGUS M2.15 · "+study.runId;
+display();
+</script>
+</body></html>
