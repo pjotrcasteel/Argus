@@ -8,7 +8,7 @@ partial = Path("artifacts/ci-learning-insufficient")
 base.mkdir(parents=True, exist_ok=True)
 partial.mkdir(parents=True, exist_ok=True)
 header = ["run_id", "step", "raw_bridge", "player_palette_pixels", "max_rgb_stddev",
-          "strong_edge_fraction", "witness", "reviewed_player_label"]
+          "strong_edge_fraction", "witness", "reviewed_candidate_local_label_v2"]
 
 
 def create(root, run_id, offset):
