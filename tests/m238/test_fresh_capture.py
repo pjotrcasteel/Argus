@@ -101,7 +101,7 @@ class FreshCaptureSyntheticTests(unittest.TestCase):
     def test_changed_source_trace_sha_rejected(self):
         folder=self.captures/"m238-a"
         trace=folder/"trace.jsonl"
-        trace.write_text(trace.read_text()+"\n")
+        trace.write_text(trace.read_text().replace("frame-0000.png", "frame-0099.png", 1))
         with self.assertRaisesRegex(ValueError,"NOT_READY"):
             m.verify_run(folder,"m238-a")
 
