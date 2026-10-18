@@ -120,6 +120,20 @@ class PrivateOriginalSequenceReplayTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "disjoint"):
             m.admit_original_manifest(modified, self.root)
 
+    def test_sealed_source_names_refuse_before_any_private_pixels_are_opened(self):
+        modified = copy.deepcopy(self.manifest)
+        modified["runs"][0]["runId"] = "dev-o"
+        with patch.object(m, "_read_rgb",
+                          side_effect=AssertionError("sealed source bytes accessed")):
+            with self.assertRaisesRegex(ValueError, "SEALED"):
+                m.admit_original_manifest(modified, self.root)
+        modified = copy.deepcopy(self.manifest)
+        modified["fit"][0]["run"] = "run-01"
+        with patch.object(m, "_read_rgb",
+                          side_effect=AssertionError("sealed source bytes accessed")):
+            with self.assertRaisesRegex(ValueError, "SEALED"):
+                m.admit_original_manifest(modified, self.root)
+
     def test_temporal_and_calibrated_appearance_must_agree_after_real_sequence(self):
         counter = [0]
         def sample(*args, **kwargs):
