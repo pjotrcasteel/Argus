@@ -4,7 +4,7 @@ using Argus.Core;
 
 namespace Argus.Adapters.Browser;
 
-/// <summary>Local, free sparse-text OCR with orientation detection for small high-contrast game controls, from viewport pixels only.</summary>
+/// <summary>Local, free automatic-page OCR for mixed scenic menus and small action controls, from viewport pixels only.</summary>
 public sealed class TesseractTextReader : IFrameTextReader
 {
     public async Task<IReadOnlyList<VisibleText>> ReadAsync(FrameObservation frame, CancellationToken cancellationToken = default)
@@ -24,7 +24,7 @@ public sealed class TesseractTextReader : IFrameTextReader
                 CreateNoWindow = true
             };
 
-            foreach (var arg in new[] { path, "stdout", "--psm", "12", "tsv" }) start.ArgumentList.Add(arg);
+            foreach (var arg in new[] { path, "stdout", "--psm", "3", "tsv" }) start.ArgumentList.Add(arg);
             using var process = Process.Start(start) ?? throw new InvalidOperationException("Unable to start local Tesseract OCR.");
             try
             {
