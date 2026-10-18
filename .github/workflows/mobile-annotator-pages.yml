@@ -129,6 +129,7 @@ jobs:
       - name: Verify navigation, tap annotations and JSON download in mobile Chromium
         run: |
           python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
           python3 web/mobile-annotator/smoke.py --site _site
           python3 tools/m26b/smoke.py --site _site --runs dev-a dev-b dev-c dev-d dev-e
           python3 tools/m215/smoke.py --site _site
