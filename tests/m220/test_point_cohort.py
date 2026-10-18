@@ -34,7 +34,7 @@ class Fixture:
             rows = []
             for step in range(42):
                 (folder / f"frame-{step:04d}.png").write_bytes(png(((15+j*36+step)%255,55,99)))
-                rows.append({"step":step,"screenshot":f"frame-{step:04d}.png",
+                rows.append({"step":step,"screenshot":f"frame-{step:04d}.png","syntheticSession":run,
                     "evidence":{"phase":("exploring" if step%3 else "unknown"),
                                 "combat":{"playerX":195, "playerY":422}}})
             self.trace(run,rows)
