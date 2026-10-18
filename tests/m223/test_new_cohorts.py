@@ -89,7 +89,11 @@ class CohortTests(unittest.TestCase):
             m223.original_frames(self.inputs,"development",self.root/"broken")
 
     def test_immutable_sample_rejects_corrupt_source_image_and_trace(self):
-        p=self.inputs/"dev-n"/"frame-0004.png"
+        # Corrupt the *predeclared selected* image, not an arbitrary unused frame.
+        first_bin_hash=hashlib.sha256(
+            (m223.SEEDS["development"]+"\ndev-n\n0").encode()).digest()
+        step=int.from_bytes(first_bin_hash[:8],"big") % (40//18)
+        p=self.inputs/"dev-n"/f"frame-{step:04d}.png"
         p.write_bytes(b"bad png")
         with self.assertRaisesRegex(ValueError,"PNG"):
             m223.original_frames(self.inputs,"development",self.root/"failed")
