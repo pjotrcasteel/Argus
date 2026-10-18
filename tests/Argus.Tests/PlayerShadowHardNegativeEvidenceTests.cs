@@ -33,7 +33,7 @@ public sealed class PlayerShadowHardNegativeEvidenceTests
 
         Assert.HasCount(9, lines);
         StringAssert.Contains(lines[0], "run_id,step,raw_bridge,player_palette_pixels");
-        StringAssert.Contains(lines[0], "reviewed_player_label");
+        StringAssert.Contains(lines[0], "reviewed_candidate_local_label_v2");
         Assert.IsTrue(lines.Skip(1).All(line => line.StartsWith("\"dev-red-blue\",", StringComparison.Ordinal)));
         Assert.IsTrue(lines.Any(line => line.EndsWith(",1", StringComparison.Ordinal)));
         Assert.IsTrue(lines.Any(line => line.EndsWith(",0", StringComparison.Ordinal)));
@@ -56,6 +56,35 @@ public sealed class PlayerShadowHardNegativeEvidenceTests
         Assert.IsTrue(lines[1].EndsWith(",", StringComparison.Ordinal));
         Assert.IsTrue(lines[2].EndsWith(",", StringComparison.Ordinal));
         Assert.AreEqual(6, lines.Count(line => line.EndsWith(",0", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public void RenderFeatureCsv_VisibleElsewhere_IsLocalNegativeEvenWhenGloballyVisible()
+    {
+        var original = BuildReport();
+        var data = original.Frames.ToArray();
+        data[1] = data[1] with { HumanDistancePixels = 78f };
+        var report = Recount("dev-far", data);
+        var summary = PlayerShadowHardNegativeEvidence.Summarize(report);
+        Assert.AreEqual(1, summary.VisibleElsewhereCandidates);
+        Assert.AreEqual(1, summary.UnresolvedFarVisible);
+        Assert.AreEqual(1, summary.UnresolvedVisible);
+        var lines = PlayerShadowHardNegativeEvidence.RenderFeatureCsv(report)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.IsTrue(lines[1].EndsWith(",1", StringComparison.Ordinal));
+        Assert.IsTrue(lines[2].EndsWith(",0", StringComparison.Ordinal));
+        StringAssert.Contains(PlayerShadowHardNegativeEvidence.RenderMarkdown(summary),
+            "VISIBLE elsewhere (>26px from stale candidate): LOCAL NEGATIVE");
+    }
+
+    [TestMethod]
+    public void RenderFeatureCsv_VisibleWithoutMeasuredDistance_RejectsUnknownIdentity()
+    {
+        var original = BuildReport();
+        var data = original.Frames.ToArray();
+        data[0] = data[0] with { HumanDistancePixels = null };
+        Assert.ThrowsExactly<InvalidDataException>(() =>
+            PlayerShadowHardNegativeEvidence.RenderFeatureCsv(Recount("dev-unsafe", data)));
     }
 
     [TestMethod]
@@ -91,7 +120,7 @@ public sealed class PlayerShadowHardNegativeEvidenceTests
 
     private static PlayerCurrentFrameVetoEvidence E(int step, string truth, string status,
         int matchingPixels, float variation, float edgeFraction) =>
-        new(step, "exploring", "BRIDGE_ONE", status, truth, null, matchingPixels, variation, edgeFraction);
+        new(step, "exploring", "BRIDGE_ONE", status, truth, truth == "VISIBLE" ? 8f : null, matchingPixels, variation, edgeFraction);
 
     private static PlayerCurrentFrameVetoReport Recount(string id, IReadOnlyList<PlayerCurrentFrameVetoEvidence> frames) =>
         new(id, frames.Count, frames.Count(f => f.WitnessStatus == "EMPTY_PATCH_VETO"),
