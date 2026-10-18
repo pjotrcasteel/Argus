@@ -38,7 +38,7 @@ the learner.
 ## New opt-in real development cohort
 
 The workflow `.github/workflows/m2-14-development.yml` is
-**manually dispatched**, not automatically run on every PR or merge.
+**manually dispatchable** and automatically triggered once when this specific M2.14 workflow is first merged to `main` (commit title contains `M2.14`); unrelated commits or later workflow edits without that marker will not capture.
 It launches three separate real Chromium screenshot-only black-box
 sessions against the **public, unmodified WyrmForge game**: `dev-f`,
 `dev-g`, `dev-h`. No WyrmForge source, DOM, internal game engine,
