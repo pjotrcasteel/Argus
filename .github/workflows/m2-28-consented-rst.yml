@@ -62,11 +62,7 @@ jobs:
         run: |
           python3 tools/m228/consented_public_rst.py build \
             --previous _prior --archive _m227-source-original-review.zip --output _site
-          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            python3 tools/m228/consented_public_rst.py verify --site _site
-          else
-            echo "PR computes source-verified complete tree SHA for pinning before merge."
-          fi
+          python3 tools/m228/consented_public_rst.py verify --site _site
           python3 - <<'PY'
           from pathlib import Path
           import json
