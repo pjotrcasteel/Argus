@@ -5,6 +5,7 @@ import json
 import struct
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -28,8 +29,14 @@ class Fixture:
                 images, probes, labels = [], [], []
                 z.writestr(f"annoteren/{run_id}/index.html", "<html>SYNTHETIC</html>")
                 for step in range(12):
-                    png = (b"\x89PNG\r\n\x1a\n" + b"\x00" * 8 +
-                           struct.pack(">II", 390, 844) + b"SYNTHETIC" + bytes([step]))
+                    def chunk(tag, payload):
+                        return (struct.pack(">I", len(payload)) + tag + payload +
+                                struct.pack(">I", zlib.crc32(tag + payload) & 0xffffffff))
+                    row = b"\x00" + bytes([35 + step, 67, 91]) * 390
+                    png = (b"\x89PNG\r\n\x1a\n" +
+                           chunk(b"IHDR", struct.pack(">IIBBBBB", 390, 844, 8, 2, 0, 0, 0)) +
+                           chunk(b"IDAT", zlib.compress(row * 844, 3)) +
+                           chunk(b"IEND", b""))
                     filename = f"frame-{step:04d}.png"
                     z.writestr(f"annoteren/{run_id}/{filename}", png)
                     images.append({"step": step, "file": filename,
