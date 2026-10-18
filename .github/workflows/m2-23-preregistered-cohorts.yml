@@ -1,0 +1,183 @@
+name: M2.23 preregister multiscale image learning and independent cohorts
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m223/**
+      - tests/m223/**
+      - .github/workflows/m2-23-preregistered-cohorts.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m223/**
+      - tests/m223/**
+      - .github/workflows/m2-23-preregistered-cohorts.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-multiscale-and-cohort-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install free image descriptor and browser test libraries
+        run: |
+          python3 -m pip install --quiet --break-system-packages "numpy>=2,<3" "Pillow>=11,<13" playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Test entirely artificial image representation, absence calibration, and prospective partitioning
+        run: |
+          python3 -m unittest discover -s tests/m223 -p 'test_*.py' -v
+      - name: Test new preregistered blind mobile pages with synthetic screenshots
+        run: |
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,"tests/m223")
+          from test_new_cohorts import CohortTests
+          from tools.m223.freeze_new_cohorts import original_frames
+          suite=CohortTests()
+          suite.setUp()
+          original_frames(suite.inputs,"development",Path("artifacts/m223-synthetic-originals"))
+          suite.tearDown()
+          PY
+          python3 tests/m223/mobile_smoke.py --site artifacts/m223-synthetic-originals
+      - name: Refuse private owner data, real-game source code, and accidental prospective review in CI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast
+          path=Path("tools/m223/multiscale_appearance.py")
+          code=path.read_text()
+          assert "run-01 forbidden" in code
+          assert "ABSENT training images" in code
+          assert "f[\"sha\"] not in forbidden" in code
+          assert "https://" not in code
+          assert not list(Path("tests/m223").glob("*labels*.json"))
+          prospective=Path("artifacts/m223-synthetic-originals")
+          assert not list(prospective.rglob("*.jsonl"))
+          ast.parse(code)
+          print("PASS: no real owner data or original held-out run-01 accessible.")
+          PY
+
+  fresh-development-and-sealed-prospective:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'M2.23'))
+    needs: synthetic-multiscale-and-cohort-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install free local OCR and browser
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Build and test unmodified current ARGUS
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+          dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build
+      - name: Install ordinary Playwright Chromium
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Capture three fresh development and three separately sealed prospective sessions
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/m223-original-runs
+          for run in dev-l dev-m dev-n dev-o dev-p dev-q; do
+            folder="artifacts/m223-original-runs/$run"
+            started="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            exit_code=0
+            echo "M2.23 whole-game screenshot capture $run (no private oracle/DOM/source)."
+            dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+              --url https://pjotrcasteel.github.io/Wyrmforge/ \
+              --agent visual --profile examples/wyrmforge.profile.json \
+              --headless --width 390 --height 844 --max-steps 76 --timeout-seconds 190 \
+              --output "$folder" || exit_code=$?
+            export ARGUS_CAPTURE_RUN="$run"
+            export ARGUS_CAPTURE_FOLDER="$folder"
+            export ARGUS_CAPTURE_STARTED="$started"
+            export ARGUS_CAPTURE_EXIT="$exit_code"
+            python3 - <<'PY'
+          import datetime, hashlib, json, os
+          from pathlib import Path
+          folder=Path(os.environ["ARGUS_CAPTURE_FOLDER"])
+          trace=folder/"trace.jsonl"
+          summary_file=folder/"summary.json"
+          summary=json.loads(summary_file.read_text()) if summary_file.is_file() else {}
+          profile=Path("examples/wyrmforge.profile.json")
+          row={"schemaVersion":1,"partition":"development","runId":os.environ["ARGUS_CAPTURE_RUN"],
+               "captureMode":"external WyrmForge screenshot/control, prospective not reviewed",
+               "startedAtUtc":os.environ["ARGUS_CAPTURE_STARTED"],
+               "finishedAtUtc":datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+               "runnerExitCode":int(os.environ["ARGUS_CAPTURE_EXIT"]),
+               "actualGameOutcome":"unknown","gameVersion":None,
+               "gameUrl":"https://pjotrcasteel.github.io/Wyrmforge/",
+               "profileSha256":hashlib.sha256(profile.read_bytes()).hexdigest(),
+               "traceSha256":hashlib.sha256(trace.read_bytes()).hexdigest() if trace.is_file() else None,
+               "policyVersion":os.environ["GITHUB_SHA"],"viewport":"390x844",
+               "frames":summary.get("frames"),"visualEvidenceGate":summary.get("meetsVisualCombatGate")}
+          folder.mkdir(parents=True,exist_ok=True)
+          (folder/"run-manifest.json").write_text(json.dumps(row,indent=2)+"\n")
+          print("M2.23 capture provenance, NO player truth:",json.dumps(row))
+          PY
+          done
+      - name: Freeze L/M/N original development pixel review and separate unseen O/P/Q source archive
+        run: |
+          python3 tools/m223/freeze_new_cohorts.py --role development \
+            --runs artifacts/m223-original-runs --output artifacts/m223-development-review
+          python3 tools/m223/freeze_new_cohorts.py --role prospective \
+            --runs artifacts/m223-original-runs --output artifacts/m223-prospective-SEALED
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          dev=Path("artifacts/m223-development-review")
+          prospective=Path("artifacts/m223-prospective-SEALED")
+          d=json.loads((dev/"study-manifest.json").read_text())
+          p=json.loads((prospective/"study-manifest.json").read_text())
+          assert d["runIds"]==["dev-l","dev-m","dev-n"] and d["trainingAuthorized"]
+          assert p["runIds"]==["dev-o","dev-p","dev-q"] and p["prospectiveSealIntact"]
+          assert not p["trainingAuthorized"] and p["humanGroundTruth"]=="ALL_UNKNOWN"
+          assert len(list(dev.rglob("frame-*.png")))==54
+          assert len(list(prospective.rglob("frame-*.png")))==54
+          assert len(list(dev.rglob("*/index.html")))==3
+          assert not list(prospective.rglob("*.html"))
+          assert len(list(prospective.rglob("*.json")))==1
+          assert not list(prospective.rglob("*.jsonl"))
+          assert not list(dev.rglob("*.jsonl"))
+          print("PASS: frozen six independent original game runs, two distinct 54-frame partitions; prospectively sealed.")
+          PY
+      - name: Verify actual new original-image mobile reviewer interactions
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m223/mobile_smoke.py --site artifacts/m223-development-review
+      - name: Retain new original development images privately for separate owner review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m223-original-development-review
+          path: artifacts/m223-development-review/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Seal prospective image and immutable source frame selection without human labels
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m223-prospective-source-SEALED-do-not-open
+          path: artifacts/m223-prospective-SEALED/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain raw original captures; separated from blinded human reference
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m223-original-six-runs-no-human-labels
+          path: artifacts/m223-original-runs/
+          retention-days: 7
+          if-no-files-found: warn
