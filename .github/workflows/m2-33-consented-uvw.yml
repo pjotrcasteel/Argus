@@ -1,0 +1,129 @@
+name: M2.33 consented original UVW-only public checkpoint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m233/**
+      - tests/m233/**
+      - .github/workflows/m2-33-consented-uvw.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-33-consented-uvw.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  synthetic-owner-privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Admit only 54 new original public screenshot targets and exactly three blank original reviewers
+        run: python3 -m unittest discover -s tests/m233 -p 'test_*.py' -v
+      - name: Explicitly reject any owner exports, prior temporal PNGs and prospectives in Git
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast
+          for directory in (Path('tools/m233'),Path('tests/m233')):
+            assert not [p for p in directory.rglob('*')
+                        if p.suffix in ('.png','.zip','.json','.jsonl','.pt','.pkl')]
+          code=Path('tools/m233/publish_approved_uvw.py').read_text()
+          assert 'ARCHIVE_SHA256' in code and 'SITE_TREE_SHA256' in code
+          assert 'verify_previous_checkpoint(previous)' in code
+          assert '351' in code and '324' in code and '24' in code
+          assert 'context/' in code and 'DO NOT PUBLISH' in code
+          ast.parse(code)
+          print('PASS owner-only consent for original development screenshots and BLANK reviewers.')
+          PY
+
+  immutable-verified-uvw-site:
+    needs: synthetic-owner-privacy
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact last-approved 294-file original public checkpoint
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/public-annotator-site-m227-development:refs/remotes/origin/public-annotator-site-m227-development
+          mkdir -p _prior
+          git archive refs/remotes/origin/public-annotator-site-m227-development | tar -xf - -C _prior
+          python3 tools/m228/consented_public_rst.py verify --site _prior
+      - name: Retrieve SHA-pinned original new U/V/W source ZIP, no human labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/12142830180/zip" > _authentic-uvw-source.zip
+          echo 'ab1c338aea8af582b0c93de2f7c7b4f11528b62c50cf03ce1fd3e013dff7e26f  _authentic-uvw-source.zip' | sha256sum -c -
+          unzip -t _authentic-uvw-source.zip | tail -1
+      - name: Verify exact selected target sources, retain temporal predecessors PRIVATE
+        run: |
+          python3 tools/m233/publish_approved_uvw.py build \
+            --previous _prior --archive _authentic-uvw-source.zip --output _site
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from tools.m233 import publish_approved_uvw as m
+          import json
+          root=Path('_site')
+          actual=m.tree_hash(m.all_files(root))
+          Path('_public-tree-sha.txt').write_text(actual+'\n')
+          assert len(list(root.rglob('*'))) >= 351
+          assert len(list(root.glob('annoteren/*/frame-*.png')))==324
+          assert len(list(root.glob('annoteren/*/index.html')))==24
+          assert len(list(root.rglob('*.json')))==1 and not list(root.rglob('*.jsonl'))
+          assert not list(root.rglob('prev-for-*.png'))
+          assert not list(root.glob('context/**/*'))
+          assert not list(root.glob('annoteren/dev-o/*'))
+          assert not list(root.glob('annoteren/dev-p/*'))
+          assert not list(root.glob('annoteren/dev-q/*'))
+          manifest=json.loads((root/'published-development-manifest.json').read_text())
+          assert manifest['m232HumanTruth']=='ALL_UNKNOWN'
+          print('Verified deterministic original-only new public site SHA256:', actual)
+          if m.SITE_TREE_SHA256 == '0'*64:
+              assert os.environ['GITHUB_EVENT_NAME']=='pull_request', 'NEVER publish unpinned site!'
+              print('PR only: compute independently reproducible site SHA; pin before merging.')
+          else:
+              assert actual == m.SITE_TREE_SHA256, 'Whole-site checksum not frozen: FAIL CLOSED.'
+              m.verify(root)
+          PY
+      - name: Verify all newly added real 390x844 original iPhone touch/export/import/reload and previous published review regressions
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m232/mobile_smoke.py --site _site
+          python3 tests/m227/mobile_smoke.py --site _site
+          python3 tests/m223/mobile_smoke.py --site _site
+          python3 tests/m220/mobile_smoke.py --site _site
+      - name: Keep only non-sensitive new public site digest for independent pinning (PR only)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m233-public-site-digest-only-no-images
+          path: _public-tree-sha.txt
+          retention-days: 7
+      - name: Create new immutable original-only public Git branch with no force and preserve previous public snapshots
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 tools/m233/publish_approved_uvw.py verify --site _site
+          git -C _site init -b public-annotator-site-m232-development
+          git -C _site config user.name 'github-actions[bot]'
+          git -C _site config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C _site remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C _site add -A
+          git -C _site commit -m 'Freeze 324 original owner-consented public PNGs and 24 blank reviewers only'
+          gh auth setup-git
+          git -C _site push origin HEAD:refs/heads/public-annotator-site-m232-development
+          echo 'New permanent no-force authenticated public-only snapshot created; switch Pages in a separate PR.'
