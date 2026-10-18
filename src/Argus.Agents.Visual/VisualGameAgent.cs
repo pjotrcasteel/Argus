@@ -136,9 +136,11 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 700);
         }
 
-        if (!gameplayCue && _explorationSteps == 0 && _emptyScans < 3)
+        if (!gameplayCue && _explorationSteps == 0)
         {
-            LastEvidence = new AgentEvidence("transition", "Checking screen after a visible menu selection", 0.3f, names);
+            // A completed menu click is not evidence that gameplay began. A redesigned
+            // title or town screen may still be waiting for a second visible action.
+            LastEvidence = new AgentEvidence("transition", "Waiting for confirmed visible gameplay HUD or menu action", 0.3f, names);
             return new GameAction(GameActionKind.Wait, DurationMs: 550);
         }
 
