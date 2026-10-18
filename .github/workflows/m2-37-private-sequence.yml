@@ -1,0 +1,54 @@
+name: M2.37 private original-sequence replay (synthetic CI only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/m237/**'
+      - 'tests/m237/**'
+      - '.github/workflows/m2-37-private-sequence.yml'
+      - 'docs/M2-37-PRIVATE-ORIGINAL-SEQUENCE.md'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/m237/**'
+      - 'tests/m237/**'
+      - '.github/workflows/m2-37-private-sequence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-sequence-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Free CPU-only dependencies
+        run: python -m pip install 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Test authentic-PNG bytes and causal appearance research on invented images
+        env:
+          PYTHONPATH: .
+          OPENBLAS_NUM_THREADS: 1
+        run: python -m unittest discover -s tests/m237 -p 'test_*.py' -v
+      - name: Enforce no original WyrmForge screenshot, private labels or model assets
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          for root in (Path('tools/m237'), Path('tests/m237')):
+              assert not [p for p in root.rglob('*') if p.suffix.lower() in
+                          ('.json','.jsonl','.png','.zip','.jpg','.jpeg','.pt','.onnx','.pkl')]
+          source = Path('tools/m237/original_sequence_replay.py').read_text()
+          ast.parse(source)
+          assert 'playerIdentityVerified": False' in source
+          assert 'liveAgentChanged": False' in source
+          assert 'SEALED:' in source
+          assert 'MIN_NEW_RUNS = 3' in source
+          assert 'MIN_ABSENT = 3' in source
+          print('PASS synthetic-only private research, zero original/owner assets.')
+          PY
