@@ -19,7 +19,7 @@ public sealed record PlayerShadowLearningRow(string RunId, int Step, string RawB
 
 public static class PlayerShadowLearningData
 {
-    public const string Header = "run_id,step,raw_bridge,player_palette_pixels,max_rgb_stddev,strong_edge_fraction,witness,reviewed_player_label";
+    public const string Header = "run_id,step,raw_bridge,player_palette_pixels,max_rgb_stddev,strong_edge_fraction,witness,reviewed_candidate_local_label_v2";
     public const string CsvName = "player-shadow-feature-rows.csv";
 
     /// <summary>
