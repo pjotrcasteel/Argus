@@ -141,11 +141,14 @@ class CausalIdentityResearch:
         self.run, self.step, self.source_sha = run, None, None
         self.tracks, self.next_id = (), 0
 
-    def update(self, run, step, source_sha, candidates):
+    def update(self, run, step, source_sha, candidates, *, previous_sha=None):
         require(type(run) is str and run and type(step) is int and step >= 0 and
                 type(source_sha) is str and len(source_sha) == 64 and
                 all(ch in "0123456789abcdef" for ch in source_sha),
                 "Original-image chronological step/run/SHA required.")
+        require(previous_sha is None or (type(previous_sha) is str and len(previous_sha) == 64 and
+                all(ch in "0123456789abcdef" for ch in previous_sha)),
+                "Original immediately preceding screenshot SHA invalid.")
         require(type(candidates) in (tuple, list) and 0 <= len(candidates) <= MAX_CANDIDATES and
                 all(isinstance(c, Candidate) for c in candidates),
                 "Bounded original-image candidate evidence required.")
@@ -156,7 +159,8 @@ class CausalIdentityResearch:
         require(self.step is None or step > self.step,
                 "Repeated/out-of-order source frames invalidate causal research.")
         linked = (self.step is not None and step == self.step + 1 and
-                  source_sha != self.source_sha)
+                  source_sha != self.source_sha and
+                  (previous_sha is None or previous_sha == self.source_sha))
         old = self.tracks if linked else ()
         # Greedy maximum first, globally, prevents one previous object being
         # assigned to multiple competitors; no engine/player labels involved.
@@ -218,3 +222,13 @@ class CausalIdentityResearch:
                  "age":top.age,"changedTransitions":top.changed_transitions},
             "consecutiveOriginalFrames":bool(linked),
             "noPrivilegedTruthAccess":True, "liveAgentChanged":False}
+
+    def update_original(self, run, step, immediately_previous_rgb, original_current_rgb,
+                        fit_only_model, *, grid=appearance.GRID):
+        """Authenticate original adjacent screenshot bytes; never pass trusted positions."""
+        prev_sha = frame_hash(immediately_previous_rgb)
+        next_sha = frame_hash(original_current_rgb)
+        candidates = original_image_candidates(immediately_previous_rgb,
+                                               original_current_rgb, fit_only_model,
+                                               grid=grid)
+        return self.update(run, step, next_sha, candidates, previous_sha=prev_sha)
