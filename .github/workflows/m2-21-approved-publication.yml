@@ -1,0 +1,88 @@
+name: M2.21 publish consented blind M2.20 reviewer checkpoint
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m221/**
+      - .github/workflows/m2-21-approved-publication.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-21-approved-publication.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  verify-and-checkpoint-blind-reviewers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve originally approved immutable M2.19 public snapshot
+        run: |
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/public-annotator-site-checkpoint:refs/remotes/origin/public-annotator-site-checkpoint
+          mkdir _original_approved_site
+          git archive refs/remotes/origin/public-annotator-site-checkpoint | tar -xf - -C _original_approved_site
+          python3 tools/m219/preserve_public_site.py verify --site _original_approved_site
+      - name: Retrieve ONLY exact authentic blank M2.20 development review archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/12133811970/zip" > m220-original-blank-review.zip
+          unzip -t m220-original-blank-review.zip | tail -1
+      - name: Validate every original image and add three human-UNKNOWN mobile pages
+        run: |
+          python3 tools/m221/publish_consented_public.py build \
+            --base _original_approved_site \
+            --archive m220-original-blank-review.zip \
+            --output _new_approved_site
+          python3 tools/m221/publish_consented_public.py verify --site _new_approved_site
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("_new_approved_site")
+          names = [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()]
+          assert len(names) == 180
+          assert len(list(root.glob("annoteren/*/frame-*.png"))) == 162
+          assert len(list(root.glob("annoteren/*/index.html"))) == 15
+          assert len(list(root.glob("**/*.json"))) == 1
+          assert not list(root.glob("**/*.jsonl"))
+          assert not list(root.glob("**/*.zip"))
+          assert not list(root.glob("annoteren/run-01/**/frame-*.png"))
+          manifest = json.loads((root/"published-development-manifest.json").read_text())
+          assert manifest["m220HumanTruth"] == "ALL_UNKNOWN"
+          assert manifest["m220PointRoutes"] == [f"annoteren/dev-{r}/" for r in "ijk"]
+          for run in "ijk":
+              doc = (root/f"annoteren/dev-{run}/index.html").read_text()
+              assert "fetch(" not in doc and "localStorage.setItem(storageKey" in doc
+              assert '"state":"visible"' not in doc and "run-01" not in doc
+              Path(f"m220-{run}.js").write_text(doc.split("<script>",1)[1].split("</script>",1)[0])
+          print("PASS: only approved blank M2.20+previous 12 reviewers, no human labels or held-out.")
+          PY
+          for run in i j k; do node --check "m220-$run.js"; done
+      - name: Verify actual new original PNGs and human-only taps in Chromium on mobile
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m220/mobile_smoke.py --site _new_approved_site
+          python3 tests/m218/mobile_smoke.py --site _new_approved_site
+      - name: Save exactly the approved publicly visible site to a new permanent Git branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git -C _new_approved_site init -b public-annotator-site-m220-checkpoint
+          git -C _new_approved_site config user.name "github-actions[bot]"
+          git -C _new_approved_site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C _new_approved_site remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C _new_approved_site add -A
+          git -C _new_approved_site commit -m "Checkpoint consented original 162 PNG development images and 15 blank annotators"
+          gh auth setup-git
+          # No force: reject any existing checkpoint; never overwrite prior original public images.
+          git -C _new_approved_site push origin HEAD:refs/heads/public-annotator-site-m220-checkpoint
+          echo "Published only new immutable PUBLIC static checkpoint; Pages switch is separately reviewed."
