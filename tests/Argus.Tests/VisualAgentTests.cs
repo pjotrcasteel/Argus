@@ -74,6 +74,27 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void FindBest_RedesignedTitleWithArrow_MatchesSourceVisibleStartGame()
+    {
+        // WyrmForge #122 changed the public title while the first live
+        // regression was running. Automatic-page OCR on original pixels
+        // sees START (117,697,56,10) and GAME (183,697,51,10).
+        var lines = new[]
+        {
+            new VisibleText("WYRMFORGE", 55, 106, 280, 30, 91),
+            new VisibleText("START GAME >", 117, 697, 146, 10, 86),
+            new VisibleText("Settings", 140, 770, 89, 15, 93)
+        };
+        var result = MenuTextMatcher.FindBest(lines,
+            new VisualGameProfile { MenuActions = ["Start Game", "Begin First Hunt"] });
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual("START GAME >", result.Text);
+        Assert.AreEqual(190f, result.CenterX);
+        Assert.AreEqual(702f, result.CenterY);
+    }
+
+    [TestMethod]
     public void FindBest_TownFirstHuntSplitOcr_ClicksObservedPartialButtonText()
     {
         // The new Refuge title uses a dark filled control. Original screenshot
