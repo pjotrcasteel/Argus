@@ -6,7 +6,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 
 def smoke(site: Path):
@@ -57,8 +57,9 @@ def smoke(site: Path):
                     page.locator("#import").set_input_files({
                         "name": "review.json", "mimeType": "application/json",
                         "buffer": json.dumps(exported).encode()})
-                    assert "2 handmatig beoordeeld" in page.locator("#status").inner_text()
-                    assert page.locator("#present").get_attribute("aria-pressed") == "true"
+                    expect(page.locator("#status")).to_contain_text("2 handmatig beoordeeld", timeout=5000)
+                    expect(page.locator("#present")).to_have_attribute("aria-pressed", "true")
+
                     page.locator("#next").click()
                     assert page.locator("#absent").get_attribute("aria-pressed") == "true"
                     assert not errors, errors
