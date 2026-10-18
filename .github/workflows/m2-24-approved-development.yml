@@ -1,0 +1,101 @@
+name: M2.24 consent-approved original development-only public archive
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m224/**
+      - tests/m224/**
+      - .github/workflows/m2-24-approved-development.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-24-approved-development.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  synthetic-public-allowlist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove rejection of fake owner exports, prospective frames and unexpected paths
+        run: |
+          python3 -m unittest discover -s tests/m224 -p 'test_publisher.py' -v
+          python3 - <<'PY'
+          from pathlib import Path
+          source=Path("tools/m224/publish_development_only.py").read_text()
+          assert 'PROSPECTIVE_SEED' in source and 'dev-o' in source and 'dev-p' in source and 'dev-q' in source
+          assert 'owner' in source and 'JSON' in source
+          assert 'SOURCE_ARCHIVE_SHA256' in source and 'PUBLIC_TREE_SHA256' in source
+          assert 'verify_original_site(parent)' in source
+          assert '237' in source and '216' in source
+          assert not list(Path("tests/m224").rglob("*labels*.json"))
+          print("PASS: synthetic-only M2.24 public-source guard, no owner/research/held-out inputs.")
+          PY
+
+  pinned-public-checkpoint:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: synthetic-public-allowlist
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve fully verified existing immutable 180-file M2.21 public checkpoint
+        run: |
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/public-annotator-site-m220-checkpoint:refs/remotes/origin/public-annotator-site-m220-checkpoint
+          mkdir -p _prior_public
+          git archive refs/remotes/origin/public-annotator-site-m220-checkpoint | tar -xf - -C _prior_public
+          python3 tools/m221/publish_consented_public.py verify --site _prior_public
+      - name: Download exact M2.23 original L/M/N blind development artifact only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/12135690618/zip" > m223-consented-original-development.zip
+          unzip -t m223-consented-original-development.zip | tail -1
+      - name: Verify every original L/M/N pixel and prior page; deny O/P/Q and owner exports
+        run: |
+          python3 tools/m224/publish_development_only.py build \
+            --parent _prior_public --archive m223-consented-original-development.zip \
+            --output _new_public
+          python3 tools/m224/publish_development_only.py verify --site _new_public
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path("_new_public")
+          assert len(list(p.rglob("frame-*.png")))==216
+          assert len(list(p.glob("annoteren/*/index.html")))==18
+          assert len(list(p.rglob("*.json")))==1 and not list(p.rglob("*.jsonl"))
+          assert not list(p.glob("annoteren/dev-o/*"))
+          assert not list(p.glob("annoteren/dev-p/*"))
+          assert not list(p.glob("annoteren/dev-q/*"))
+          plan=json.loads((p/"published-development-manifest.json").read_text())
+          assert plan["m223HumanTruth"]=="ALL_UNKNOWN"
+          print("PASS: only previously authorized public images + 54 original development PNGs, blank reviewer HTML.")
+          PY
+      - name: Install free mobile browser and smoke all three real L/M/N reviewer pages
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m223/mobile_smoke.py --site _new_public
+          python3 tests/m220/mobile_smoke.py --site _new_public
+      - name: Create permanently frozen standalone public checkpoint; never overwrite previous branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git -C _new_public init -b public-annotator-site-m223-development
+          git -C _new_public config user.name "github-actions[bot]"
+          git -C _new_public config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C _new_public remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C _new_public add -A
+          git -C _new_public commit -m "Archive owner-consented original L/M/N screenshots and blank mobile reviewers only"
+          gh auth setup-git
+          git -C _new_public push origin HEAD:refs/heads/public-annotator-site-m223-development
+          echo "M2.24 permanent Git checkpoint created. Pages migration is separately reviewed."
