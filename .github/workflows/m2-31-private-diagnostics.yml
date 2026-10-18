@@ -1,0 +1,51 @@
+name: M2.31 private identity failure taxonomy (synthetic only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m231/**
+      - tests/m231/**
+      - .github/workflows/m2-31-private-diagnostics.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m231/**
+      - tests/m231/**
+      - .github/workflows/m2-31-private-diagnostics.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  artificial-classification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free numeric dependencies
+        run: python -m pip install 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Verify frozen-model diagnostic error taxonomy using synthetic examples only
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests/m231 -p 'test_*.py' -v
+      - name: Verify no human references, original PNGs, prospective frames or overlay artifacts in Git
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          roots = (Path("tools/m231"), Path("tests/m231"))
+          assert not any(p.suffix in (".png", ".zip", ".json", ".jsonl", ".pkl", ".pt")
+                         for root in roots for p in root.rglob("*"))
+          code = Path("tools/m231/private_identity_failures.py").read_text()
+          ast.parse(code)
+          assert "model.load_private" in code
+          assert "model.fit_absent_threshold(cal, learner)" in code
+          assert "PRIVATE_DEVELOPMENT_ONLY_NO_RETRAINING" in code
+          assert "refuse to overwrite" in code
+          print("PASS: no owner or prospective material entered this synthetic-only CI.")
+          PY
