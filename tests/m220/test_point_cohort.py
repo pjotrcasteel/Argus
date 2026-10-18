@@ -41,7 +41,7 @@ class Fixture:
             self.owner_manifest(run,j)
 
     def trace(self,run,rows):
-        folder=self.runs/run]
+        folder=self.runs / run
         (folder/"trace.jsonl").write_text("\n".join(json.dumps(r) for r in rows)+"\n")
 
     def owner_manifest(self,run,index):
