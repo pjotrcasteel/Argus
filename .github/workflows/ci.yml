@@ -581,3 +581,50 @@ jobs:
               "NOT live player detections" in (root / "player-shadow-hard-negatives.md").read_text())
           print("PASS: six ABSENT references, four hard-negatives unresolved, no learned policy.")
           PY
+
+      - name: Train deterministic tiny logistic model on synthetic grouped data and refuse insufficient runs
+        run: |
+          python3 tools/m213/generate_learning_data.py
+          dotnet run --project src/Argus.Learning.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-learning-synthetic
+          dotnet run --project src/Argus.Learning.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-learning-insufficient
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          trained_root = Path("artifacts/ci-learning-synthetic")
+          trained = json.loads((trained_root / "offline-player-learning.json").read_text())
+          assert trained["status"] == "RESEARCH_TRAINED"
+          assert trained["developmentRuns"] == 3
+          assert trained["totalLabeled"] == 30
+          assert len(trained["leaveOneRunOut"]) == 3
+          assert all(x["reviewed"] == 10 and x["visible"] == 5 and x["absent"] == 5
+                     and x["hardNegatives"] == 3 and x["unknown"] == 2
+                     for x in trained["coverage"])
+          assert {f["heldOutRunId"] for f in trained["leaveOneRunOut"]} == {"dev-a", "dev-b", "dev-c"}
+          for f in trained["leaveOneRunOut"]:
+              assert f["heldOutRunId"] not in f["trainingRunIds"]
+              assert len(f["trainingRunIds"]) == 2
+              assert f["visible"] == 5 and f["absent"] == 5
+              assert sum(f[k] for k in ("modelTruePositive", "modelFalsePositive",
+                                         "modelFalseNegative", "modelTrueNegative")) == 10
+          model = trained["finalResearchModel"]
+          assert model["algorithm"] == "class-balanced-l2-logistic-v1"
+          assert len(model["weights"]) == 4
+          assert any(abs(x) > .01 for x in model["weights"])
+          assert all(math.isfinite(x) for x in model["weights"])
+          assert "run-01" not in json.dumps(trained)
+          insufficient_root = Path("artifacts/ci-learning-insufficient")
+          insufficient = json.loads((insufficient_root / "offline-player-learning.json").read_text())
+          assert insufficient["status"] == "NOT_READY"
+          assert insufficient["developmentRuns"] == 2
+          assert insufficient["finalResearchModel"] is None
+          assert insufficient["leaveOneRunOut"] == []
+          assert any("distinct development runs" in x for x in insufficient["blockers"])
+          assert "NO model fitted" in (insufficient_root / "offline-player-learning.md").read_text()
+          print("PASS: deterministic actual learned weights and whole-run validation; insufficient => NO model.")
+          PY
+          cp artifacts/ci-learning-synthetic/offline-player-learning.json artifacts/m213-first-learning.json
+          dotnet run --project src/Argus.Learning.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-learning-synthetic
+          cmp artifacts/ci-learning-synthetic/offline-player-learning.json artifacts/m213-first-learning.json
