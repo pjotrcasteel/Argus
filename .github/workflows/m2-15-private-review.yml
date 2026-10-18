@@ -1,0 +1,69 @@
+name: M2.15 private review from real frozen FGH captures (never Pages)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-15-private-review.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  authentic-private-review:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'M2.15')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve original immutable 158-frame FGH research ZIP from M2.14
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12129085171/zip > m214-original-capture.zip
+          unzip -t m214-original-capture.zip | tail -1
+      - name: Freeze 72 spatial probes on 36 AUTHENTIC source images, without predictions
+        run: |
+          python3 tools/m215/spatial_candidate_review.py build \
+            --archive m214-original-capture.zip --output artifacts/m215-private-review
+          python3 - <<'PY'
+          import hashlib, json, zipfile
+          from pathlib import Path
+          site = Path("artifacts/m215-private-review")
+          plan = json.loads((site / "spatial-study-plan.json").read_text())
+          assert plan["mode"] == "development-only" and plan["humanTruth"] == "ALL_UNKNOWN"
+          assert plan["runIds"] == ["dev-f", "dev-g", "dev-h"]
+          assert sum(len(x["images"]) for x in plan["runs"]) == 36
+          assert sum(len(x["candidates"]) for x in plan["runs"]) == 72
+          assert len({r["traceSha256"] for r in plan["runs"]}) == 3
+          with zipfile.ZipFile("m214-original-capture.zip") as original:
+              for run in plan["runs"]:
+                  name = run["runId"]
+                  folder = site / "annoteren" / name
+                  assert len(list(folder.glob("frame-*.png"))) == 12
+                  assert all(x["label"] == "unknown" for x in run["candidates"])
+                  assert all(x["radius"] == 26 for x in run["candidates"])
+                  for img in run["images"]:
+                      source = original.read(name+"/"+img["file"])
+                      saved = (folder / img["file"]).read_bytes()
+                      assert saved == source and hashlib.sha256(saved).hexdigest() == img["sha256"]
+                  html = (folder / "index.html").read_text()
+                  assert "playerX" not in html and "threatLocations" not in html
+                  Path(name+".js").write_text(html.split("<script>",1)[1].split("</script>",1)[0])
+          print("AUTHENTIC: original 36 PNG byte hashes preserved, 72 unknown location references, zero model predictions.")
+          PY
+          for run in dev-f dev-g dev-h; do node --check "$run.js"; done
+      - name: Install free browser test dependency
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Verify real iPhone-sized touch, JSON download and reload on ORIGINAL screenshots
+        run: python3 tools/m215/smoke.py --site artifacts/m215-private-review
+      - name: Preserve LOCAL-ONLY spatial review artifact, never publish on GitHub Pages
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m215-authentic-private-spatial-review
+          path: artifacts/m215-private-review/
+          retention-days: 7
+          if-no-files-found: error
