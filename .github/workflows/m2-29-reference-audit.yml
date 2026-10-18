@@ -1,0 +1,52 @@
+name: M2.29 private reference evaluation (synthetic only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m229/**
+      - tests/m229/**
+      - .github/workflows/m2-29-reference-audit.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m229/**
+      - tests/m229/**
+      - .github/workflows/m2-29-reference-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only free local image dependencies
+        run: python -m pip install 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Run entirely synthetic original PNG and human-state audit tests
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests/m229 -p 'test_*.py' -v
+      - name: Assert no private human data, unknown prospectives or real source images are checked in
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          sources = Path("tools/m229"), Path("tests/m229")
+          assert not any(p.suffix in (".png",".zip",".json",".jsonl")
+                         for root in sources for p in root.rglob("*"))
+          code = Path("tools/m229/evaluate_temporal_references.py").read_text()
+          ast.parse(code)
+          assert "FROZEN_ARCHIVE_SHA256" in code
+          assert "prospectiveOriginalsAccessed" in code
+          assert "PRIVATE_DEVELOPMENT_ONLY_NO_PLAYER_CLASSIFIER" in code
+          assert "NOT_EVALUATED" in code and "NO_GO" in code
+          assert "context/" in code and "Identical source PNG" in code
+          print("PASS: synthetic-only audit; no owner labels or source images in GitHub.")
+          PY
