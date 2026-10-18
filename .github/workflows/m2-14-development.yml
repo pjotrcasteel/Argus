@@ -1,12 +1,19 @@
 name: M2.14 three new precommitted development sessions and blind review
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-14-development.yml
 
 permissions:
   contents: read
 
 jobs:
   independent-development-capture:
+    # One pre-registered capture at the M2.14 merge; manual dispatch thereafter.
+    # A later unrelated edit to this workflow does NOT automatically recapture.
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'M2.14')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
