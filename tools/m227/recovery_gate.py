@@ -29,9 +29,12 @@ def verify_source(root: Path, run: str):
     trace_path = folder/"trace.jsonl"
     require(metadata_path.is_file() and trace_path.is_file(),
             "Missing authoritative source trace or manifest.")
-    metadata = json.loads(metadata_path.read_text())
-    raw = trace_path.read_bytes()
-    lines = [json.loads(line) for line in raw.splitlines()]
+    try:
+        metadata = json.loads(metadata_path.read_text())
+        raw = trace_path.read_bytes()
+        lines = [json.loads(line) for line in raw.splitlines()]
+    except (ValueError, UnicodeDecodeError) as error:
+        raise ValueError("INVALID original browser provenance: malformed source JSON trace.") from error
     require(metadata.get("schemaVersion") == 1 and metadata.get("runId") == run and
             metadata.get("partition") == "development" and
             metadata.get("runnerExitCode") == 0 and
