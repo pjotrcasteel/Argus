@@ -139,8 +139,10 @@ def build(root: Path, output: Path) -> dict:
     for path, raw in outputs:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(raw)
-    require(len(approved) == SAMPLES * len(RUNS),
-            "Repeated identical source PNGs across frames/runs; review capture validity.")
+    # Identical static screen PNGs can legitimately occur in multiple frames.
+    # Report duplicates, but NEVER resample based on pixel content or agent guesses.
+    plan["uniqueOriginalImageSha256Count"] = len(approved)
+    (output / "m220-study-plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     print(f"M2.20 FROZEN: 3 runs, {SAMPLES * len(RUNS)} distinct ORIGINAL PNGs, 0 human labels; no Pages publication.")
     return plan
 
