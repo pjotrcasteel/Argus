@@ -64,6 +64,20 @@ historical published study routes**. The workflow emitted ONLY a digest text
 artifact, never original screenshots as PR artifacts. It was pinned in
 source **before merging**, and all future builds must revalidate it.
 
+## Verified immutable original-only snapshot
+
+[PR #71](https://github.com/pjotrcasteel/Argus/pull/71) merged as
+`49fdd42377310d2a13811a77932b961b121ad7ae` only after pinned
+full-site original SHA, real U/V/W mobile and all historical browser
+regressions, and standard .NET CI were green.
+
+[Main Actions #39143645358](https://github.com/pjotrcasteel/Argus/actions/runs/39143645358)
+SUCCESS independently recreated the public-only exact SHA and
+non-force-created `public-annotator-site-m232-development` at commit
+`c4f05f6266992bf9bd20763314af98c1f2d6b9f7`. This is NOT, by itself,
+a live GitHub Pages production deployment: a reviewed separate Pages workflow
+migration must still succeed.
+
 ## Deployment sequencing
 
 1. On the source-pinned PR, require synthetic allowlist tests,
