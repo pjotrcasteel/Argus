@@ -162,7 +162,7 @@ public sealed class SpatialProbeLearningTests
                     File.WriteAllText(LabelPaths[r], JsonSerializer.Serialize(new
                     {
                         schemaVersion = 1, studySeed = SpatialProbeImporter.Seed, runId = id, probes = human
-                    }));
+                    }, Options));
                 }
                 Add(zip, "spatial-study-plan.json", Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
                 {
@@ -171,7 +171,7 @@ public sealed class SpatialProbeLearningTests
                     studySeed = SpatialProbeImporter.Seed, radiusPixels = 26,
                     sampling = "SYNTHETIC", humanTruth = "unknown",
                     runIds = runs, runs = all
-                })));
+                }, Options)));
             }
         }
 
