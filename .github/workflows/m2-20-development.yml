@@ -1,0 +1,156 @@
+name: M2.20 independent development captures + blind player-center reference
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m220/**
+      - tests/m220/**
+      - .github/workflows/m2-20-development.yml
+      - web/point-annotator/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-20-development.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-reference-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate 100 percent synthetic PNG/labels, source hash, sampling independence and model privacy
+        run: python3 -m unittest discover -s tests/m220 -p 'test_point_cohort.py' -v
+      - name: Install free Chrome reviewer validation
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Run actual mobile Chromium against synthetic development point references
+        run: |
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "tests/m220")
+          from test_point_cohort import Fixture, m220
+          f=Fixture()
+          m220.build(f.runs,Path("artifacts/synthetic-m220-review"))
+          f.close()
+          PY
+          python3 tests/m220/mobile_smoke.py --site artifacts/synthetic-m220-review
+
+  fresh-independent-development-only:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'M2.20'))
+    needs: synthetic-reference-protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install free local OCR and game browser
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Restore, build, and verify current ARGUS agent code
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+          dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build
+      - name: Install free Chromium
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Independently capture three never-before-seen browser sessions without oracle data
+        run: |
+          mkdir -p artifacts/m220-runs
+          for run in dev-i dev-j dev-k; do
+            folder="artifacts/m220-runs/$run"
+            started="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            exit_code=0
+            echo "Fresh browser-process development run: $run"
+            dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+              --url https://pjotrcasteel.github.io/Wyrmforge/ \
+              --agent visual --profile examples/wyrmforge.profile.json \
+              --headless --width 390 --height 844 --max-steps 76 --timeout-seconds 190 \
+              --output "$folder" || exit_code=$?
+            export ARGUS_CAPTURE_RUN="$run"
+            export ARGUS_CAPTURE_FOLDER="$folder"
+            export ARGUS_CAPTURE_STARTED="$started"
+            export ARGUS_CAPTURE_EXIT="$exit_code"
+            python3 - <<'PY'
+          import datetime,hashlib,json,os
+          from pathlib import Path
+          folder=Path(os.environ["ARGUS_CAPTURE_FOLDER"])
+          trace=folder/"trace.jsonl"
+          summary_file=folder/"summary.json"
+          summary=json.loads(summary_file.read_text()) if summary_file.is_file() else {}
+          profile=Path("examples/wyrmforge.profile.json")
+          row={"schemaVersion":1,"partition":"development","runId":os.environ["ARGUS_CAPTURE_RUN"],
+               "studyRole":"new independent original-image player-center study, not held-out",
+               "startedAtUtc":os.environ["ARGUS_CAPTURE_STARTED"],
+               "finishedAtUtc":datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+               "runnerExitCode":int(os.environ["ARGUS_CAPTURE_EXIT"]),
+               "actualGameOutcome":"unknown","gameVersion":None,
+               "gameUrl":"https://pjotrcasteel.github.io/Wyrmforge/",
+               "profileSha256":hashlib.sha256(profile.read_bytes()).hexdigest(),
+               "traceSha256":hashlib.sha256(trace.read_bytes()).hexdigest() if trace.is_file() else None,
+               "policyVersion":os.environ["GITHUB_SHA"],"viewport":"390x844",
+               "frames":summary.get("frames"),"visualEvidenceGate":summary.get("meetsVisualCombatGate")}
+          folder.mkdir(parents=True,exist_ok=True)
+          (folder/"run-manifest.json").write_text(json.dumps(row,indent=2)+"\n")
+          print("Source-only development capture:",json.dumps(row))
+          PY
+          done
+      - name: Freeze eighteen deterministic chronological original PNGs per run, not selected by agent guesses
+        run: |
+          python3 tools/m220/point_cohort.py build \
+            --runs artifacts/m220-runs --output artifacts/m220-private-review
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path("artifacts/m220-private-review/m220-study-plan.json").read_text())
+          assert plan["runIds"]==["dev-i","dev-j","dev-k"]
+          assert plan["mode"]=="development-only" and not plan["publicPublicationAuthorized"]
+          assert all(r["humanTruth"]=="ALL_UNKNOWN" and len(r["images"])==18 for r in plan["runs"])
+          assert len({r["traceSha256"] for r in plan["runs"]})==3
+          assert len(list(Path("artifacts/m220-private-review/annoteren").glob("*/frame-*.png")))==54
+          assert not list(Path("artifacts/m220-private-review").rglob("labels.json"))
+          print("PASS: FROZEN fresh ORIGINAL 54 PNGs; no human labels, no bias-based frame selection, no publication.")
+          PY
+          for run in dev-i dev-j dev-k; do
+            python3 - "$run" <<'PY'
+          import sys
+          from pathlib import Path
+          run=sys.argv[1]
+          html=(Path("artifacts/m220-private-review/annoteren")/run/"index.html").read_text()
+          script=html.split("<script>",1)[1].split("</script>",1)[0]
+          Path(run+"-m220.js").write_text(script)
+          assert "playerX" not in html and "threatLocations" not in html
+          PY
+            node --check "$run-m220.js"
+          done
+      - name: Install Chrome UI verification
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Independently test the ACTUAL original-image mobile reviewer files
+        run: python3 tests/m220/mobile_smoke.py --site artifacts/m220-private-review
+      - name: Retain external-game original research and full-session provenance temporarily
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m220-fresh-independent-run-original-evidence
+          path: artifacts/m220-runs/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain ONLY BLANK original-image mobile point reviewers for private owner use
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m220-private-original-point-review
+          path: artifacts/m220-private-review/
+          retention-days: 7
+          if-no-files-found: warn
