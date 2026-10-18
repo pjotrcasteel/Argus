@@ -20,6 +20,14 @@ class PrivateAdmissionTests(unittest.TestCase):
     def setUp(self):
         self.fixture = CohortTests()
         self.fixture.setUp()
+        raw_png = valid_png()
+        for sample_run in ("dev-l", "dev-m", "dev-n"):
+            for sample_step in range(40):
+                identity = (sample_run + "-" + str(sample_step)).encode()
+                tag = struct.pack(">I", len(identity)) + b"tEXt" + identity
+                tag += struct.pack(">I", zlib.crc32(b"tEXt" + identity) & 0xffffffff)
+                sample_path = self.fixture.inputs / sample_run / f"frame-{sample_step:04d}.png"
+                sample_path.write_bytes(raw_png[:33] + tag + raw_png[33:])
         self.original = self.fixture.root / "fictional-development"
         self.plan = original_frames(self.fixture.inputs, "development", self.original)
         self.archive = self.fixture.root / "fictional-development.zip"
@@ -53,7 +61,7 @@ class PrivateAdmissionTests(unittest.TestCase):
         originals, coverage, unique = study.validate_and_load(self.archive, self.exports)
         self.assertEqual(list(originals), list(study.DEVELOPMENT))
         self.assertEqual(54, sum(len(x) for x in originals.values()))
-        self.assertEqual(1, unique)  # Same invented static PNG, never independent evidence.
+        self.assertEqual(54, unique)  # Same invented static PNG, never independent evidence.
         for run in study.DEVELOPMENT:
             self.assertEqual(12, coverage[run]["visible"])
             self.assertEqual(6, coverage[run]["absent"])
