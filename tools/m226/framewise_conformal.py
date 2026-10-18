@@ -155,6 +155,8 @@ def evaluate(by_run, coverage, distinct):
     folds = []
     for held in RUNS:
         hidden = {f["sha"] for f in by_run[held]}
+        original_training = [f for run in RUNS if run != held for f in by_run[run]]
+        excluded = sum(f["sha"] in hidden for f in original_training)
         training = {run: [f for f in by_run[run] if f["sha"] not in hidden]
                     for run in RUNS if run != held}
         model, cal_scores, fit, cal = fit_with_calibration(training, list(training))
@@ -168,7 +170,7 @@ def evaluate(by_run, coverage, distinct):
                    image_metrics["falsePositive"] / max(1, absent_frames) <= SUCCESS_MAX_ABSENT_FALSE_POSITIVE_RATE)
         folds.append({"heldOut": held,
                       "fittedOnRuns": sorted(training),
-                      "excludedSharedOriginalPngs": sum(f["sha"] in hidden for frames in training.values() for f in frames),
+                      "excludedSharedOriginalPngs": excluded,
                       "fitOriginalFrames": len(fit),
                       "calibrationIndependentWholeAbsentFrames": len(cal),
                       "calibrationMinimumAttainableP": round(1 / (len(cal)+1), 6),
