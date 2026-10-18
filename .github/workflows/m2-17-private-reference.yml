@@ -1,0 +1,34 @@
+name: M2.17 private reference adjudication (artificial labels only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m217/**
+      - tests/m217/**
+      - .github/workflows/m2-17-private-reference.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-private-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check pinned and entirely artificial reviewer integrity tests
+        run: python3 -m unittest discover -s tests/m217 -p 'test_reference_audit.py' -v
+      - name: Install free Chromium browser automation
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Real mobile browser only on synthetic user-review fixture
+        run: python3 tests/m217/mobile_smoke.py
+      - name: Recheck that no human annotations entered build artifacts
+        run: |
+          if find . -type f \( -name 'm215-dev-f-labels*.json' -o -name 'm215-dev-g-labels*.json' -o -name 'm215-dev-h-labels*.json' \) | grep .; then
+            echo 'Owner-labelled files must NEVER enter public CI or repo.'
+            exit 1
+          fi
+          echo 'PASS: CI contains only transient SYNTHETIC fixtures. No review artifact uploaded.'
