@@ -9,6 +9,8 @@ on:
       - src/Argus.Runner/**
       - tests/Argus.Tests/**
       - tests/Argus.Annotation.UiSmoke/**
+      - tools/m215/**
+      - web/candidate-annotator/**
       - src/Argus.Replay/**
       - src/Argus.Evaluation/**
       - src/Argus.Study.Tool/**
