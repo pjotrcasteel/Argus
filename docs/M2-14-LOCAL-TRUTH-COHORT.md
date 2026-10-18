@@ -131,3 +131,13 @@ run satisfies the strict M2.13 positive/negative/hard-negative
 sample gate. Do not train on or open original held-out `run-01`
 for tuning. A NEW untouched whole-run evaluation is required
 before any gameplay integration is even proposed.
+
+## Verified real execution, 2026-10-18
+
+[M2.14 first-merge real capture run #39106267438](https://github.com/pjotrcasteel/Argus/actions/runs/39106267438) **PASS**, using merged commit `f9478ec81d9ce9615b7f4b4134a3b3020c7d033a`. Three separate browser processes recorded **158 original 390x844 screenshots**: dev-f **41**, dev-g **73**, dev-h **44**. Independent trace SHA256 checks and capture manifests matched. All three original game visual-transport smoke gates passed, but this is not evidence of win rate, strategy learning or new player recognition.
+
+The frozen `Study.Tool` plan selected **24 exact original PNGs each** (72 total) with the preregistered seed; zero human labels were inferred, study status `NOT_EVALUATED`. Mobile original-visual Android/iPhone-sized Chromium smoke passed on all 3 review pages, including touch, step navigation, download and reload. Both source and review Actions artifacts were archived temporarily for seven days; copies were saved to the private conversation workspace for continued work. **No new public Pages routes created** and none authorized for this cohort yet.
+
+**Critical candidate coverage:** the post-freeze original-PNG shadow report measured **1, 2 and 3 total raw memory proposals** across complete F/G/H traces, of which **0, 1 and 2** respectively occur in the predetermined 24-image review selection. There are only **3 candidate-relevant reviewed-to-be frames** in 72 images! A human could fully label all 72, yet there would be at most 0/1/2 local proposal-based training references, far below M2.13's **>=10 reviewed proposals PER run**. These counts were observed only AFTER freezing the selection and NEVER used to change the study frame indices. No manual labels have yet been collected for F/G/H and no model weights were fitted on these real images.
+
+**Decision:** do NOT ask the owner to annotate all 72 broadly sampled screenshots for the M2.13 goal. Archive the original dataset for future generic vision research; preserve previous sample provenance. M2.15 must first design a preregistered **candidate-location-specific original-image reference protocol** with honest negative sampling (e.g., independently sampled local positions in otherwise player-visible frames) and separate score/generalization checks, instead of assuming a global player-present label or cherry-picking a successful run. Do not change M2.13 readiness thresholds just to force training.
