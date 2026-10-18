@@ -1,0 +1,172 @@
+name: M2.32 preregistered contrastive presence and fresh U/V/W original captures
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m232/**
+      - tests/m232/**
+      - .github/workflows/m2-32-fresh-independent-development.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m232/**
+      - tests/m232/**
+      - .github/workflows/m2-32-fresh-independent-development.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-synthetic-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install only free original-image and mobile browser test prerequisites
+        run: |
+          python3 -m pip install --quiet --break-system-packages 'numpy>=2,<3' 'Pillow>=11,<13' playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Test preregistered image-relative presence and frozen source selection using ARTIFICIAL data
+        env:
+          OPENBLAS_NUM_THREADS: 1
+        run: python3 -m unittest discover -s tests/m232 -p 'test_*.py' -v
+      - name: Original mobile review touch and private JSON roundtrip with artificial screenshot files
+        run: |
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,"tests/m232")
+          from test_freeze_new_development import FreshDevelopmentFreezeTests
+          from tools.m232.freeze_new_development import freeze
+          sample=FreshDevelopmentFreezeTests()
+          sample.setUp()
+          freeze(sample.inputs,Path("artifacts/m232-synthetic-review"))
+          sample.tearDown()
+          PY
+          python3 tests/m232/mobile_smoke.py --site artifacts/m232-synthetic-review
+      - name: Never include owner input, prospective frames, actual game screenshot pixels or outcomes in code
+        run: |
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          for root in (Path('tools/m232'),Path('tests/m232')):
+            assert not [x for x in root.rglob('*') if x.suffix in ('.png','.json','.jsonl','.zip','.pt','.onnx')]
+          for path in Path('tools/m232').glob('*.py'):
+            ast.parse(path.read_text())
+          text=Path('tools/m232/relative_presence.py').read_text()
+          source=Path('tools/m232/freeze_new_development.py').read_text()
+          assert 'MIN_INDEPENDENT_ABSENT = 4' in text and 'MIN_ABSENT_RUNS = 2' in text
+          assert 'MIN_TRUE_VISIBLE_PER_HELD_RUN = 8' in text
+          assert 'MIN_TRUE_ABSENT_PER_HELD_RUN = 3' in text
+          assert 'SOURCE_ONLY' in source or 'source only' in source.lower() or 'No guessed player' in source
+          assert 'prospectiveOriginalsAccessed' in source
+          assert 'argus-m232-independent-uvw-development-20261018-v1' in source
+          print('PASS precommitted no-oracle freeze; zero owner/held-out bytes in GitHub.')
+          PY
+
+  capture-real-independent-uvw:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'M2.32'))
+    needs: frozen-synthetic-protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install ordinary local OCR only
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Build and test existing UNMODIFIED black-box ARGUS visual runner
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+          dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build
+      - name: Install normal browser interaction engine
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Capture and verify three independent genuine NEW development sessions; retry failures honestly
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/m232-source
+          for run in dev-u dev-v dev-w; do
+            folder="artifacts/m232-source/$run"
+            accepted=0
+            for attempt in 1 2 3; do
+              rm -rf "$folder"
+              started="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+              echo "Actual fresh original external WyrmForge screenshot capture $run; attempt $attempt."
+              exit_code=0
+              dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+                --url https://pjotrcasteel.github.io/Wyrmforge/ \
+                --agent visual --profile examples/wyrmforge.profile.json \
+                --headless --width 390 --height 844 --max-steps 76 --timeout-seconds 190 \
+                --output "$folder" || exit_code=$?
+              python3 tools/m232/capture_provenance.py record \
+                --run "$run" --folder "$folder" --started "$started" \
+                --exit "$exit_code" --revision "$GITHUB_SHA" \
+                --profile examples/wyrmforge.profile.json
+              export ARGUS_CAPTURE_RUN="$run" ARGUS_CAPTURE_FOLDER="$folder"
+              if python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from tools.m232.capture_provenance import verify_run
+          print('PASS independent actual source:', verify_run(
+              Path(os.environ['ARGUS_CAPTURE_FOLDER']), os.environ['ARGUS_CAPTURE_RUN']))
+          PY
+              then
+                accepted=1
+                break
+              fi
+              echo "Original $run attempt $attempt failed; no guessed screenshot or fake success."
+            done
+            if [ "$accepted" -ne 1 ]; then
+              echo "FAIL CLOSED: no valid complete original browser session for $run"
+              exit 1
+            fi
+          done
+          python3 tools/m232/capture_provenance.py verify --runs artifacts/m232-source
+      - name: Freeze only source-selected 54 original U/V/W targets and 54 original immediate predecessors
+        run: |
+          python3 tools/m232/freeze_new_development.py \
+            --runs artifacts/m232-source --output artifacts/m232-original-blind-review
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('artifacts/m232-original-blind-review')
+          study=json.loads((root/'study-manifest.json').read_text())
+          assert study['runIds']==['dev-u','dev-v','dev-w']
+          assert study['targetsPerRun']==18 and study['originalTargetImages']==54
+          assert study['originalPrecedingContextImages']==54
+          assert study['humanGroundTruth']=='ALL_UNKNOWN'
+          assert study['prospectiveOriginalsAccessed'] is False
+          assert len(list(root.glob('annoteren/*/frame-*.png')))==54
+          assert len(list(root.glob('context/*/prev-for-*.png')))==54
+          assert len(list(root.glob('annoteren/*/index.html')))==3
+          assert not list(root.rglob('*.jsonl'))
+          print('PASS original NEW development source-only U/V/W with no owner truth.')
+          PY
+      - name: Real Chromium 320/375/430 original-frame tap/export/import tests on captured external browser screenshots
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m232/mobile_smoke.py --site artifacts/m232-original-blind-review
+      - name: Retain isolated original NEW development review and private temporal contexts (7 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m232-original-UVW-development-only-review-not-public
+          path: artifacts/m232-original-blind-review/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain independently captured source traces only in short-lived workflow artifact, never Pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m232-original-UVW-source-no-owner-labels-not-public
+          path: artifacts/m232-source/
+          retention-days: 7
+          if-no-files-found: warn
