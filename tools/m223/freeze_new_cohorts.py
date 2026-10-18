@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 import struct
+import sys
 from pathlib import Path
 
 DEVELOPMENT = ("dev-l", "dev-m", "dev-n")
@@ -18,6 +19,7 @@ SEEDS = {"development": "argus-m223-fresh-development-20261018-v1",
          "prospective": "argus-m223-sealed-prospective-20261018-v1"}
 SAMPLES = 18
 PNG = b"\x89PNG\r\n\x1a\n"
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 def digest(data):
