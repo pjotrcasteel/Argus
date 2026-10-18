@@ -110,6 +110,39 @@ jobs:
                          for f in labels["frames"])
           print("72 presampled BLIND development screenshots; ZERO human labels fabricated.")
           PY
+      - name: Assess frozen sample's ACTUAL shadow candidate coverage without choosing frames or labels
+        run: |
+          for run in dev-f dev-g dev-h; do
+            folder="artifacts/research-development/$run"
+            cp "$folder/blind-labels.template.json" "$folder/labels.json"
+            dotnet run --project src/Argus.Evaluation.Tool --configuration Release --no-build -- \
+              --run "$folder" --occlusion-shadow examples/wyrmforge.profile.json
+            rm "$folder/labels.json"
+          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/research-development")
+          plan = json.loads((root / "study-plan.json").read_text())
+          counts = []
+          for item in plan["assignments"]:
+              name = item["runId"]
+              original = json.loads((root / name / "player-occlusion-shadow.json").read_text())
+              preselected = set(item["frameSteps"])
+              proposals = [frame["step"] for frame in original["frames"]
+                           if frame["status"] in ("BRIDGE_ONE", "BRIDGE_TWO")]
+              reviewed = sorted(preselected.intersection(proposals))
+              counts.append({"runId":name,"totalRawBridgeCandidates":len(proposals),
+                             "candidateStepsInFrozen24":reviewed,"candidateCountInFrozen24":len(reviewed),
+                             "knownHumanLabels":0,
+                             "learningReadiness":"NOT_EVALUATED"})
+              print(name, "raw memory proposals in previously frozen selection", len(reviewed),
+                    "(not all become human positives/negatives; no claim of learning readiness)")
+          (root / "m214-candidate-coverage-preview.json").write_text(
+              json.dumps({"schemaVersion":1,"samplingUnaffected":True,
+                          "dataPartition":"development-only","runs":counts},indent=2) + "\n")
+          assert all(row["knownHumanLabels"] == 0 for row in counts)
+          PY
       - name: Build independent iPhone-friendly blind review artifact (no automatic publication)
         run: |
           python3 tools/m26b/mobile_review.py \
@@ -147,7 +180,7 @@ jobs:
               manifest = json.loads((folder / "run-manifest.json").read_text())
               assert manifest["traceSha256"] == digest
               assert manifest["runnerExitCode"] == 0
-              assert manifest["frames"] >= 12
+              assert manifest["frames"] >= 24
               assert manifest["partition"] == "development"
               fingerprints.append(digest)
           assert len(set(fingerprints)) == 3
