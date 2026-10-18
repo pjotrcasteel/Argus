@@ -8,6 +8,7 @@
   <Project Path="src/Argus.Evaluation.Tool/Argus.Evaluation.Tool.csproj" />
   <Project Path="src/Argus.Study.Tool/Argus.Study.Tool.csproj" />
   <Project Path="src/Argus.Study.Quality.Tool/Argus.Study.Quality.Tool.csproj" />
+  <Project Path="src/Argus.Learning.Tool/Argus.Learning.Tool.csproj" />
   <Project Path="src/Argus.Personas/Argus.Personas.csproj" />
   <Project Path="src/Argus.Persona.Tool/Argus.Persona.Tool.csproj" />
   <Project Path="src/Argus.Persona.Cohort.Tool/Argus.Persona.Cohort.Tool.csproj" />
