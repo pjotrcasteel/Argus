@@ -6,7 +6,9 @@ import unittest
 from pathlib import Path
 
 from tools.m232 import capture_provenance as m
-from tests.m232.test_freeze_new_development import FreshDevelopmentFreezeTests
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_freeze_new_development import FreshDevelopmentFreezeTests
 
 
 class ProvenanceTests(unittest.TestCase):
