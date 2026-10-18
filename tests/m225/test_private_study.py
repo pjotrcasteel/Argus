@@ -1,6 +1,8 @@
 """Only artificial traces, 390x844 RGB PNGs and fictional owner references."""
 import hashlib
 import json
+import struct
+import zlib
 import sys
 import tempfile
 import unittest
@@ -9,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tests/m223"))
-from test_new_cohorts import CohortTests
+from test_new_cohorts import CohortTests, valid_png
 from tools.m223.freeze_new_cohorts import original_frames
 from tools.m225 import private_source_study as study
 
