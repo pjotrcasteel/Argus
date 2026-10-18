@@ -4,58 +4,76 @@ using Argus.Core;
 
 namespace Argus.Adapters.Browser;
 
-/// <summary>Local, free automatic-page OCR for mixed scenic menus and small action controls, from viewport pixels only.</summary>
+/// <summary>Local, free, screenshot-only full-page and bounded footer OCR. Requires Tesseract on host.</summary>
 public sealed class TesseractTextReader : IFrameTextReader
 {
     public async Task<IReadOnlyList<VisibleText>> ReadAsync(FrameObservation frame, CancellationToken cancellationToken = default)
     {
-        var path = Path.Combine(Path.GetTempPath(), "argus-frame-" + Guid.NewGuid().ToString("N") + ".png");
+        var identity = Guid.NewGuid().ToString("N");
+        var original = Path.Combine(Path.GetTempPath(), "argus-frame-" + identity + ".png");
+        var footerPath = Path.Combine(Path.GetTempPath(), "argus-footer-" + identity + ".bmp");
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         limit.CancelAfter(TimeSpan.FromSeconds(10));
 
         try
         {
-            await File.WriteAllBytesAsync(path, frame.PngBytes, limit.Token);
-            var start = new ProcessStartInfo("tesseract")
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
+            await File.WriteAllBytesAsync(original, frame.PngBytes, limit.Token);
+            var entire = await ReadOcrAsync(original, 3, limit.Token);
+            var footer = FooterOcrImage.FromPng(frame.PngBytes);
+            if (footer is null) return entire;
 
-            foreach (var arg in new[] { path, "stdout", "--psm", "3", "tsv" }) start.ArgumentList.Add(arg);
-            using var process = Process.Start(start) ?? throw new InvalidOperationException("Unable to start local Tesseract OCR.");
-            try
-            {
-                var output = process.StandardOutput.ReadToEndAsync(limit.Token);
-                var errors = process.StandardError.ReadToEndAsync(limit.Token);
-                await process.WaitForExitAsync(limit.Token);
-                var tsv = await output;
-                var error = await errors;
-                if (process.ExitCode != 0) throw new InvalidOperationException("Tesseract OCR failed: " + error);
-                return TesseractTsvParser.Parse(tsv);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                // One slow OCR frame is not a failure of the whole game experiment.
-                // Do not invent text; the agent may use pixel-only evidence or wait for the next frame.
-                if (!process.HasExited) process.Kill(entireProcessTree: true);
-                return [];
-            }
-            catch
-            {
-                if (!process.HasExited) process.Kill(entireProcessTree: true);
-                throw;
-            }
+            // A second OCR pass over viewport-relative, enlarged original
+            // pixels recovers tiny buttons without game-specific coordinates.
+            await File.WriteAllBytesAsync(footerPath, footer.BmpBytes, limit.Token);
+            var smallText = await ReadOcrAsync(footerPath, 6, limit.Token);
+            return entire.Concat(smallText.Select(footer.Map)).ToArray();
         }
-        catch (System.ComponentModel.Win32Exception e)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new InvalidOperationException("Tesseract not installed. Install free Tesseract OCR or run --agent observe.", e);
+            // A slow or temporarily unavailable text pass is never evidence of
+            // player identity. Wait for another real frame, never guess clicks.
+            return [];
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Tesseract not installed. Install free Tesseract OCR or use --agent observe.", ex);
         }
         finally
         {
-            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(original)) File.Delete(original);
+            if (File.Exists(footerPath)) File.Delete(footerPath);
+        }
+    }
+
+    private static async Task<IReadOnlyList<VisibleText>> ReadOcrAsync(string file, int segmentation, CancellationToken cancellationToken)
+    {
+        var start = new ProcessStartInfo("tesseract")
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+        foreach (var item in new[] { file, "stdout", "--psm", segmentation.ToString(CultureInfo.InvariantCulture), "tsv" })
+            start.ArgumentList.Add(item);
+
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("Unable to start local Tesseract OCR.");
+        try
+        {
+            var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            var errors = process.StandardError.ReadToEndAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken);
+            var tsv = await output;
+            var error = await errors;
+            if (process.ExitCode != 0)
+                throw new InvalidOperationException("Tesseract OCR failed: " + error);
+            return TesseractTsvParser.Parse(tsv);
+        }
+        catch
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            throw;
         }
     }
 }
