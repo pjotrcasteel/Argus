@@ -1,0 +1,53 @@
+name: M2.36 contrastive visual metric learner (synthetic only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/m236/**'
+      - 'tests/m236/**'
+      - '.github/workflows/m2-36-contrastive-identity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/m236/**'
+      - 'tests/m236/**'
+      - '.github/workflows/m2-36-contrastive-identity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-only-player-metric:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free CPU-only image dependencies
+        run: python -m pip install 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Test fully artificial shape learning, hard negatives, original screen edges and abstention
+        env:
+          PYTHONPATH: .
+          OPENBLAS_NUM_THREADS: 1
+        run: python -m unittest discover -s tests/m236 -p 'test_*.py' -v
+      - name: Enforce zero owner ground truth, real original sources or weights in test assets
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          for root in (Path('tools/m236'),Path('tests/m236')):
+              assert not [p for p in root.rglob('*') if p.suffix in
+                          ('.json','.jsonl','.png','.zip','.jpg','.pt','.onnx','.pkl')]
+          code=Path('tools/m236/contrastive_identity.py').read_text()
+          ast.parse(code)
+          assert 'UNVERIFIED_APPEARANCE_CANDIDATE' in code
+          assert '"playerPresent":None' in code
+          assert '"verifiedPlayerCenter":None' in code
+          assert 'MIN_ABSENT_SOURCE_RUNS = 2' in code
+          assert 'MIN_ABSENT_CONTROL = 4' in code
+          print('PASS: no real owner labels/original game pixels reach public CI.')
+          PY
