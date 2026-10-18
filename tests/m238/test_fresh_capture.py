@@ -25,10 +25,10 @@ class FreshCaptureSyntheticTests(unittest.TestCase):
             for step in range(40):
                 frame = f"frame-{step:04d}.png"
                 png = Image.new("RGB", (390,844), (23,32,35))
-                png.putpixel((step,20), (step+1,len(run),40))
+                png.putpixel((step,20), (step+1,sum(map(ord,run)) % 250,40))
                 png.save(folder / frame)
                 rows.append({"step":step, "screenshot":frame,
-                             "evidence":{"phase":"unknown"}})
+                             "evidence":{"phase":"unknown","independentRun":run}})
             (folder / "trace.jsonl").write_text(
                 "".join(json.dumps(r)+"\n" for r in rows))
             (folder / "summary.json").write_text(json.dumps(
