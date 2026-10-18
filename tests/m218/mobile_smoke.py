@@ -5,7 +5,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 
 def verify(site: Path):
@@ -21,6 +21,7 @@ def verify(site: Path):
                     page = context.new_page()
                     errors = []
                     page.on("pageerror", lambda e: errors.append(str(e)))
+                    page.on("dialog", lambda dialog: (errors.append(dialog.message), dialog.dismiss()))
                     page.goto(f"http://127.0.0.1:{server.server_port}/annoteren/{run}-points/",
                               wait_until="load")
                     img = page.locator("#shot")
@@ -68,8 +69,10 @@ def verify(site: Path):
                         "buffer":json.dumps(exported).encode()})
                     # Reload resets navigation to frame 1 (index zero), but restored
                     # labels remain exactly those from the user's private JSON.
-                    assert page.locator("#visible").get_attribute("aria-pressed") == "true"
-                    assert page.locator("#ring").get_attribute("cx") == "55"
+                    # file.text() is asynchronous in the page; wait for the
+                    # verified imported state instead of racing the input event.
+                    expect(page.locator("#visible")).to_have_attribute("aria-pressed","true",timeout=5000)
+                    expect(page.locator("#ring")).to_have_attribute("cx","55",timeout=5000)
                     page.locator("#next").click()
                     assert page.locator("#absent").get_attribute("aria-pressed") == "true"
                     page.locator("#previous").click()
