@@ -89,7 +89,7 @@ class PrivateReferenceAdjudicationTests(unittest.TestCase):
         self.assertEqual(set(owner), set(audit.RUNS))
         self.assertEqual(len(images), 36)
         self.assertEqual(sum(v["present"] for v in report["counts"].values()), 9)
-        self.assertNotIn("weights", json.dumps(report).lower())
+        self.assertFalse(set(report).intersection({"weights", "model", "accuracy", "trained"}))
         self.assertEqual(original, {key: file.read_bytes() for key, file in self.data.labels.items()})
 
     def test_disjoint_positive_requires_explicit_human_relabel(self):
