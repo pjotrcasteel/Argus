@@ -133,3 +133,42 @@ No `run-01` tuning; no claimed player identity model;
 no gameplay activation; no automatic `RESEARCH_TRAINED`
 on synthetic features; never upload genuine private human labels
 to public GitHub.
+
+## Final publication verification (2026-10-18)
+
+[PR #46](https://github.com/pjotrcasteel/Argus/pull/46) merged to `main` at
+`2e1010f1dbb3d66caf1c891cf93350c18c784844`. The owner's
+standing permission for new development-only screenshot annotators
+now includes this exact M2.15 F/G/H cohort, but **never private filled
+annotations/labels, original full internal trace, held-out imagery or
+learned models**.
+
+[PR Pages build #39109715645](https://github.com/pjotrcasteel/Argus/actions/runs/39109715645)
+and [production GitHub Pages run #39109842600](https://github.com/pjotrcasteel/Argus/actions/runs/39109842600)
+both succeeded. The latter completed both `build-annotator` and
+`deploy`; GitHub explicitly reported `Reported success!`.
+All nine pages and 108 screenshots passed byte/provenance/JavaScript
+checks. The 72 old PNGs and six original HTML pages were hashed
+before and after append with no change. Three new spatial reviewer
+pages passed **real mobile Chromium** touch, JSON export/import and
+reload persistence. Direct paths:
+
+- https://pjotrcasteel.github.io/Argus/annoteren/dev-f/
+- https://pjotrcasteel.github.io/Argus/annoteren/dev-g/
+- https://pjotrcasteel.github.io/Argus/annoteren/dev-h/
+
+Only human-UNKNOWN reference pages were published. The outside
+web-text fetcher cannot retrieve the deployed content independently,
+so GitHub's successful deployment and built-browser QA are the
+specific verification sources, not a claimed external Safari test.
+
+The historical protocol table's `Private artifact only` publication
+gate has been **superseded solely for these development images by
+the explicit owner consent** and this successful deployment. The
+authentic private research archive itself remains unpublished.
+
+**Next:** obtain human-reviewed per-location F/G/H JSON exports
+privately, validate stable candidate IDs/coordinates and unknown
+counts, and design M2.16's *separate* spatial-feature learning
+baseline with whole-run-heldout evaluation. Never synthesize temporal
+`BRIDGE_ONE/BRIDGE_TWO` attributes or train on old `run-01`.
