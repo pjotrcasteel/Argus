@@ -1,0 +1,70 @@
+name: M2.19 preserve already-public annotation site once
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m219/**
+      - .github/workflows/m2-19-preserve-public-site.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m219/**
+      - .github/workflows/m2-19-preserve-public-site.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  preserve-original-public-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download already-deployed approved Pages site while artifact exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/12132602391/zip" > archived-public-pages.zip
+          unzip -t archived-public-pages.zip | tail -1
+      - name: Verify original 108 public PNGs, 12 public reviewers and no private data
+        run: |
+          python3 tools/m219/preserve_public_site.py extract \
+            --archive archived-public-pages.zip --destination _approved_public_site
+          python3 tools/m219/preserve_public_site.py verify --site _approved_public_site
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          from tools.m219.preserve_public_site import admitted_files
+          source = Path("archived-public-pages.zip")
+          assert len(admitted_files(source)) == 122
+          with zipfile.ZipFile("tampered.zip", "w") as dst, zipfile.ZipFile(source) as src:
+              for name in src.namelist():
+                  dst.writestr(name, src.read(name))
+              dst.writestr("m218-dev-f-player-points.json", '{"PRIVATE":"NO"}')
+          try:
+              admitted_files(Path("tampered.zip"))
+          except ValueError:
+              print("PASS: unapproved annotation hard-rejected.")
+          else:
+              raise AssertionError("Failed to reject a private annotation file.")
+          PY
+      - name: Permanently commit only exact previously public bytes on separate Git branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/argus-public-site"
+          cp -R _approved_public_site/. "${RUNNER_TEMP}/argus-public-site/"
+          git -C "${RUNNER_TEMP}/argus-public-site" init -b public-annotator-site-checkpoint
+          git -C "${RUNNER_TEMP}/argus-public-site" config user.name "github-actions[bot]"
+          git -C "${RUNNER_TEMP}/argus-public-site" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "${RUNNER_TEMP}/argus-public-site" remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C "${RUNNER_TEMP}/argus-public-site" add -A
+          git -C "${RUNNER_TEMP}/argus-public-site" commit -m "Archive published ARGUS 12-route blind development annotation site (M2.19)"
+          gh auth setup-git
+          # No force: never overwrite an existing protected public artifact branch.
+          git -C "${RUNNER_TEMP}/argus-public-site" push origin HEAD:refs/heads/public-annotator-site-checkpoint
+          echo "Created permanent public-annotator-site-checkpoint branch; no owner labels or held-out."
