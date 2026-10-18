@@ -117,7 +117,8 @@ def blank_reviewer(run, images):
             "Existing mobile labeler contract changed; refuse broken review.")
     html = html.replace("/^dev-[uvw]$/", "/^m238-[abc]$/")
     html = html.replace('"runId":"dev-u"', '"runId":"' + run + '"')
-    html = html.replace('"m232-"', '""')\n    html = html.replace(previous_review.SEED, SEED)
+    html = html.replace('"m232-"', '""')
+    html = html.replace(previous_review.SEED, SEED)
     html = html.replace("M2.32", "M2.38").replace("m232-", "m238-")
     require(run in html and "fetch(" not in html and
             '"playerX"' not in html and '"threatLocations"' not in html,
