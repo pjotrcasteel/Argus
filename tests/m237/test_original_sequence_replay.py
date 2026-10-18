@@ -49,7 +49,7 @@ class PrivateOriginalSequenceReplayTests(unittest.TestCase):
     def make_image(cls, run, step, state, include_truth=True):
         image = np.full((844,390,3), 25, np.uint8)
         image[60:84,10:34] = [20,180,220]  # static HUD decoy
-        image[810:815,380:385] = [step*7+2, len(run), 11]  # unique PNG bytes
+        image[810:815,380:385] = [step*7+2, sum(map(ord,run)) % 250, 11]  # unique PNG bytes
         if state == "visible":
             image[414:426,74:86] = [220,55,40]
             image[412:428,78:82] = [230,145,60]
