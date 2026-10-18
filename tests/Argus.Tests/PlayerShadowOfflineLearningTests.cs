@@ -105,6 +105,24 @@ public sealed class PlayerShadowOfflineLearningTests
     }
 
     [TestMethod]
+    public void ReadDevelopment_ObsoleteGlobalVisibilityHeader_IsRejected()
+    {
+        var folder = Directory.CreateTempSubdirectory("argus-m214-old-schema-");
+        try
+        {
+            var run = Path.Combine(folder.FullName, "dev-a");
+            Directory.CreateDirectory(run);
+            var old = PlayerShadowLearningData.Header.Replace("reviewed_candidate_local_label_v2",
+                "reviewed_player_label", StringComparison.Ordinal);
+            File.WriteAllText(Path.Combine(run, PlayerShadowLearningData.CsvName), old + "\n" +
+                "\"dev-a\",1,\"BRIDGE_ONE\",63,37.5,0.25,\"INDETERMINATE\",1\n");
+            Assert.ThrowsExactly<InvalidDataException>(() =>
+                PlayerShadowLearningData.ReadDevelopment(folder.FullName));
+        }
+        finally { folder.Delete(true); }
+    }
+
+    [TestMethod]
     public void ReadDevelopment_CrossRunLabelsOrMalformedQuoting_Rejects()
     {
         var folder = Directory.CreateTempSubdirectory("argus-m213-");
