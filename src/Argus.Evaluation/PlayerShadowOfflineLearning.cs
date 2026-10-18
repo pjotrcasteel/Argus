@@ -126,7 +126,8 @@ public static class PlayerShadowOfflineLearning
         }
 
         // Research-only fit using all DEVELOPMENT runs. Never an active game policy.
-        var final = Fit(clean.Where(x => x.Label.HasValue).ToArray(), groups.Select(g => g.Id).ToArray());
+        var final = Fit(groups.SelectMany(g => g.Rows).Where(x => x.Label.HasValue).ToArray(),
+            groups.Select(g => g.Id).ToArray());
         return new PlayerShadowLearningReport("RESEARCH_TRAINED", [], groups.Length,
             coverage.Sum(x => x.Reviewed), coverage, folds, final);
     }
