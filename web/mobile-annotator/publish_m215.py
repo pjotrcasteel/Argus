@@ -111,9 +111,6 @@ def publish(archive: Path, destination: Path) -> None:
             embedded = json.loads(matched.group(1))
             if embedded != {"seed": STUDY_SEED, **group}:
                 raise ValueError("Original HTML changed candidate coordinates or human truth.")
-            if 'localStorage.setItem(key' not in html or 'link.download="m215-"':
-                # The second string check is verified explicitly below for clarity.
-                pass
             if "localStorage.setItem(key" not in html or 'link.download="m215-"+study.runId+"-labels.json"' not in html:
                 raise ValueError("Reviewer has lost local-only save and export behavior.")
             # Static page retains prior consent wording until publication; no JS alteration.
