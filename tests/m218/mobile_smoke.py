@@ -66,11 +66,14 @@ def verify(site: Path):
                     page.locator("#import").set_input_files({
                         "name":"review.json","mimeType":"application/json",
                         "buffer":json.dumps(exported).encode()})
-                    page.locator("#previous").click()
+                    # Reload resets navigation to frame 1 (index zero), but restored
+                    # labels remain exactly those from the user's private JSON.
+                    assert page.locator("#visible").get_attribute("aria-pressed") == "true"
+                    assert page.locator("#ring").get_attribute("cx") == "55"
+                    page.locator("#next").click()
                     assert page.locator("#absent").get_attribute("aria-pressed") == "true"
                     page.locator("#previous").click()
                     assert page.locator("#visible").get_attribute("aria-pressed") == "true"
-                    assert page.locator("#ring").get_attribute("cx") == "55"
                     assert not errors, errors
                     context.close()
             finally:
