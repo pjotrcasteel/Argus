@@ -16,7 +16,7 @@ SPEC.loader.exec_module(module)
 
 
 def fake_archive(filename: Path, malformed=None):
-    png = module.PNG_HEADER + struct.pack(">IIBBBBB", 390, 844, 8, 2, 0, 0, 0)
+    png = module.PNG_HEADER + b"\x00\x00\x00\x0dIHDR" + struct.pack(">IIBBBBB", 390, 844, 8, 2, 0, 0, 0)
     payload = {"schemaVersion": 1, "mode": "development-only",
                "seed": module.SOURCE_SEED, "requestedFramesPerRun": 24,
                "assignments": []}
