@@ -18,7 +18,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.m221.publish_consented_public import verify as verify_original_site
 
 SOURCE_ARCHIVE_SHA256 = "400b9df3233ab0cf1af20d2e57d9cef84ffb48bbdd7a40f98bc4d4700f1c303d"
-PUBLIC_TREE_SHA256 = "PIN_AFTER_M224_BUILD"
+PUBLIC_TREE_SHA256 = "504f4d9952a217bf5592e1c19d2d03e06c731c3539beae0a4c20ffc3529bc1b1"
 SOURCE_SEED = "argus-m223-fresh-development-20261018-v1"
 PROSPECTIVE_SEED = "argus-m223-sealed-prospective-20261018-v1"
 RUNS = ("dev-l","dev-m","dev-n")
