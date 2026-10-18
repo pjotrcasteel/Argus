@@ -1,0 +1,169 @@
+name: M2.27 source-only temporal candidate research and fresh RST development sessions
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m227/**
+      - tests/m227/**
+      - .github/workflows/m2-27-temporal-development.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m227/**
+      - tests/m227/**
+      - .github/workflows/m2-27-temporal-development.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-causality-and-pair-freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install free numerical image and browser libraries
+        run: |
+          python3 -m pip install --quiet --break-system-packages 'numpy>=2,<3' 'Pillow>=11,<13' playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Verify artificial scene camera motion, HUD confusion, chronological tracks and original pairing
+        run: |
+          OPENBLAS_NUM_THREADS=1 python3 -m unittest discover -s tests/m227 -p 'test_*.py' -v
+      - name: Verify three BLANK synthetic mobile reviewers at 320,375,430 px with private JSON export/import
+        run: |
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "tests/m227")
+          from test_temporal_freeze import TemporalFreezeTests
+          from tools.m227.freeze_temporal_context import freeze
+          fixture = TemporalFreezeTests()
+          fixture.setUp()
+          freeze(fixture.inputs, Path("artifacts/m227-artificial-review"))
+          fixture.tearDown()
+          PY
+          python3 tests/m227/mobile_smoke.py --site artifacts/m227-artificial-review
+      - name: No oracle, no prospective, no source-game interface or owner data
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast
+          code = Path("tools/m227/temporal_candidates.py").read_text()
+          freeze = Path("tools/m227/freeze_temporal_context.py").read_text()
+          assert "SOURCE_ONLY_CANDIDATES_NOT_PLAYERS" in code
+          assert "no" in code.lower() and "player" in code.lower()
+          assert "no" in freeze.lower() and "prospective" in freeze.lower()
+          assert "target step >=1" in freeze
+          assert "playerX" not in code and "https://" not in code
+          assert not list(Path("tests/m227").rglob("*.json"))
+          assert not list(Path("tests/m227").rglob("*.png"))
+          ast.parse(code)
+          print("PASS: source-only temporal hypotheses, no private owner/prospective/game state.")
+          PY
+
+  fresh-independent-temporal-development-rst:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'M2.27'))
+    needs: synthetic-causality-and-pair-freeze
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install existing optional free local runner OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Build and verify UNMODIFIED live ARGUS .NET agent
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+          dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build
+      - name: Install free ordinary Chromium screenshot player
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Collect only three independent new original external game screenshot sessions
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/m227-genuine-source
+          for run in dev-r dev-s dev-t; do
+            folder="artifacts/m227-genuine-source/$run"
+            started="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            exit_code=0
+            dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+              --url https://pjotrcasteel.github.io/Wyrmforge/ \
+              --agent visual --profile examples/wyrmforge.profile.json \
+              --headless --width 390 --height 844 --max-steps 76 --timeout-seconds 190 \
+              --output "$folder" || exit_code=$?
+            export ARGUS_RUN="$run"
+            export ARGUS_FOLDER="$folder"
+            export ARGUS_START="$started"
+            export ARGUS_EXIT="$exit_code"
+            python3 - <<'PY'
+          import datetime, hashlib, json, os
+          from pathlib import Path
+          folder=Path(os.environ["ARGUS_FOLDER"])
+          trace=folder/"trace.jsonl"
+          summary_file=folder/"summary.json"
+          summary=json.loads(summary_file.read_text()) if summary_file.is_file() else {}
+          profile=Path("examples/wyrmforge.profile.json")
+          row={"schemaVersion":1,"partition":"development","runId":os.environ["ARGUS_RUN"],
+               "captureMode":"unmodified external screenshot-only player/ordinary actions",
+               "startedAtUtc":os.environ["ARGUS_START"],
+               "finishedAtUtc":datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+               "runnerExitCode":int(os.environ["ARGUS_EXIT"]),
+               "actualGameOutcome":"unknown","gameVersion":None,
+               "gameUrl":"https://pjotrcasteel.github.io/Wyrmforge/",
+               "profileSha256":hashlib.sha256(profile.read_bytes()).hexdigest(),
+               "traceSha256":hashlib.sha256(trace.read_bytes()).hexdigest() if trace.is_file() else None,
+               "policyVersion":os.environ["GITHUB_SHA"],"viewport":"390x844",
+               "frames":summary.get("frames"),"visualEvidenceGate":summary.get("meetsVisualCombatGate")}
+          folder.mkdir(parents=True,exist_ok=True)
+          (folder/"run-manifest.json").write_text(json.dumps(row,indent=2)+"\n")
+          print("Source provenance only; no player truths or outcomes claimed:", json.dumps(row))
+          PY
+          done
+      - name: Freeze 18 original RST target frames and 18 original immediate-prior context per run
+        run: |
+          python3 tools/m227/freeze_temporal_context.py \
+            --runs artifacts/m227-genuine-source --output artifacts/m227-private-original-review
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("artifacts/m227-private-original-review")
+          plan=json.loads((root/"study-manifest.json").read_text())
+          assert plan["runIds"]==["dev-r","dev-s","dev-t"]
+          assert plan["originalTargetImages"]==54 and plan["originalPrecedingContextImages"]==54
+          assert plan["humanGroundTruth"]=="ALL_UNKNOWN" and plan["trainingAuthorized"]
+          assert plan["prospectiveOriginalsAccessed"] is False
+          assert len(list(root.glob("annoteren/*/frame-*.png")))==54
+          assert len(list(root.glob("context/*/prev-for-*.png")))==54
+          assert len(list(root.glob("annoteren/*/index.html")))==3
+          assert not list(root.rglob("*.jsonl"))
+          assert len(list(root.rglob("*.json")))==1
+          print("PASS frozen three independent real source runs: 54 original screenshot targets + 54 preceding contexts; no private labels.")
+          PY
+      - name: Verify actual original 390x844 RST mobile image point touch and private export/import
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m227/mobile_smoke.py --site artifacts/m227-private-original-review
+      - name: Retain private authentic blind RST development review and temporal context
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m227-private-original-RST-temporal-review
+          path: artifacts/m227-private-original-review/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Keep actual independent whole-run source traces OUTSIDE public Pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m227-private-original-RST-source-no-human-truth
+          path: artifacts/m227-genuine-source/
+          retention-days: 7
+          if-no-files-found: warn
