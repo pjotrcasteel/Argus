@@ -75,7 +75,7 @@ def validate_and_load(archive: Path, labels: list[Path]):
                       "Owner study/run/schema mismatch or duplicate owner export.")
         private[run] = obj
     reject_unless(set(private) == set(DEVELOPMENT), "Missing private independent run.")
-    by_run, coverage, seen_source_sha = {}, {}, set()
+    by_run, coverage, seen_source_sha, seen_human_truth = {}, {}, set(), {}
     with ZipFile(archive) as original:
         names = original.namelist()
         reject_unless(len(names) == len(set(names)) == 59 and
@@ -146,6 +146,12 @@ def validate_and_load(archive: Path, labels: list[Path]):
                                (center["y"] - CENTER[1])**2 >= OFF_CENTER_RADIUS**2)
                 else:
                     reject_unless(center is None, "Absent/unknown image cannot carry a player center.")
+                truth_key = (state, tuple(sorted(center.items())) if center else None)
+                if digest in seen_human_truth:
+                    reject_unless(seen_human_truth[digest] == truth_key,
+                                  "Conflicting human labels for byte-identical source PNG.")
+                else:
+                    seen_human_truth[digest] = truth_key
                 counters[state] += 1
                 with Image.open(BytesIO(raw)) as image:
                     pixels = np.asarray(image.convert("RGB"), dtype=np.uint8)
