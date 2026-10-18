@@ -565,13 +565,54 @@ Validation: [.NET CI 39046004064](https://github.com/pjotrcasteel/Argus/actions/
 
 ## Single recommended next slice
 
-**NEXT M2.37 — private complete original-frame replay and NEW independently reviewed evaluation of source-only player identity.** M2.34 owner-private U/V/W original reviews proved **NO-GO** all three held development source runs for M2.32. M2.35 merged [PR #76](https://github.com/pjotrcasteel/Argus/pull/76): causal consecutive-frame competing-object tracking with static HUD, original screenshot SHA, lookalike ambiguity and null/uncertain handling. New M2.36 contrastive exemplar learner can now **fit** from true player crops and training-only difficult nonplayer/ABSENT crops, and score original screenshot appearance candidates for temporal association. **NONE are yet genuine validated player identity or deployed live agent AI**.
+**M2.37 — private authentic original-sequence replay (2026-10-18):**
+[PR #79](https://github.com/pjotrcasteel/Argus/pull/79) implements a
+strictly **offline, private, game-independent** original-PNG byte-SHA replay
+that combines the M2.36 fit-only contrastive appearance hypotheses and M2.35
+causal multi-object hypotheses. It requires run- and image-disjoint fitting
+and genuine whole-ABSENT calibration, enforces actual consecutive originals
+and refuses the sealed O/P/Q and original M2.4 run-01 identifiers **before
+opening any PNG**. A score is only `SHADOW_ACCEPTED_HYPOTHESIS` after
+source-shape calibration, temporal multi-frame consensus, no lookalike
+ambiguity and a conservative edge/occlusion abstention gate; all outputs
+continue to declare `playerPresent: null` and `verifiedPlayerCenter: null`.
+Synthetic original-sized PNG tests are generated at runtime, with no original
+game frames, private owner labels or fitted weights in public CI. The new
+method records frozen threshold/model digest and optional independent human
+review per original SHA/step. **No live agent policy or WyrmForge files were
+changed, and no real-world M2.37 accuracy is established.**
+See [M2.37 research contract](M2-37-PRIVATE-ORIGINAL-SEQUENCE.md) for schema,
+private local command, acceptance rule and no-leakage controls.
 
-1. Assemble a strictly private original source sequence replay combining M2.36 fit-only exemplar model and M2.35 causal multi-hypothesis tracks; benchmark against seen R/S/T and U/V/W only as diagnostics, never claim they remain unseen prospectives. Human labels / full traces / original temporal screenshot predecessors remain local outside public GitHub Actions and Pages.
-2. Pre-register an actual PLAYER ACCEPTANCE scoring rule and source-trust gate: only original chronological screenshots/byte SHA, run-grouped exact deduplication, >=4 true-ABSENT whole calibration images drawn from >=2 disjoint source fitting runs, explicit unknown/edge/occlusion reject and competing lookalike hard negatives. Unverified shadow hypotheses are not player TPs.
-3. Capture three genuinely NEW independent external game whole-source sessions with ordinary inputs and immutable source SHA; sample original targets without looking at AI guesses/ground truth, then obtain independent owner-blind visible-center/ABSENT/UNKNOWN reviews. No fabricated successful game or inferred player coordinates.
-4. Need per held-out NEW source run >=8 VISIBLE and >=3 ABSENT with >=50% *accepted* within35px player location and <=25% false presence. This only permits further research, not runtime activation. Report NOT_READY/NO-GO on failures.
-5. Keep full original M2.23 O/P/Q sealed prospective ZIP SHA `78ad7059f7c7f352860e4a27fb2660d7fdb5e90d90d615a152755271733e2a5f` unopened, original M2.4 run-01 untouched, active ARGUS steering and WyrmForge unchanged.
+**WyrmForge changed on 2026-10-18:** external [PR #120](https://github.com/pjotrcasteel/Wyrmforge/pull/120)
+and [PR #121](https://github.com/pjotrcasteel/Wyrmforge/pull/121)
+alter the start/town flow, Arcane Nexus, mobile layout and hunt recap. The
+next independent ARGUS capture must use the *current actual deployed* external
+game build, not assume the historic menu or WyrmForge version from old traces.
+The deployment/version must be reverified separately; absence of version
+proof is **unknown**, not matched context.
+
+**NEXT M2.37 follow-through — true-original private source validation and fresh independent cohort:**
+
+1. Verify GitHub PR #79 and dedicated Python synthetic CI plus standard .NET CI
+   before merging. Existing R/S/T and U/V/W only permit **known-development
+   diagnostics** if original unselected screenshot predecessors are available;
+   old labels and source images stay private, never uploaded to Actions/Pages.
+2. Lock provenance/screenshot source SHA and strict 390x844 RGB capture for
+   three genuinely **NEW** post-WyrmForge-update separate browser sessions.
+   Independently sample original, chronological target screenshots without
+   ever using ARGUS model guesses or game-internal data; annotate by owner
+   blind VISIBLE-center/ABSENT/UNKNOWN after fitting and calibration locks.
+3. Require >=8 truly VISIBLE and >=3 genuinely ABSENT per held independent
+   source run, >=50% shadow-accepted hypotheses within35px and <=25% false
+   presence on ABSENT, **all three new runs**. Report NOT_READY, NO_GO or
+   preliminary research-only GO honestly. The model can still confuse
+   moving enemies with a player; **never activate live player steering**
+   on this alone.
+4. Keep the original M2.23 O/P/Q full prospective ZIP SHA
+   `78ad7059f7c7f352860e4a27fb2660d7fdb5e90d90d615a152755271733e2a5f`
+   **sealed/unopened**, original M2.4 run-01 untouched, and current
+   active ARGUS and WyrmForge gameplay unchanged.
 
 ## Local usage
 
