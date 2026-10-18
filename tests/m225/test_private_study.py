@@ -69,6 +69,7 @@ class PrivateAdmissionTests(unittest.TestCase):
         label["frames"][12]["player"] = {"state": "unknown", "center": None}
         label["frames"][13]["player"] = {"state": "unknown", "center": None}
         label["frames"][14]["player"] = {"state": "unknown", "center": None}
+        label["frames"][15]["player"] = {"state": "unknown", "center": None}
         self.exports[0].write_text(json.dumps(label))
         with self.assertRaisesRegex(ValueError, "NOT_READY"):
             study.validate_and_load(self.archive, self.exports)
