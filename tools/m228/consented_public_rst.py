@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.m224.publish_development_only import verify as verify_previous_checkpoint
 
 ARCHIVE_SHA256 = "bdb8538c90ccb5166fcee4b94e9f46e6c4ba1a91d70079c370c4c13d65173bda"
-SITE_TREE_SHA256 = "PIN_AUTHENTIC_PUBLIC_TREE_AFTER_VERIFIED_BUILD"
+SITE_TREE_SHA256 = "ace883e8b2f120c6d22669b32dd47fa18a4dc20bdf359cae8f2857d9de7a8759"
 SOURCE_SEED = "argus-m227-temporal-context-rst-20261018-v1"
 RUNS = ("dev-r", "dev-s", "dev-t")
 PNG = b"\x89PNG\r\n\x1a\n"
