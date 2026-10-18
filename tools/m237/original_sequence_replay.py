@@ -108,6 +108,17 @@ def admit_original_manifest(manifest, root):
             manifest.get("studyType") in ("DEVELOPMENT_DIAGNOSTIC", "NEW_SOURCE") and
             type(manifest.get("runs")) is list and manifest["runs"],
             "M2.37 frozen private source manifest invalid.")
+    # Refuse sealed source identifiers BEFORE opening even one PNG byte.
+    # A late check would leak protected originals into the research process.
+    preflight = list(manifest.get("fit", [])) + list(manifest.get("calibration", []))
+    names = {row.get("run") for row in preflight if type(row) is dict}
+    eval_ids = {part.get("runId") for part in manifest["runs"] if type(part) is dict}
+    require(not ({"run-01", "dev-o", "dev-p", "dev-q"} & (names | eval_ids)),
+            "SEALED: original run-01 and O/P/Q must never be opened.")
+    if manifest["studyType"] == "NEW_SOURCE":
+        require(len(manifest["runs"]) >= MIN_NEW_RUNS and
+                not (eval_ids & HISTORICAL_RUNS),
+                "NOT_READY: >=3 genuinely new source sessions required.")
     seen = set()
     fit = _source_rows(root, manifest.get("fit"), "fit", seen)
     cal = _source_rows(root, manifest.get("calibration"), "calibration", seen)
