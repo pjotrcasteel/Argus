@@ -58,6 +58,8 @@ def smoke(site: Path):
                         "name": "review.json", "mimeType": "application/json",
                         "buffer": json.dumps(exported).encode()})
                     assert "2 handmatig beoordeeld" in page.locator("#status").inner_text()
+                    assert page.locator("#present").get_attribute("aria-pressed") == "true"
+                    page.locator("#next").click()
                     assert page.locator("#absent").get_attribute("aria-pressed") == "true"
                     assert not errors, errors
                     context.close()
