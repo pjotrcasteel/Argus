@@ -45,8 +45,8 @@ public sealed class PlayerShadowHardNegativeEvidenceTests
     {
         var original = BuildReport();
         var data = original.Frames.ToArray();
-        data[0] = data[0] with { HumanReference = "UNKNOWN" };
-        data[1] = data[1] with { HumanReference = "UNREVIEWED" };
+        data[0] = data[0] with { HumanReference = "UNKNOWN", HumanDistancePixels = null };
+        data[1] = data[1] with { HumanReference = "UNREVIEWED", HumanDistancePixels = null };
         var report = Recount("dev-unknown", data);
 
         var summary = PlayerShadowHardNegativeEvidence.Summarize(report);
