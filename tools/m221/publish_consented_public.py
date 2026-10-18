@@ -12,9 +12,11 @@ import hashlib
 import json
 import re
 import struct
+import sys
 from pathlib import Path
 from zipfile import ZipFile
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.m219.preserve_public_site import check_site as check_original_public_site
 
 SOURCE_ZIP_SHA256 = "a34a268537c500bef7f17c24c5721ad6308d6bd8c2f61634c7f04378a2ee4036"
