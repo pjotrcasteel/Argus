@@ -21,7 +21,7 @@ try
         PlayerShadowOfflineLearning.RenderMarkdown(result));
 
     Console.WriteLine($"ARGUS offline player learning: {result.Status}; " +
-        $"{result.DevelopmentRuns} independent development run groups, {result.TotalLabeled} real reviewed rows.");
+        $"{result.DevelopmentRuns} development run groups, {result.TotalLabeled} labeled feature rows (origin must be verified).");
     foreach (var blocker in result.Blockers) Console.WriteLine("NOT_READY: " + blocker);
     if (result.Trained)
         foreach (var fold in result.LeaveOneRunOut)
