@@ -1,0 +1,47 @@
+name: M2.26 framewise contrast research (synthetic only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m226/**
+      - tests/m226/**
+      - .github/workflows/m2-26-framewise-calibration.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m226/**
+      - tests/m226/**
+      - .github/workflows/m2-26-framewise-calibration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-framewise-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install free image and numerical dependencies only
+        run: python3 -m pip install --quiet --break-system-packages 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Synthetic source-only whole-frame rank and absence evidence tests
+        run: OPENBLAS_NUM_THREADS=1 python3 -m unittest discover -s tests/m226 -p 'test_*.py' -v
+      - name: Fail closed on private data and prospective use in CI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("tools/m226/framewise_conformal.py").read_text()
+          assert "MIN_CALIBRATION_ABSENT_WHOLE_IMAGES = 4" in p
+          assert "ALPHA = 0.20" in p
+          assert "BACKGROUND_QUANTILE = 0.95" in p
+          assert "samples >= image_score" in p
+          assert "learner" not in p or "base.train(fit" in p
+          assert "validate_and_load(" in p
+          assert "prospectiveUsed" in p and "livePolicyChanged" in p
+          assert "run-01" not in p or "NEVER" in p
+          assert not any(Path("tests/m226").rglob("*owner*.json"))
+          assert not any(Path("tests/m226").rglob("*.png"))
+          assert "https://" not in p and "requests." not in p
+          print("PASS: M2.26 synthetic-only, no owner, raw external game or prospective input.")
+          PY
