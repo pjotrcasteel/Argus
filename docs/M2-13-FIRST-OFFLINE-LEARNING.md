@@ -16,6 +16,18 @@ original screenshot, and `0` means absent. This is not proof of
 correct *actor identity*, threat recognition, strategic competence,
 victory, or safe control. An unlabeled screenshot is **not** absence.
 
+**M2.14 schema correction (2026-10-18):** the old
+`reviewed_player_label` target was GLOBAL player visibility and is
+**unsafe for training a local stale-candidate classifier** when the
+player is visible somewhere else. All new training imports instead
+require `reviewed_candidate_local_label_v2`: 1 only when an
+independently human-marked visible player's center is within the
+predeclared 26px radius of the stale candidate, 0 when the visible
+player is farther away or globally absent, and BLANK for unknown or
+unreviewed. Old CSV exports are **rejected**, not migrated by guessing.
+Regenerate from the original private PNG/trace/human references with
+M2.14. Refer to [the M2.14 preregistration](M2-14-LOCAL-TRUTH-COHORT.md).
+
 The input comes from M2.12's private output
 `<development-run>/player-shadow-feature-rows.csv`:
 `run_id`, screenshot step, shadow gap (first/second),
