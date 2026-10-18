@@ -69,3 +69,32 @@ dev-f has 12 visible, 0 absent and only 1 off-center positive;
 dev-g 11 visible/1 absent/7 off-center;
 dev-h 11 visible/1 absent/5 off-center.
 Those user exports and private reports stay outside GitHub and Pages.
+
+## M2.19b — Pages switched to permanent Git checkpoint
+
+After M2.19's [PR #51](https://github.com/pjotrcasteel/Argus/pull/51)
+merged, the [main preservation action](https://github.com/pjotrcasteel/Argus/actions/runs/39117865061)
+**SUCCEEDED** and created public branch
+`public-annotator-site-checkpoint` at Git SHA
+`039ba056584f929ac8c0cc69e33ba165383e6d4f`.
+Only the 122 already-public static files and the empty `.nojekyll`
+marker exist there, and every file was verified against the pinned digest.
+
+The new normal `.github/workflows/mobile-annotator-pages.yml` build
+fetches and archives the Git branch, then validates *every byte* against
+`tools/m219/preserve_public_site.py verify` before running all existing
+nine historical mobile review tests and the three M2.18 point-review
+Chromium tests. A second admission check forbids private JSON (the only
+allowed JSON is the already-public manifest), `run-01` held-out,
+trace files, models or learned weights.
+
+This **removes every older Actions artifact download from Pages**.
+The public checkpoint must not be automatically overwritten or enlarged
+to include later annotations; update only through a separately reviewed
+new exact public-only snapshot with frozen SHA-256 digests and owner
+approval for any additional screenshots. As before, there is no server
+endpoint to accept human labels.
+
+This is website transport/reproducibility only; the current real owner
+M2.18 audit remains ST​​UDY_NOT_READY under per-run negative/position
+balance. No live model was trained.

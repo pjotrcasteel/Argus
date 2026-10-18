@@ -5,6 +5,7 @@ on:
       - web/mobile-annotator/**
       - web/point-annotator/**
       - tools/m218/**
+      - tools/m219/**
       - tests/m218/**
       - .github/workflows/mobile-annotator-pages.yml
   push:
@@ -19,7 +20,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   build-annotator:
@@ -27,57 +27,27 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Retrieve short-lived original ARGUS M2.4 development screenshots
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Retrieve permanent public-only snapshot and verify exactly 122 originally published files
         run: |
-          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12100334875/zip > original-real-game-evidence.zip
-          unzip -t original-real-game-evidence.zip | tail -1
-      - name: Retrieve explicitly owner-approved M2.6b development mobile screenshots
-        env:
-          GH_TOKEN: ${{ github.token }}
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/public-annotator-site-checkpoint:refs/remotes/origin/public-annotator-site-checkpoint
+          mkdir -p _site
+          git archive refs/remotes/origin/public-annotator-site-checkpoint | tar -xf - -C _site
+          python3 tools/m219/preserve_public_site.py verify --site _site
+      - name: Prove forbidden local owner exports and hidden material cannot enter this build
         run: |
-          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12108479907/zip > development-approved-reviews.zip
-          unzip -t development-approved-reviews.zip | tail -1
-      - name: Retrieve explicitly approved M2.7 blind development pages and research provenance
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12111642304/zip > m27-approved-mobile-pages.zip
-          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12111452798/zip > m27-frozen-development-evidence.zip
-          unzip -t m27-approved-mobile-pages.zip | tail -1
-          unzip -t m27-frozen-development-evidence.zip | tail -1
-      - name: Retrieve owner-approved M2.15 original F/G/H candidate-location review only
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12129481661/zip > m215-approved-spatial-review.zip
-          unzip -t m215-approved-spatial-review.zip | tail -1
-      - name: Generate original run-02 annotation route unchanged
-        run: |
-          python3 web/mobile-annotator/build.py \
-            --archive original-real-game-evidence.zip --destination _site
-      - name: Add two newly approved blind development annotation routes
-        run: |
-          python3 web/mobile-annotator/publish_m26b.py \
-            --archive development-approved-reviews.zip --destination _site
-      - name: Append newly approved C/D/E screenshot routes without modifying previous reviewers
-        run: |
-          python3 web/mobile-annotator/publish_m27.py \
-            --mobile-archive m27-approved-mobile-pages.zip \
-            --research-archive m27-frozen-development-evidence.zip \
-            --destination _site
-      - name: Append owner-approved F/G/H candidate-location routes, preserving originals
-        run: |
-          python3 web/mobile-annotator/publish_m215.py \
-            --archive m215-approved-spatial-review.zip --destination _site
-      - name: Verify M2.18 artificial-only source and private-label admission tests
-        run: |
-          python3 -m unittest discover -s tests/m218 -p 'test_player_point_study.py' -v
-      - name: Append original-image player-point review routes with ZERO new PNGs
-        run: |
-          python3 tools/m218/player_point_study.py build \
-            --archive m215-approved-spatial-review.zip --site _site
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("_site")
+          assert len(list(root.glob("annoteren/*/frame-*.png"))) == 108
+          assert len(list(root.glob("annoteren/*/index.html"))) == 12
+          assert len(list(root.glob("**/*.json"))) == 1
+          assert not list(root.glob("**/*.jsonl"))
+          assert not list(root.glob("**/*weights*"))
+          assert not list(root.glob("annoteren/run-01/*"))
+          print("PASS: site has zero owner JSON, model, trace or held-out game files.")
+          PY
       - name: Check real screenshots, blind ground truth, and page JavaScript
         run: |
           python3 - <<'PY'
