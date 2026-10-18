@@ -95,6 +95,16 @@ class AppearanceStudyTests(unittest.TestCase):
         self.assertIsInstance(pred['present'], bool)
         self.assertTrue(pred['center'] is None or pred['center'] in grid)
 
+    def test_full_synthetic_three_run_study_can_learn_artificial_shape(self):
+        report = m.evaluate_development(self.frames, grid=((0, 422), (195, 422), (389, 422)))
+        self.assertEqual('EXPLORATORY_DEVELOPMENT_ONLY', report['status'])
+        self.assertEqual(3, len(report['wholeRunOutFolds']))
+        self.assertTrue(report['allRunGo'])  # Artificial toy only: never real-game validation.
+        self.assertTrue(all(row['calAbsent'] >= 3 for row in report['wholeRunOutFolds']))
+        self.assertTrue(all(row['fitVisible'] >= 8 for row in report['wholeRunOutFolds']))
+        self.assertFalse(report['originalProspectiveOpened'])
+        self.assertFalse(report['liveAgentChanged'])
+
     def test_failed_localization_and_absent_false_presence_are_separate(self):
         truth = [self.frames['dev-r'][0], self.frames['dev-r'][7], self.frames['dev-r'][8]]
         predictions = [{'present': True, 'center': (195, 422)},
