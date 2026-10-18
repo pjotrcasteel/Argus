@@ -17,6 +17,32 @@ PREVIOUS = ("run-02", "dev-a", "dev-b", "dev-c", "dev-d", "dev-e")
 STUDY_SEED = "argus-m215-independent-spatial-probes-20261018-v1"
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 MAX_IMAGE_BYTES = 2_000_000
+# Hash of the ORIGINAL blind M2.15 HTML template after replacing ONLY its frozen
+# inline study JSON with the sentinel. Pin this to the authentic PR45 archive:
+# do not regenerate review pages from arbitrary external HTML.
+ORIGINAL_TEMPLATE_SHA256 = "7d291b21118b9756ca70e86760b8fe9447119bdd68e1efb4cc146bdd22f167a4"
+NEW_TEMPLATE = Path(__file__).resolve().parents[1] / "candidate-annotator" / "index.template.html"
+
+
+def corrected_overlay_html(original_html: str, frozen_study_json: str) -> bytes:
+    """Change presentation only, never M2.15 reference data or private label state.
+
+    Rebuild from the vetted source template ONLY after proving the old HTML is
+    byte-for-byte the authentic template with the original frozen study substituted.
+    The new SVG uses pixel coordinates and a uniform viewBox transformation.
+    """
+    old_template = original_html.replace(frozen_study_json, "/*ARGUS_STUDY*/", 1)
+    if checksum(old_template.encode("utf-8")) != ORIGINAL_TEMPLATE_SHA256:
+        raise ValueError("Unrecognized original review page; refuse to rewrite its annotation behavior.")
+    current = NEW_TEMPLATE.read_text(encoding="utf-8")
+    if current.count("/*ARGUS_STUDY*/") != 1 or "preserveAspectRatio=\"xMidYMid meet\"" not in current:
+        raise ValueError("Missing uniform source-image coordinate overlay template.")
+    html = current.replace("/*ARGUS_STUDY*/", frozen_study_json, 1)
+    if (html.count("<script>") != 1 or html.count("</script>") != 1
+            or "localStorage.setItem(key" not in html or "playerX" in html or "threatLocations" in html
+            or "run-01" in html):
+        raise ValueError("Updated page must remain blind with local-only human references.")
+    return html.encode("utf-8")
 
 
 def checksum(content: bytes) -> str:
@@ -113,8 +139,9 @@ def publish(archive: Path, destination: Path) -> None:
                 raise ValueError("Original HTML changed candidate coordinates or human truth.")
             if "localStorage.setItem(key" not in html or 'link.download="m215-"+study.runId+"-labels.json"' not in html:
                 raise ValueError("Reviewer has lost local-only save and export behavior.")
-            # Static page retains prior consent wording until publication; no JS alteration.
-            pending[entry] = html.encode("utf-8")
+            # Preserve original source data, image bytes and user-label keys.
+            # Only the independently vetted template changes how the highlighted circle renders.
+            pending[entry] = corrected_overlay_html(html, matched.group(1))
             digest = {}
             for img in images:
                 step = img["step"]
