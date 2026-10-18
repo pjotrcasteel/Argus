@@ -1,7 +1,8 @@
 {
   "name": "WyrmForge visual black-box baseline",
   "menuActions": [
-    "Start Game",\n    "Begin First Hunt",
+    "Start Game",
+    "Begin First Hunt",
     "Begin Hunt",
     "Continue Hunt",
     "Arcane Orb",
