@@ -256,6 +256,53 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_RouteDetailHidesOcrHeading_ConfirmsOnlyVisibleEnabledButton()
+    {
+        const int width = 390;
+        const int height = 844;
+        var map = new byte[width * height * 3];
+        var selected = new byte[width * height * 3];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var idx = (y * width + x) * 3;
+                var ring = Math.Abs(Math.Sqrt((x - 155) * (x - 155) + (y - 475) * (y - 475)) - 18) <= 2;
+                map[idx] = ring ? (byte)190 : (byte)30;
+                map[idx + 1] = ring ? (byte)156 : (byte)26;
+                map[idx + 2] = ring ? (byte)228 : (byte)42;
+                var enabled = x >= 16 && x < 374 && y >= 786 && y < 830;
+                selected[idx] = enabled ? (byte)104 : (byte)32;
+                selected[idx + 1] = enabled ? (byte)68 : (byte)22;
+                selected[idx + 2] = enabled ? (byte)129 : (byte)43;
+            }
+        }
+
+        var reader = new SequencedTextReader(
+        [
+            [new VisibleText("Choose your trail", 30, 70, 220, 20, 96)],
+            [new VisibleText("REACHABLE NOW", 20, 700, 150, 18, 97)]
+        ]);
+        var agent = new VisualGameAgent(reader,
+            new VisualGameProfile { RouteCues = ["Choose your trail"] });
+        var initial = new FrameObservation(DateTimeOffset.UtcNow, width, height, BmpRgb(map, width, height));
+        var detail = new FrameObservation(DateTimeOffset.UtcNow, width, height, BmpRgb(selected, width, height));
+
+        var choose = await agent.DecideAsync(initial, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, choose?.Kind);
+        Assert.AreEqual("route", agent.LastEvidence?.Phase);
+
+        var settling = await agent.DecideAsync(detail, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Wait, settling?.Kind);
+
+        var confirm = await agent.DecideAsync(detail, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, confirm?.Kind);
+        Assert.AreEqual(195f, confirm?.X);
+        Assert.IsTrue(confirm?.Y is >= 786f and < 830f);
+        Assert.AreEqual("route", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
     public void DetectRgb_VisibleLavenderRing_LocatesCircleWithoutCoordinates()
     {
         const int width = 390;
@@ -425,6 +472,44 @@ public sealed class VisualAgentTests
     }
 
     public TestContext TestContext { get; set; } = null!;
+
+    private static byte[] BmpRgb(byte[] rgb, int width, int height)
+    {
+        var stride = (width * 3 + 3) & ~3;
+        using var output = new MemoryStream();
+        using (var writer = new BinaryWriter(output, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write((byte)'B');
+            writer.Write((byte)'M');
+            writer.Write(54 + stride * height);
+            writer.Write(0);
+            writer.Write(54);
+            writer.Write(40);
+            writer.Write(width);
+            writer.Write(height);
+            writer.Write((short)1);
+            writer.Write((short)24);
+            writer.Write(0);
+            writer.Write(stride * height);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            for (var y = height - 1; y >= 0; y--)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var idx = (y * width + x) * 3;
+                    writer.Write(rgb[idx + 2]);
+                    writer.Write(rgb[idx + 1]);
+                    writer.Write(rgb[idx]);
+                }
+                for (var padding = width * 3; padding < stride; padding++)
+                    writer.Write((byte)0);
+            }
+        }
+        return output.ToArray();
+    }
 
     private sealed class SequencedTextReader(IReadOnlyList<IReadOnlyList<VisibleText>> screens) : IFrameTextReader
     {
