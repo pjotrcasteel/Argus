@@ -1,0 +1,174 @@
+name: M2.27b preserve original R/T and retry ONLY invalid S development capture
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m227/recovery_gate.py
+      - tests/m227/test_recovery_gate.py
+      - .github/workflows/m2-27b-recover-dev-s.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-27b-recover-dev-s.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verified-original-source-preservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove artificial failed-run rejection, authentic screenshot checks and no sealed test data
+        run: python3 -m unittest discover -s tests/m227 -p 'test_recovery_gate.py' -v
+      - name: Retrieve authentic existing R/T original evidence from failed-but-honest run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/12138350509/zip" > original-rst-before-recovery.zip
+          echo '1458732e069f5b084fab989a6f9e59f07604a00b1709072817c059216fec8bd9  original-rst-before-recovery.zip' | sha256sum -c -
+          mkdir -p original-source
+          unzip -q original-rst-before-recovery.zip -d original-source
+          python3 tools/m227/recovery_gate.py --runs original-source
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          bad=json.loads((Path("original-source")/"dev-s"/"run-manifest.json").read_text())
+          assert bad["runnerExitCode"]!=0 and not bad.get("visualEvidenceGate")
+          print("CONFIRMED genuine dev-S run FAILED; preserving original dev-R/T only.")
+          PY
+
+  retry-only-failed-s-and-freeze:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'M2.27b'))
+    needs: verified-original-source-preservation
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install ordinary free runner dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+          dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build
+      - name: Install ordinary Chromium for same UNMODIFIED ARGUS visual agent
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Restore SHA-pinned previous original captures without inspecting prospective data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/12138350509/zip" > prior-original-captures.zip
+          echo '1458732e069f5b084fab989a6f9e59f07604a00b1709072817c059216fec8bd9  prior-original-captures.zip' | sha256sum -c -
+          mkdir -p artifacts/m227-authentic-recovered-rst
+          unzip -q prior-original-captures.zip -d artifacts/m227-authentic-recovered-rst
+          python3 tools/m227/recovery_gate.py --runs artifacts/m227-authentic-recovered-rst
+          rm -rf artifacts/m227-authentic-recovered-rst/dev-s
+          # The authentic successful R/T process screenshot bytes are untouched.
+      - name: Capture a real complete S source session with at most three bounded attempts
+        run: |
+          set -euo pipefail
+          folder="artifacts/m227-authentic-recovered-rst/dev-s"
+          success=0
+          for attempt in 1 2 3; do
+            rm -rf "$folder"
+            started="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Attempt $attempt: new independent dev-S external game screenshot process."
+            exit_code=0
+            dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+              --url https://pjotrcasteel.github.io/Wyrmforge/ \
+              --agent visual --profile examples/wyrmforge.profile.json \
+              --headless --width 390 --height 844 --max-steps 76 --timeout-seconds 190 \
+              --output "$folder" || exit_code=$?
+            export ARGUS_EXIT="$exit_code"
+            export ARGUS_STARTED="$started"
+            export ARGUS_FOLDER="$folder"
+            python3 - <<'PY'
+          import datetime,hashlib,json,os
+          from pathlib import Path
+          folder=Path(os.environ["ARGUS_FOLDER"])
+          trace=folder/"trace.jsonl"
+          summary_file=folder/"summary.json"
+          summary=json.loads(summary_file.read_text()) if summary_file.is_file() else {}
+          profile=Path("examples/wyrmforge.profile.json")
+          row={"schemaVersion":1,"partition":"development","runId":"dev-s",
+               "captureMode":"original external browser screenshot and ordinary player controls",
+               "startedAtUtc":os.environ["ARGUS_STARTED"],
+               "finishedAtUtc":datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+               "runnerExitCode":int(os.environ["ARGUS_EXIT"]),
+               "actualGameOutcome":"unknown","gameVersion":None,
+               "gameUrl":"https://pjotrcasteel.github.io/Wyrmforge/",
+               "profileSha256":hashlib.sha256(profile.read_bytes()).hexdigest(),
+               "traceSha256":hashlib.sha256(trace.read_bytes()).hexdigest() if trace.is_file() else None,
+               "policyVersion":os.environ["GITHUB_SHA"],"viewport":"390x844",
+               "frames":summary.get("frames"),"visualEvidenceGate":summary.get("meetsVisualCombatGate")}
+          folder.mkdir(parents=True,exist_ok=True)
+          (folder/"run-manifest.json").write_text(json.dumps(row,indent=2)+"\n")
+          print("HONEST dev-S real browser session status:",json.dumps(row))
+          PY
+            if python3 tools/m227/recovery_gate.py \
+                --runs artifacts/m227-authentic-recovered-rst --include-s; then
+              success=1
+              echo "Successfully captured authentic S. No prior R/T files modified."
+              break
+            fi
+            echo "Real browser source attempt $attempt rejected, never relabelled successful."
+          done
+          if [ "$success" -ne 1 ]; then
+            echo "FAIL CLOSED: not enough authentic complete game evidence for dev-S."
+            exit 1
+          fi
+      - name: Freeze exact original target and immediate-prior context; validate all source trace SHA again
+        run: |
+          python3 tools/m227/recovery_gate.py \
+            --runs artifacts/m227-authentic-recovered-rst --include-s
+          python3 tools/m227/freeze_temporal_context.py \
+            --runs artifacts/m227-authentic-recovered-rst \
+            --output artifacts/m227-authentic-review
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path("artifacts/m227-authentic-review")
+          manifest=json.loads((p/"study-manifest.json").read_text())
+          assert manifest["runIds"]==["dev-r","dev-s","dev-t"]
+          assert manifest["originalTargetImages"]==54
+          assert manifest["originalPrecedingContextImages"]==54
+          assert manifest["humanGroundTruth"]=="ALL_UNKNOWN"
+          assert manifest["prospectiveOriginalsAccessed"] is False
+          assert len(list(p.glob("annoteren/*/frame-*.png")))==54
+          assert len(list(p.glob("context/*/prev-for-*.png")))==54
+          assert len(list(p.glob("annoteren/*/index.html")))==3
+          assert len(list(p.rglob("*.json")))==1 and not list(p.rglob("*.jsonl"))
+          print("PASS RST original restored+new actual browser sessions and 54+54 source image pairs.")
+          PY
+      - name: Real Chromium mobile original-image reviewer touch/download/import/reload regression
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m227/mobile_smoke.py --site artifacts/m227-authentic-review
+      - name: Retain original development target+context and blank reviewers privately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m227b-genuine-RST-54-original-targets-54-context-BLANK
+          path: artifacts/m227-authentic-review/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain distinct original sessions and intact R/T source for scientific provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m227b-real-original-RST-source-no-human-truth
+          path: artifacts/m227-authentic-recovered-rst/
+          retention-days: 7
+          if-no-files-found: warn
