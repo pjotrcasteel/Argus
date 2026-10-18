@@ -103,9 +103,16 @@ has short retention. The main-merge workflow
 original, verifies every original PNG against SHA-256, tests a
 touchscreen Chromium browser on all three local pages, then uploads
 only a **short-lived private-ready-to-host Actions artifact**.
-It does **NOT** publish new public URLs. The user explicitly
-approved publication for older C/D/E but NOT F/G/H; ask again
-before extending GitHub Pages.
+It does **NOT** publish new public URLs by itself. On
+**2026-10-18** the owner additionally authorized ongoing publication of
+new ARGUS **development screenshot annotation pages** to GitHub Pages,
+including the M2.15 F/G/H batch. This standing permission is restricted
+to original approved/public-game DEVELOPMENT screenshot pixels and
+blank reference questions; it **never** authorizes exposing owner-entered
+human labels, private research ZIPs/traces, secrets or any held-out
+partition. The separate Pages workflow appends exactly the 36 consented
+real screenshots via `web/mobile-annotator/publish_m215.py` and
+preserves all 72 older original PNGs and six existing HTML reviewers.
 
 The general CI uses only artificial original-format PNGs and
 fake image traces; its pass demonstrates implementation, not
@@ -114,14 +121,13 @@ black-box WyrmForge smoke must also pass before merge.
 
 ## Decision gate after this slice
 
-Only after the authentic reviewer is verified and the annotated
-data source is suitably accessible should we ask for the
-owner's *optional* 72 local-position decisions. If the owner
-wants iPhone links, request **explicit publication approval for
-the 36 newly selected original WyrmForge screenshots**; the
-new blind study wasn't covered by earlier consent. Until then,
-keep the ready-to-host ZIP in the conversation and/or short-lived
-Actions artifact.
+The authentic review has passed the real-browser QA, and the owner
+has granted standing permission to host **development-screenshot-only
+review pages**. The subsequent Pages publication must pass source
+hashes, previous-page preservation, unchanged human-UNKNOWN labels,
+nine-route mobile Chrome QA and real Pages deployment before promising
+iPhone URLs. The user's *optional* 72 local-position decisions
+remain private; export to ChatGPT only after manual review.
 
 No `run-01` tuning; no claimed player identity model;
 no gameplay activation; no automatic `RESEARCH_TRAINED`

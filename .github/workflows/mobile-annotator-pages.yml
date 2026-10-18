@@ -41,6 +41,12 @@ jobs:
           gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12111452798/zip > m27-frozen-development-evidence.zip
           unzip -t m27-approved-mobile-pages.zip | tail -1
           unzip -t m27-frozen-development-evidence.zip | tail -1
+      - name: Retrieve owner-approved M2.15 original F/G/H candidate-location review only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/12129481661/zip > m215-approved-spatial-review.zip
+          unzip -t m215-approved-spatial-review.zip | tail -1
       - name: Generate original run-02 annotation route unchanged
         run: |
           python3 web/mobile-annotator/build.py \
@@ -55,6 +61,10 @@ jobs:
             --mobile-archive m27-approved-mobile-pages.zip \
             --research-archive m27-frozen-development-evidence.zip \
             --destination _site
+      - name: Append owner-approved F/G/H candidate-location routes, preserving originals
+        run: |
+          python3 web/mobile-annotator/publish_m215.py \
+            --archive m215-approved-spatial-review.zip --destination _site
       - name: Check real screenshots, blind ground truth, and page JavaScript
         run: |
           python3 - <<'PY'
@@ -72,7 +82,8 @@ jobs:
           manifest = json.loads(Path("_site/published-development-manifest.json").read_text())
           assert manifest["routes"] == [
             "annoteren/run-02/", "annoteren/dev-a/", "annoteren/dev-b/",
-            "annoteren/dev-c/", "annoteren/dev-d/", "annoteren/dev-e/"]
+            "annoteren/dev-c/", "annoteren/dev-d/", "annoteren/dev-e/",
+            "annoteren/dev-f/", "annoteren/dev-g/", "annoteren/dev-h/"]
           assert manifest["m27StudySeed"] == "argus-m27-independent-development-frozen-20261017"
           assert manifest["m27ReviewConsent"] == "explicitly owner-approved 2026-10-17"
           assert len(manifest["preservedRun02HtmlSha256"]) == 64
@@ -86,11 +97,25 @@ jobs:
             assert "run-01" not in doc and "run-02" not in doc
             Path(f"{name}-mobile-script.js").write_text(
               doc.split("<script>",1)[1].split("</script>",1)[0])
-          assert len(list(Path("_site/annoteren").glob("*/frame-*.png"))) == 72
-          assert len(manifest["screenshots"]) == 5
+          assert len(list(Path("_site/annoteren").glob("*/frame-*.png"))) == 108
+          assert len(manifest["screenshots"]) == 8
           for name in ("dev-c", "dev-d", "dev-e"):
             assert len(manifest["screenshots"][name]) == 12
-          print("Verified all SIX original and new BLIND annotation routes, 72 original real PNGs.")
+          assert manifest["m215StudySeed"] == "argus-m215-independent-spatial-probes-20261018-v1"
+          assert "standing consent" in manifest["m215ReviewConsent"]
+          assert manifest["m215CandidatesPerRun"] == 24
+          for name in ("dev-f", "dev-g", "dev-h"):
+            folder = Path("_site/annoteren") / name
+            html = (folder / "index.html").read_text()
+            assert len(list(folder.glob("frame-*.png"))) == 12
+            assert len(manifest["screenshots"][name]) == 12
+            assert html.count("<script>") == 1 and html.count("</script>") == 1
+            assert "playerX" not in html and "threatLocations" not in html and "run-01" not in html
+            assert all(image.name in manifest["screenshots"][name] for image in folder.glob("frame-*.png"))
+            Path(f"{name}-spatial-script.js").write_text(
+              html.split("<script>",1)[1].split("</script>",1)[0])
+          print("Verified all NINE review routes, 108 preserved approved original PNGs and empty spatial human labels.")
+
           PY
           node --check mobile-script.js
           node --check dev-a-mobile-script.js
@@ -98,11 +123,16 @@ jobs:
           node --check dev-c-mobile-script.js
           node --check dev-d-mobile-script.js
           node --check dev-e-mobile-script.js
+          node --check dev-f-spatial-script.js
+          node --check dev-g-spatial-script.js
+          node --check dev-h-spatial-script.js
       - name: Verify navigation, tap annotations and JSON download in mobile Chromium
         run: |
           python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
           python3 web/mobile-annotator/smoke.py --site _site
           python3 tools/m26b/smoke.py --site _site --runs dev-a dev-b dev-c dev-d dev-e
+          python3 tools/m215/smoke.py --site _site
       - name: Upload build for deployment
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
