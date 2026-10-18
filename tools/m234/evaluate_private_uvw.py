@@ -167,7 +167,7 @@ def evaluate_frozen(by_run, *, grid=appearance.GRID, model_fit=appearance.fit_mo
             "coefficients":model["weights"].tolist(), "normalizationMean":model["mean"].tolist(),
             "normalizationStd":model["std"].tolist(), "bias":model["bias"],
             "threshold":threshold, "fitOriginalImageSHAs":sorted(f["sha"] for f in split["fit"]),
-            "calibrationOriginalImageSHAs":sorted(f["sha"] for f in split["calibration"]])}).encode())
+            "calibrationOriginalImageSHAs":sorted(f["sha"] for f in split["calibration"])}).encode())
         folds.append({"testRun":held, "fitVisible":sum(f["state"]=="visible" for f in split["fit"]),
                       "fitAbsent":sum(f["state"]=="absent" for f in split["fit"]),
                       "calibrationDistinctTrueAbsent":len(split["calibration"]),
