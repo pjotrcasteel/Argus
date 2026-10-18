@@ -40,7 +40,9 @@ def verify(site: Path):
                         assert abs(actual[0]-target[0])<=1 and abs(actual[1]-target[1])<=1, (width,target,actual)
                         bounds = page.locator("#ring").bounding_box()
                         assert bounds and abs(bounds["width"]-bounds["height"])<.2, (width,bounds)
-                        expected = 30*r["width"]/390
+                        # getBoundingClientRect of an SVG circle includes its 3px stroke:
+                        # geometry diameter 30 + stroke diameter contribution 3.
+                        expected = 33*r["width"]/390
                         assert abs(bounds["width"]-expected)<.3, (width,bounds,expected)
                     page.locator("#next").click()
                     page.locator("#absent").click()
