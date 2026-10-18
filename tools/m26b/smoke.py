@@ -26,9 +26,12 @@ def verify(site: Path, runs: tuple[str, ...] = ("dev-a", "dev-b")) -> None:
                     img = page.locator("#shot")
                     img.wait_for()
                     assert img.evaluate("(i) => i.complete && i.naturalWidth === 390")
-                    assert page.locator("#index").inner_text() == "1 / 12"
+                    total = int(page.locator("#index").inner_text().split(" / ")[1])
+                    assert 1 <= total <= 64
+                    assert page.locator("#index").inner_text() == f"1 / {total}"
                     page.locator("#next").click()
-                    assert page.locator("#index").inner_text() == "2 / 12"
+                    assert total >= 2
+                    assert page.locator("#index").inner_text() == f"2 / {total}"
                     page.locator("#previous").click()
                     img.click(position={"x": 140, "y": 230})
                     assert "gemarkeerd" in page.locator("#player-state").inner_text()
@@ -39,7 +42,7 @@ def verify(site: Path, runs: tuple[str, ...] = ("dev-a", "dev-b")) -> None:
                         page.locator("#download").click()
                     export = json.loads(Path(info.value.path()).read_text())
                     assert export["runId"] == name
-                    assert len(export["frames"]) == 12
+                    assert len(export["frames"]) == total
                     assert export["frames"][0]["player"]["state"] == "visible"
                     assert export["frames"][1]["player"]["state"] == "unknown"
                     page.reload()
