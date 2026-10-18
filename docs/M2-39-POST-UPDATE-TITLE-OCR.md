@@ -40,6 +40,40 @@ and real gameplay evidence. A succeeding unit test is **not** proof that
 the changed menu is navigable, and M1 smoke success is not a player
 identity or game-balancing metric.
 
+## Second original-game validation (PR #81, first attempt)
+
+The authentic WyrmForge PR browser on the corrected, parseable profile
+recorded **one genuine title menu click** at step 1, validating the
+`START GAME` OCR fix. It then reached the redesigned **REFUGE** town
+screen but remained there with **zero route clicks** and no terminal,
+ending the 57-frame bounded smoke gate as **FAIL**; 52 purported
+"player-located" frames actually pointed at the decorative town avatar
+and are **not genuine combat or validated player identity**.
+Evidence: [Actions run 39158225513](https://github.com/pjotrcasteel/Argus/actions/runs/39158225513),
+short-lived original screenshot artifact `12148345532`.
+
+On the original town PNG, there is a dark rectangular
+`BEGIN FIRST HUNT` button. Actual `--psm 12` OCR on the original
+390x844 image splits its label into high-confidence `BE` and
+`FIRST HUNT`, at original y=704; neither line matches the previous
+full `Begin First Hunt` profile action. Offline doubling the exact
+original RGB PNG improves the full label recognition, but merely
+adding a source-proven `First Hunt` alternate visible label is the
+minimal change (still click where OCR sees text, no coordinates).
+
+More importantly, the baseline agent began moving across the town
+after three post-title empty scans, using **menu-click history alone**
+as permission to explore. M2.39 now refuses to start any exploratory
+keyboard movement without an actual visible gameplay cue, even after
+a valid earlier menu click. A menu/state transition is not gameplay
+evidence. Synthetic tests replay the two consecutive states.
+
+These tests do NOT yet prove the new first-hunt click enters combat.
+Re-run PR real browser smoke and inspect fresh evidence, including
+any additional newly introduced town, preparation, or magic-selection
+screen. Do not report the decorative town sprite as 52 successful
+combat player detections.
+
 ## Important limitations
 
 - M2.38 failure remains a true fail; do not rewrite or delete original
