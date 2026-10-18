@@ -1,0 +1,46 @@
+name: M2.22 private image localization research (synthetic-only CI)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m222/**
+      - tests/m222/**
+      - .github/workflows/m2-22-private-image-research.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/m222/**
+      - tests/m222/**
+      - .github/workflows/m2-22-private-image-research.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-only-offline-learning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install free deterministic offline image dependencies
+        run: python3 -m pip install --quiet --break-system-packages 'numpy>=2,<3' 'Pillow>=11,<13'
+      - name: Synthetic pixels and fictitious whole-run references ONLY
+        run: |
+          python3 -m unittest discover -s tests/m222 -p 'test_private_localization.py' -v
+      - name: Static privacy/research-only source guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          x=Path("tools/m222/offline_localization.py").read_text()
+          assert "from tools.m220.point_cohort import RUNS, SEED, validate_owner" in x
+          assert "from tools.m221.publish_consented_public import members" in x
+          assert "test = [f for f in data[held]" in x
+          assert '"sha" not in' not in x
+          assert 'f["sha"] not in excluded_sha' in x
+          assert "run-01" in x  # refusal of original held-out, not any data ingestion
+          assert "https://" not in x and "requests." not in x
+          assert "GenUI" not in x
+          assert not list(Path("tests/m222").rglob("*labels*.json"))
+          print("PASS: NO human exports, original WyrmForge screenshots, weights or held-out in CI.")
+          PY
