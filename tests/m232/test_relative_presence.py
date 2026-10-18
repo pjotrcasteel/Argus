@@ -60,6 +60,39 @@ class RelativePresenceTests(unittest.TestCase):
         self.assertEqual('INVESTIGATE_FURTHER',result['status'])
         self.assertEqual((8,3,7),tuple(result[k] for k in ('visible','absent','unknown')))
 
+    def _fresh_synthetic_review_rows(self):
+        return {run:[{'run':run,'step':i,
+                      'sha':hashlib.sha256(f'{run}/{i}'.encode()).hexdigest(),
+                      'state':'absent' if i<4 else 'visible',
+                      'center':None if i<4 else {'x':389,'y':421}}
+                     for i in range(18)] for run in ('dev-u','dev-v','dev-w')}
+
+    def test_whole_run_out_split_and_calibration_sha_are_strictly_disjoint(self):
+        data=self._fresh_synthetic_review_rows()
+        fold=m.split_human_development_runs(data,'dev-u')
+        self.assertEqual('dev-u',fold['heldOutRun'])
+        self.assertEqual(18,len(fold['heldOut']))
+        self.assertEqual(4,len(fold['calibration']))
+        self.assertEqual({'dev-v','dev-w'},set(x['run'] for x in fold['calibration']))
+        train={f['sha'] for f in fold['fit']}
+        calibration={f['sha'] for f in fold['calibration']}
+        held={f['sha'] for f in fold['heldOut']}
+        self.assertFalse((train&calibration)|(held&(train|calibration)))
+
+    def test_test_png_byte_duplicate_is_blocked_in_other_run_fit(self):
+        data=self._fresh_synthetic_review_rows()
+        data['dev-v'][6]=dict(data['dev-v'][6],sha=data['dev-u'][6]['sha'])
+        fold=m.split_human_development_runs(data,'dev-u')
+        self.assertEqual(1,fold['sharedExactSourceShaExcluded'])
+        self.assertNotIn(data['dev-u'][6]['sha'],{f['sha'] for f in fold['fit']})
+
+    def test_inadequate_absent_fit_or_calibration_fail_closed(self):
+        data=self._fresh_synthetic_review_rows()
+        for row in data['dev-v'][:4]:
+            row['state']='unknown'
+        with self.assertRaisesRegex(ValueError,'NOT_READY'):
+            m.split_human_development_runs(data,'dev-u')
+
     def test_insufficient_genuine_absent_is_not_ready(self):
         truth=[{'state':'visible','center':{'x':195,'y':422}} for _ in range(16)]
         truth += [{'state':'absent','center':None} for _ in range(2)]
