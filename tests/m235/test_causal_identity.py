@@ -34,7 +34,7 @@ class CausalIdentitySyntheticTests(unittest.TestCase):
         self.assertIsNone(results[2]["playerPresent"])
         self.assertFalse(results[2]["liveAgentChanged"])
 
-    def test_static_high-scoring_hud_never_becomes_player(self):
+    def test_static_high_scoring_hud_never_becomes_player(self):
         tracker=CausalIdentityResearch()
         for i in range(8):
             result=tracker.update("fake-hud",i,sha(i),[candidate(195,300,score=100.,change=0.)])
