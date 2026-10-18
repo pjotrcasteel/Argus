@@ -52,9 +52,10 @@ succeed and its precise original artifact ZIP checksum is frozen.
   Only then switch GitHub Pages through another reviewed PR with all
   original/older mobile browser regression tests.
 
-### Future mobile reviewer routes
+### Deployed mobile reviewer routes
 
-Once GitHub Pages production succeeds:
+[Production GitHub Pages 39138038122](https://github.com/pjotrcasteel/Argus/actions/runs/39138038122) **SUCCESS** after [PR #65](https://github.com/pjotrcasteel/Argus/pull/65) merged. The complete static site built and deployed with the frozen SHA verifier and all old/new Chromium mobile roundtrips passing. Independent assistant HTTP fetch was not available; GitHub's successful deployment is the verified production evidence.
+
 
 - https://pjotrcasteel.github.io/Argus/annoteren/dev-r/
 - https://pjotrcasteel.github.io/Argus/annoteren/dev-s/
