@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>ARGUS — Annoteren op iPhone</title>
+<style>
+:root{color-scheme:dark;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#111827;color:#eff5ff}
+*{box-sizing:border-box}body{margin:0}header{background:#19253a;border-bottom:1px solid #394d65;padding:14px}
+h1{font-size:1.16rem;margin:0 0 5px}.sub{color:#b0bfd4;font-size:.82rem}.tag{display:inline-block;border:1px solid #4c9a80;border-radius:20px;padding:5px 9px;color:#a5ebce;font-size:.72rem}
+main{margin:auto;max-width:650px;padding:12px 12px 46px}.card{background:#1d293c;border:1px solid #41526e;border-radius:13px;padding:12px;margin-bottom:12px}
+p{line-height:1.45;color:#ced9ea;margin:6px 0 12px}.minor{font-size:.81rem;color:#a9bcd2}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-weight:650;border-radius:10px;border:1px solid #607594;background:#334762;color:#f9fbff;min-height:46px;padding:9px 12px;cursor:pointer}
+button[aria-pressed=true]{background:#246760;border-color:#78ead2}
+button:disabled{opacity:.4}.row button{flex:1}.primary{background:#177f62;border-color:#64dfab}
+.framebar{display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px}.counter{font-variant-numeric:tabular-nums;font-weight:700}
+#canvas{position:relative;margin:10px auto;max-width:390px;width:100%;background:#05080d;touch-action:manipulation;user-select:none}
+#shot{display:block;width:100%;height:auto;min-height:50px;-webkit-user-drag:none}
+#markers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.nav{display:flex;gap:9px;align-items:center;justify-content:space-between}.nav button{flex:1}.nav span{min-width:62px;text-align:center}
+.status{background:#13392e;color:#b3f4d7;border:1px solid #427b66;padding:10px;border-radius:10px;font-size:.85rem;margin:9px 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.actions button{font-size:.85rem}.legend{font-size:.82rem;color:#c2cee0;margin:8px 0}.legend span{display:inline-block;border:2px solid;border-radius:50%;width:12px;height:12px;margin-right:5px}
+#raw{display:none;width:100%;height:120px;border:1px solid #59718b;background:#0c1420;color:white;border-radius:8px;padding:7px}
+#raw.visible{display:block}input[type=file]{font:inherit;max-width:100%;font-size:.82rem}
+.sticky{position:sticky;bottom:0;background:#19253af2;border:1px solid #41526e;border-radius:10px;padding:8px}
+@media(min-width:600px){main{padding:20px}.actions button{font-size:1rem}}
+</style>
+</head>
+<body>
+<header><h1>ARGUS · Blinde screenshots beoordelen</h1><div class="sub">WyrmForge · dev-c · ontwikkelset &nbsp; <span class="tag">12 echte screenshots</span></div></header>
+<main>
+<section class="card">
+<p><strong>Tik direct op de speler of een dreiging.</strong> Deze webpagina draait in Safari; de afbeeldingen komen van GitHub Pages. Geen ZIP en geen installatie.</p>
+<p class="minor">De voorspellingen van ARGUS zijn verborgen. Kies <strong>Onbekend</strong> als je twijfelt; dat is niet hetzelfde als afwezig.</p>
+</section>
+<section class="card">
+<div class="framebar"><strong>1. Wat wil je markeren?</strong><span id="count" class="counter">1 / 12</span></div>
+<div class="row"><button id="player-mode" aria-pressed="true">◎ Speler</button><button id="threat-mode" aria-pressed="false">✳ Dreiging(en)</button></div>
+<div class="legend"><span style="border-color:#81f0c2"></span>Speler &nbsp;&nbsp;<span style="border-color:#ffbd92"></span>Dreiging</div>
+<div class="nav"><button id="previous">← Vorige</button><span id="index" class="counter">1 / 12</span><button id="next">Volgende →</button></div>
+<div id="canvas"><img id="shot" alt="Originele WyrmForge screenshot, zonder voorspellingen"><svg id="markers" xmlns="http://www.w3.org/2000/svg"></svg></div>
+<p class="minor" id="tap-hint">Tik in de afbeelding op de speler als die zichtbaar is.</p>
+<div class="sticky nav"><button id="previous2">← Vorige</button><span id="index2" class="counter">1 / 12</span><button id="next2">Volgende →</button></div>
+</section>
+<section class="card">
+<strong>2. Wat is zichtbaar?</strong>
+<p id="player-state">Speler: onbekend</p>
+<div class="actions"><button id="player-absent">Speler niet zichtbaar</button><button id="player-unknown">Speler onbekend</button></div>
+<p id="threat-state">Dreigingen: onbekend</p>
+<div class="actions"><button id="threat-none">Geen dreigingen</button><button id="threat-unknown">Dreigingen onbekend</button><button id="undo">Laatste dreiging wissen</button></div>
+</section>
+<section class="card">
+<strong>3. Bewaar je beoordelingen</strong>
+<p class="minor">De pagina bewaart lokaal een concept op dit toestel. Exporteer het resultaat om het hier terug te sturen. Er wordt niets naar ARGUS geüpload.</p>
+<div class="actions"><button id="copy" class="primary">Kopieer JSON</button><button id="download">Bewaar labels.json</button><button id="share">Deel bestand</button></div>
+<div id="status" role="status" class="status">Beoordelingen worden geladen…</div>
+<textarea id="raw" readonly aria-label="JSON om handmatig te kopiëren"></textarea>
+<label class="minor">Verdergaan met eerder opgeslagen JSON: <input type="file" id="import" accept=".json,application/json"></label>
+</section>
+</main>
+<script>
+"use strict";
+const frames=[{"step":1,"width":390,"height":844,"file":"frame-0001.png"},{"step":7,"width":390,"height":844,"file":"frame-0007.png"},{"step":10,"width":390,"height":844,"file":"frame-0010.png"},{"step":13,"width":390,"height":844,"file":"frame-0013.png"},{"step":18,"width":390,"height":844,"file":"frame-0018.png"},{"step":20,"width":390,"height":844,"file":"frame-0020.png"},{"step":25,"width":390,"height":844,"file":"frame-0025.png"},{"step":30,"width":390,"height":844,"file":"frame-0030.png"},{"step":34,"width":390,"height":844,"file":"frame-0034.png"},{"step":38,"width":390,"height":844,"file":"frame-0038.png"},{"step":40,"width":390,"height":844,"file":"frame-0040.png"},{"step":47,"width":390,"height":844,"file":"frame-0047.png"}];
+const original={"schemaVersion":1,"runId":"dev-c","frames":[{"step":1,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":7,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":10,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":13,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":18,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":20,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":25,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":30,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":34,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":38,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":40,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}},{"step":47,"player":{"state":"unknown","center":null},"threats":{"state":"unknown","centers":null}}]};
+const el=id=>document.getElementById(id);
+const key="argus-blind-annotation-v1-"+original.runId+"-m26b";
+let labels=structuredClone(original),selected=0,mode="player";
+const byStep=new Map(frames.map(f=>[f.step,f]));
+const pointOK=(p,f)=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<f.width&&p.y<f.height;
+function valid(v){
+ if(!v||v.schemaVersion!==1||v.runId!==original.runId||!Array.isArray(v.frames)||v.frames.length!==original.frames.length)return false;
+ const received=new Map(v.frames.map(f=>[f.step,f]));
+ if(received.size!==original.frames.length)return false;
+ return original.frames.every(frame=>{
+  const v=received.get(frame.step),image=byStep.get(frame.step);
+  if(!v||!image||!v.player||!v.threats)return false;
+  const p=v.player.state==="visible"?pointOK(v.player.center,image):
+    (v.player.state==="unknown"||v.player.state==="absent")&&v.player.center==null;
+  const t=v.threats.state==="unknown"?v.threats.centers==null:
+    v.threats.state==="known"&&Array.isArray(v.threats.centers)&&v.threats.centers.length<=100&&v.threats.centers.every(c=>pointOK(c,image));
+  return p&&t;
+ });
+}
+function notify(msg){el("status").textContent=msg;}
+try{
+ const cached=JSON.parse(localStorage.getItem(key)||"null");
+ if(valid(cached))labels=cached;
+}catch(e){}
+function save(){
+ try{localStorage.setItem(key,JSON.stringify(labels));}catch(e){}
+ notify("Concept op dit toestel bewaard. Gebruik Kopieer of Bewaar JSON om terug te sturen.");
+}
+function circle(p,color,size){
+ const shape=document.createElementNS("http://www.w3.org/2000/svg","circle");
+ shape.setAttribute("cx",String(p.x));shape.setAttribute("cy",String(p.y));
+ shape.setAttribute("r",String(size));shape.setAttribute("stroke",color);shape.setAttribute("stroke-width","3");
+ shape.setAttribute("fill","none");el("markers").appendChild(shape);
+}
+function render(){
+ const f=frames[selected],label=labels.frames[selected];
+ el("shot").src=f.file;
+ el("markers").setAttribute("viewBox","0 0 "+f.width+" "+f.height);
+ el("markers").replaceChildren();
+ if(label.player.state==="visible")circle(label.player.center,"#81f0c2",15);
+ if(label.threats.state==="known")label.threats.centers.forEach(p=>circle(p,"#ffbd92",12));
+ el("player-mode").setAttribute("aria-pressed",String(mode==="player"));
+ el("threat-mode").setAttribute("aria-pressed",String(mode==="threat"));
+ const count=(selected+1)+" / "+frames.length;
+ el("count").textContent=el("index").textContent=el("index2").textContent=count;
+ el("previous").disabled=el("previous2").disabled=selected===0;
+ el("next").disabled=el("next2").disabled=selected===frames.length-1;
+ el("player-state").textContent="Speler: "+(label.player.state==="visible"?"gemarkeerd":label.player.state==="absent"?"niet zichtbaar":"onbekend");
+ el("threat-state").textContent="Dreigingen: "+(label.threats.state==="unknown"?"onbekend":label.threats.centers.length+" gemarkeerd");
+ el("tap-hint").textContent=mode==="player"?"Tik op de speler in het screenshot.":"Tik op iedere zichtbare dreiging.";
+ const complete=labels.frames.filter(x=>x.player.state!=="unknown"&&x.threats.state!=="unknown").length;
+ notify(complete+" van "+frames.length+" frames volledig beoordeeld.");
+}
+function switchMode(m){mode=m;render();}
+el("player-mode").onclick=()=>switchMode("player");
+el("threat-mode").onclick=()=>switchMode("threat");
+function editPlayer(state,center){labels.frames[selected].player={state,center};save();render();}
+function editThreat(state,centers){labels.frames[selected].threats={state,centers};save();render();}
+el("player-absent").onclick=()=>editPlayer("absent",null);
+el("player-unknown").onclick=()=>editPlayer("unknown",null);
+el("threat-none").onclick=()=>editThreat("known",[]);
+el("threat-unknown").onclick=()=>editThreat("unknown",null);
+el("undo").onclick=()=>{
+ const t=labels.frames[selected].threats;
+ if(t.state==="known"&&t.centers.length)editThreat("known",t.centers.slice(0,-1));
+};
+el("canvas").addEventListener("click",e=>{
+ const rect=el("shot").getBoundingClientRect(),f=frames[selected];if(!rect.width||!rect.height)return;
+ const x=(e.clientX-rect.left)*f.width/rect.width,y=(e.clientY-rect.top)*f.height/rect.height;
+ if(x<0||x>=f.width||y<0||y>=f.height)return;
+ const p={x:Math.round(x),y:Math.round(y)};
+ if(mode==="player"){editPlayer("visible",p);return;}
+ const current=labels.frames[selected].threats;
+ const points=current.state==="known"?[...current.centers]:[];
+ if(points.length>=100||points.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<8))return;
+ points.push(p);editThreat("known",points);
+});
+function move(delta){selected=Math.max(0,Math.min(frames.length-1,selected+delta));render();}
+el("previous").onclick=el("previous2").onclick=()=>move(-1);
+el("next").onclick=el("next2").onclick=()=>move(1);
+const getJSON=()=>JSON.stringify(labels,null,2);
+function download(){
+ const url=URL.createObjectURL(new Blob([getJSON()],{type:"application/json"}));
+ const a=document.createElement("a");a.href=url;a.download="labels.json";
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+ notify("Download aangevraagd: labels.json. Controleer de Downloads-map.");
+}
+el("download").onclick=download;
+el("copy").onclick=async()=>{
+ try{await navigator.clipboard.writeText(getJSON());notify("JSON gekopieerd: plak het in deze chat.");}
+ catch(e){el("raw").value=getJSON();el("raw").classList.add("visible");el("raw").focus();el("raw").select();
+  notify("Selecteer de zichtbare JSON-tekst en kies Kopieer.");}
+};
+el("share").onclick=async()=>{
+ const file=new File([getJSON()],"labels.json",{type:"application/json"});
+ if(navigator.share&&navigator.canShare?.({files:[file]})){
+  try{await navigator.share({files:[file],title:"ARGUS beoordelingen"});}
+  catch(e){if(e.name!=="AbortError")notify("Delen mislukt; kies Bewaar JSON.");}
+ }else download();
+};
+el("import").addEventListener("change",async e=>{
+ const file=e.target.files?.[0];e.target.value="";if(!file)return;
+ if(file.size>2000000){notify("Bestand is te groot.");return;}
+ try{const imported=JSON.parse(await file.text());if(!valid(imported))throw new Error("Labels horen niet bij deze frames.");
+  labels=imported;save();render();notify("Opgeslagen beoordelingen ingeladen.");}
+ catch(err){notify("Import mislukt: "+err.message);}
+});
+el("shot").addEventListener("error",()=>notify("Afbeelding kon niet worden geladen. Ververs Safari of meld deze fout."));
+render();
+</script>
+</body>
+</html>
