@@ -5,6 +5,20 @@ The owner already gave standing permission for authentic original
 It does **not** include player-label exports, model weights, raw whole-game
 traces, paired preceding screenshot context or unopened prospective frames.
 
+**Verified genuine source (2026-10-18):** the recovered
+[R/S/T capture 39131402099](https://github.com/pjotrcasteel/Argus/actions/runs/39131402099)
+passed with 47/62/60 original full screenshots, 54 selected target PNGs,
+54 immediate previous authentic PNGs and fully BLANK mobile reviewers.
+The authenticated private source artifact is `12137923805`,
+SHA256 `bdb8538c90ccb5166fcee4b94e9f46e6c4ba1a91d70079c370c4c13d65173bda`.
+The exact new full public site tree SHA256 was independently verified by
+[PR GitHub Actions 39131770152](https://github.com/pjotrcasteel/Argus/actions/runs/39131770152)
+as `ace883e8b2f120c6d22669b32dd47fa18a4dc20bdf359cae8f2857d9de7a8759`.
+Both hashes are pinned and enforced on all build and deploy paths.
+The real original mobile Chromium R/S/T touch/export/import tests also PASSED.
+Do not publish the 54 temporal predecessor PNGs, even though their exact
+source hashes were verified.
+
 This publication must consume the M2.27 source artifact only after
 [the three new independent real R/S/T captures]
 (https://github.com/pjotrcasteel/Argus/actions/workflows/m2-27-temporal-development.yml)
