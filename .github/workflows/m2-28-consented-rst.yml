@@ -1,0 +1,103 @@
+name: M2.28 consented RST original-only mobile reviewer checkpoint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m228/**
+      - tests/m228/**
+      - .github/workflows/m2-28-consented-rst.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/m2-28-consented-rst.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  synthetic-privacy-allowlist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject extra owner, prospective and temporal source context materials
+        run: |
+          python3 -m unittest discover -s tests/m228 -p 'test_*.py' -v
+          python3 - <<'PY'
+          from pathlib import Path
+          c=Path("tools/m228/consented_public_rst.py").read_text()
+          assert "SOURCE_SEED" in c and "ARCHIVE_SHA256" in c and "SITE_TREE_SHA256" in c
+          assert "verify_previous_checkpoint(previous)" in c
+          assert "context/" in c and "DO NOT PUBLISH" in c
+          assert "294" in c and "270" in c and "21" in c
+          assert not list(Path("tests/m228").rglob("*.json"))
+          print("PASS: only 54 new source PNG and three entirely UNKNOWN review HTML pages admissible.")
+          PY
+
+  immutable-consented-site:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: synthetic-privacy-allowlist
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch verified prior 237-file permanent approved public checkpoint
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/public-annotator-site-m223-development:refs/remotes/origin/public-annotator-site-m223-development
+          mkdir -p _prior
+          git archive refs/remotes/origin/public-annotator-site-m223-development | tar -xf - -C _prior
+          python3 tools/m224/publish_development_only.py verify --site _prior
+      - name: Retrieve SHA-pinned source from new real original RST development ONLY
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/12137923805/zip" > _m227-source-original-review.zip
+          unzip -t _m227-source-original-review.zip | tail -1
+      - name: Accept original targets and original viewer HTML, refuse temporal contexts on Pages
+        run: |
+          python3 tools/m228/consented_public_rst.py build \
+            --previous _prior --archive _m227-source-original-review.zip --output _site
+          python3 tools/m228/consented_public_rst.py verify --site _site
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path("_site")
+          assert len(list(p.glob("annoteren/*/frame-*.png")))==270
+          assert len(list(p.glob("annoteren/*/index.html")))==21
+          assert len(list(p.rglob("*.json")))==1
+          assert not list(p.rglob("*.jsonl")) and not list(p.rglob("*.zip"))
+          assert not list(p.rglob("context/*"))
+          assert not list(p.glob("annoteren/dev-o/*"))
+          assert not list(p.glob("annoteren/dev-p/*"))
+          assert not list(p.glob("annoteren/dev-q/*"))
+          study=json.loads((p/"published-development-manifest.json").read_text())
+          assert study["m227HumanTruth"]=="ALL_UNKNOWN"
+          print("PASS: source-only development publication; 54 original context PNGs remain private.")
+          PY
+      - name: Real original mobile Chromium review, touch and private export/import
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/m227/mobile_smoke.py --site _site
+          python3 tests/m223/mobile_smoke.py --site _site
+          python3 tests/m220/mobile_smoke.py --site _site
+      - name: Create new immutable public-only Git snapshot (NO FORCE, preserves old snapshot)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git -C _site init -b public-annotator-site-m227-development
+          git -C _site config user.name "github-actions[bot]"
+          git -C _site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C _site remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -C _site add -A
+          git -C _site commit -m "Freeze approved original 270 PNGs and 21 blank mobile reviewers"
+          gh auth setup-git
+          git -C _site push origin HEAD:refs/heads/public-annotator-site-m227-development
+          echo "Permanent public-only snapshot created; switch Pages via independently green PR."
