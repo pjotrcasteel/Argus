@@ -85,6 +85,67 @@ def calibrate_absent(whole_absent_observations):
     return max(score for _,_,score in rows)+ABSENT_SCORE_MARGIN
 
 
+def split_human_development_runs(by_run, held):
+    """Frozen WHOLE-RUN-OUT split; no fit/cal/test sharing one original PNG SHA.
+
+    Input rows hold independently owner-verified 'run','step','sha','state',
+    'center' and optionally raw RGB privately. Do not use on sealed originals.
+    """
+    all_runs=("dev-u","dev-v","dev-w")
+    require(set(by_run)==set(all_runs) and held in all_runs,
+            "Only NEW U/V/W owner-verified development run references admitted.")
+    seen_truth={}
+    for run in all_runs:
+        for row in by_run[run]:
+            require(row.get("run")==run and
+                    row.get("state") in ("visible","absent","unknown") and
+                    type(row.get("step")) is int and
+                    type(row.get("sha")) is str and len(row["sha"])==64 and
+                    all(c in "0123456789abcdef" for c in row["sha"]),
+                    "Missing original owner-verified run/source identity.")
+            truth=(row["state"],str(row.get("center")))
+            require(row["sha"] not in seen_truth or seen_truth[row["sha"]]==truth,
+                    "Conflicting human truth for an identical original screenshot.")
+            seen_truth[row["sha"]]=truth
+    forbidden={f["sha"] for f in by_run[held]}
+    test=[]
+    used_test=set()
+    for f in by_run[held]:
+        if f["sha"] not in used_test:
+            used_test.add(f["sha"])
+            test.append(f)
+    fit=[]
+    calibration=[]
+    used_source=set(forbidden)
+    excluded_duplicates=0
+    for run in all_runs:
+        if run==held:
+            continue
+        unique=[]
+        for f in sorted(by_run[run],key=lambda x:x["step"]):
+            if f["sha"] in used_source:
+                excluded_duplicates+=1
+                continue
+            used_source.add(f["sha"])
+            unique.append(f)
+        absences=[f for f in unique if f["state"]=="absent"]
+        absent_cal={f["sha"] for i,f in enumerate(absences) if i%2==0}
+        fit.extend(f for f in unique if f["state"]!="unknown" and f["sha"] not in absent_cal)
+        calibration.extend(f for f in absences if f["sha"] in absent_cal)
+    train_sha={f["sha"] for f in fit}
+    cal_sha={f["sha"] for f in calibration}
+    require(not train_sha&cal_sha and not forbidden&(train_sha|cal_sha),
+            "Severe image identity leakage across whole-run fit/calibration/test.")
+    require(sum(f["state"]=="visible" for f in fit)>=8 and
+            sum(f["state"]=="absent" for f in fit)>=2,
+            "NOT_READY: distinct real player-positive and whole-ABSENT fit frames needed.")
+    require(len(calibration)>=MIN_INDEPENDENT_ABSENT and
+            len({f["run"] for f in calibration})>=MIN_ABSENT_RUNS,
+            "NOT_READY: underpowered multi-run independent human-ABSENT calibration.")
+    return {"fit":fit, "calibration":calibration, "heldOut":test,
+            "heldOutRun":held, "sharedExactSourceShaExcluded":excluded_duplicates}
+
+
 def decide(evidence, frozen_threshold):
     """Strictly reject ties or insufficient evidence, no invented player location."""
     require(math.isfinite(frozen_threshold) and frozen_threshold>=ABSENT_SCORE_MARGIN and
