@@ -1,11 +1,42 @@
 using System.Text.Json;
 using Argus.Evaluation;
 
+var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+if (args is ["--spatial-archive", var archive, "--labels-f", var f, "--labels-g", var g,
+        "--labels-h", var h, "--output", var output])
+{
+    try
+    {
+        // Originals are read from the verified development-only screenshot artifact.
+        // Human exports and fitted weights are never sent to public workflows or GitHub Pages.
+        var rows = SpatialProbeImporter.ReadPrivate(archive, [f, g, h]);
+        var study = SpatialProbeLearning.Evaluate(rows);
+        var privateFolder = Path.GetFullPath(output);
+        Directory.CreateDirectory(privateFolder);
+        await File.WriteAllTextAsync(Path.Combine(privateFolder, "spatial-probe-learning.json"),
+            JsonSerializer.Serialize(study, json));
+        await File.WriteAllTextAsync(Path.Combine(privateFolder, "spatial-probe-learning.md"),
+            SpatialProbeLearning.RenderMarkdown(study));
+        Console.WriteLine($"ARGUS M2.16: {study.Status}; {study.Labeled} reviewed local probes; offline only.");
+        foreach (var blocker in study.Blockers) Console.WriteLine("NOT_READY: " + blocker);
+        Console.WriteLine("Outputs are PRIVATE: do not commit weights, human labels or source research bundles.");
+        return 0;
+    }
+    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
+        or ArgumentException or JsonException or InvalidOperationException or KeyNotFoundException)
+    {
+        Console.Error.WriteLine("M2.16 private spatial study rejected input: " + ex.Message);
+        return 1;
+    }
+}
+
 if (args.Length != 2 || args[0] != "--runs")
 {
     Console.Error.WriteLine("Usage: dotnet run --project src/Argus.Learning.Tool -- --runs PRIVATE_DEVELOPMENT_ROOT");
-    Console.Error.WriteLine("Reads ONLY dev-* child directories and their player-shadow-feature-rows.csv.");
-    Console.Error.WriteLine("Never use original run-01 held-out for tuning. No game input.");
+    Console.Error.WriteLine("Or: --spatial-archive M215_ORIGINAL_REVIEW.zip --labels-f F.json --labels-g G.json " +
+        "--labels-h H.json --output PRIVATE_DIRECTORY");
+    Console.Error.WriteLine("Reads ONLY dev-* evidence; original held-out run-01 must stay untouched.");
     return 2;
 }
 
@@ -14,7 +45,6 @@ try
     var root = Path.GetFullPath(args[1]);
     var rows = PlayerShadowLearningData.ReadDevelopment(root);
     var result = PlayerShadowOfflineLearning.Evaluate(rows);
-    var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
     await File.WriteAllTextAsync(Path.Combine(root, "offline-player-learning.json"),
         JsonSerializer.Serialize(result, json));
     await File.WriteAllTextAsync(Path.Combine(root, "offline-player-learning.md"),
