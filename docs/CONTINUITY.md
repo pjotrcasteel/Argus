@@ -618,6 +618,32 @@ collector connection test returned HTTP 403, leaving full deploy workflow
 red. Browser-served version **cannot be attested from GitHub source SHA**;
 M2.38 intentionally records `gameVersion: null`.
 
+**M2.39 — actual M2.38 real-capture regression diagnosis (2026-10-18):**
+[M2.38 Actions 39157000315](https://github.com/pjotrcasteel/Argus/actions/runs/39157000315)
+finished **FAIL / NOT_READY**: `m238-a` had two independently
+launched external-browser attempts, each 77 original screenshots,
+0 menu clicks, 0 route clicks, 0 player frames, and every step reported
+`unrecognized` / safe waiting. `m238-b/c` were correctly **not**
+attempted; no 54-screen blind review was invented. The exact failed
+source artifact `12147208748` contains actual screenshots/traces,
+7-day retention. Inspected the original screen and trace privately:
+the newly redesigned WyrmForge title has a clearly visible
+`START GAME` gold-filled button but Tesseract sparse-text
+`--psm 11` **omitted its lettering**. Independent local tests on
+the original screenshot with orientation-aware sparse
+`--psm 12` recognize `START GAME` at genuine image pixels with
+~96% confidence; `--psm 3` also recognizes it.
+
+[M2.39 focused navigation PR](https://github.com/pjotrcasteel/Argus/pulls)
+changes **only** free screenshot OCR segmentation (11→12),
+adds the source-visible `Start Game` to the external game profile,
+and adds deterministic OCR box/matching regression tests. It does
+not use fixed clicks, modify WyrmForge, touch owner truth, identify
+player in shadow, or claim gameplay improvement before live smoke.
+See [M2.39 independent diagnosis](M2-39-POST-UPDATE-TITLE-OCR.md).
+Next: verify real PR smoke reaches menu input, inspect remaining
+town navigation; only then merge/re-run M2.38 fresh independent cohorts.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
