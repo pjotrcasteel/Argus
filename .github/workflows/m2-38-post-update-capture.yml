@@ -42,14 +42,16 @@ jobs:
           python - <<'PY'
           import tempfile
           from pathlib import Path
-          from tests.m238.test_fresh_capture import FreshCaptureSyntheticTests
+          import sys
+          sys.path.insert(0,"tests/m238")
+          from test_fresh_capture import FreshCaptureSyntheticTests
           from tools.m238.fresh_capture import freeze
           trial=FreshCaptureSyntheticTests()
           trial.setUp()
           freeze(trial.captures,Path("artifacts/m238-synthetic-review"))
           trial.tearDown()
           PY
-          python -m tests.m238.mobile_smoke --site artifacts/m238-synthetic-review
+          python tests/m238/mobile_smoke.py --site artifacts/m238-synthetic-review
       - name: Reject committed original game data, predicted player results and owner labels
         run: |
           python - <<'PY'
@@ -79,6 +81,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free local PNG decoder
+        run: python -m pip install 'Pillow>=11,<13'
       - name: Install ordinary local OCR
         run: |
           sudo apt-get update -qq
@@ -112,7 +119,7 @@ jobs:
                 --run "$run" --folder "$folder" --started "$started" \
                 --exit "$exit_code" --revision "$GITHUB_SHA" \
                 --profile examples/wyrmforge.profile.json
-              if python -m tools.m238.fresh_capture verify --runs artifacts/m238-real-source; then
+              if python -c "from pathlib import Path; from tools.m238.fresh_capture import verify_run; import sys; r=verify_run(Path(sys.argv[1]),sys.argv[2]); print('Valid actual individual external source',r['runId'],r['frames'])" "$folder" "$run"; then
                 accepted=1
                 break
               fi
@@ -149,7 +156,7 @@ jobs:
         run: |
           python -m pip install 'playwright>=1.55,<2'
           python -m playwright install --with-deps chromium
-          python -m tests.m238.mobile_smoke --site artifacts/m238-private-original-review
+          python tests/m238/mobile_smoke.py --site artifacts/m238-private-original-review
       - name: Save immutable real source/run provenance in short-lived PRIVATE workflow artifacts (not GitHub repo/Pages)
         if: always()
         uses: actions/upload-artifact@v4
