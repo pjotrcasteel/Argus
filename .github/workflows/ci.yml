@@ -675,3 +675,59 @@ jobs:
           node --check artifacts/ci-m214-mobile/dev-f.js
           node --check artifacts/ci-m214-mobile/dev-g.js
           node --check artifacts/ci-m214-mobile/dev-h.js
+
+      - name: Verify M2.15 strict spatial candidate protocol on synthetic frozen development sources
+        run: |
+          python3 -m unittest discover -s tools/m215 -p 'test_*.py' -v
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          src = Path("artifacts/ci-m214")
+          target = Path("artifacts/ci-m215-source.zip")
+          with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as z:
+              for file in sorted(src.rglob("*")):
+                  if file.is_file():
+                      z.write(file, file.relative_to(src).as_posix())
+          PY
+          python3 tools/m215/spatial_candidate_review.py build \
+            --archive artifacts/ci-m215-source.zip --output artifacts/ci-m215-review
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/ci-m215-review")
+          plan = json.loads((root / "spatial-study-plan.json").read_text())
+          assert plan["mode"] == "development-only"
+          assert plan["humanTruth"] == "ALL_UNKNOWN"
+          assert plan["studySeed"] == "argus-m215-independent-spatial-probes-20261018-v1"
+          assert plan["runIds"] == ["dev-f", "dev-g", "dev-h"]
+          assert len({r["traceSha256"] for r in plan["runs"]}) == 3
+          assert sum(len(r["candidates"]) for r in plan["runs"]) == 72
+          assert sum(len(r["images"]) for r in plan["runs"]) == 36
+          for entry in plan["runs"]:
+              run = entry["runId"]
+              assert len(entry["images"]) == 12
+              assert len(entry["candidates"]) == 24
+              assert len(set(x["step"] for x in entry["candidates"])) == 12
+              assert {x["role"] for x in entry["candidates"]} == {"center-anchor","spatial-control"}
+              assert all(x["label"] == "unknown" for x in entry["candidates"])
+              folder = root / "annoteren" / run
+              assert len(list(folder.glob("frame-*.png"))) == 12
+              html = (folder / "index.html").read_text()
+              assert "/*ARGUS_STUDY*/" not in html
+              assert "threatLocations" not in html and "playerX" not in html
+              (root / (run + ".js")).write_text(
+                  html.split("<script>", 1)[1].split("</script>", 1)[0])
+              export = {"schemaVersion":1,"studySeed":plan["studySeed"],"runId":run,
+                        "probes":[dict(x) for x in entry["candidates"]]}
+              export["probes"][0]["label"] = "present"
+              export["probes"][1]["label"] = "absent"
+              file = root / (run + "-fixture-labels.json")
+              file.write_text(json.dumps(export))
+          print("PASS: 3 independent synthetic frozen runs, 36 images, 72 UNKNOWN spatial probes.")
+          PY
+          for run in dev-f dev-g dev-h; do
+            node --check "artifacts/ci-m215-review/$run.js"
+            python3 tools/m215/spatial_candidate_review.py validate \
+              --manifest artifacts/ci-m215-review/spatial-study-plan.json \
+              --export "artifacts/ci-m215-review/$run-fixture-labels.json"
+          done

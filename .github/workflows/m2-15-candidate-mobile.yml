@@ -1,0 +1,49 @@
+name: M2.15 offline candidate review mobile browser QA (synthetic only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/m215/**
+      - web/candidate-annotator/**
+      - .github/workflows/m2-15-candidate-mobile.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-candidate-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build frozen sampling CLI
+        run: |
+          dotnet restore src/Argus.Study.Tool/Argus.Study.Tool.csproj
+          dotnet build src/Argus.Study.Tool/Argus.Study.Tool.csproj --configuration Release --no-restore
+      - name: Build artificial source ZIP and candidate-only mobile site
+        run: |
+          python3 tools/m214/generate_sampling_fixture.py
+          dotnet run --project src/Argus.Study.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-m214 --seed argus-m214-blind-24-bins-development-only-20261018 \
+            --samples 24 --development-only
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          src = Path("artifacts/ci-m214")
+          with zipfile.ZipFile("artifacts/ci-m215-source.zip", "w", compression=zipfile.ZIP_DEFLATED) as z:
+              for path in sorted(src.rglob("*")):
+                  if path.is_file(): z.write(path, path.relative_to(src).as_posix())
+          PY
+          python3 tools/m215/spatial_candidate_review.py build \
+            --archive artifacts/ci-m215-source.zip --output artifacts/ci-m215-review
+      - name: Install mobile Chromium test dependencies
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Real touch/JSON import/export/reload on all three mobile pages
+        run: |
+          python3 tools/m215/smoke.py --site artifacts/ci-m215-review
