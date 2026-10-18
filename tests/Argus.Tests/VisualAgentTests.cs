@@ -74,6 +74,51 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public void FindBest_TownFirstHuntSplitOcr_ClicksObservedPartialButtonText()
+    {
+        // The new Refuge title uses a dark filled control. Original screenshot
+        // OCR sees BE and FIRST HUNT as separate lines, not BEGIN FIRST HUNT.
+        var labels = new[]
+        {
+            new VisibleText("BE", 116, 704, 19, 9, 96),
+            new VisibleText("FIRST HUNT", 174, 704, 100, 9, 96)
+        };
+        var profile = new VisualGameProfile { MenuActions = ["Begin First Hunt", "First Hunt"] };
+
+        var best = MenuTextMatcher.FindBest(labels, profile);
+
+        Assert.IsNotNull(best);
+        Assert.AreEqual("FIRST HUNT", best.Text);
+        Assert.AreEqual(224f, best.CenterX);
+        Assert.AreEqual(708.5f, best.CenterY);
+    }
+
+    [TestMethod]
+    public async Task DecideAsync_TownAfterTitleClick_NoCombatCue_NeverSendsMovement()
+    {
+        var profile = new VisualGameProfile { MenuActions = ["Start Game"], GameplayCues = ["HP", "Wave"] };
+        var screen = new FrameObservation(DateTimeOffset.UtcNow, 390, 844, []);
+        var texts = new SequencedTextReader(
+        [
+            [new VisibleText("START GAME", 115, 759, 121, 10, 96)],
+            [new VisibleText("WYRMFORGE", 56, 124, 271, 24, 90)],
+            [new VisibleText("PUBLIC NICKNAME", 7, 52, 100, 16, 90)],
+            [new VisibleText("FIRST HUNT", 174, 704, 100, 9, 96)],
+            []
+        ]);
+        var agent = new VisualGameAgent(texts, profile);
+        var first = await agent.DecideAsync(screen, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, first?.Kind);
+
+        for (var step = 0; step < 4; step++)
+        {
+            var action = await agent.DecideAsync(screen, TestContext.CancellationToken);
+            Assert.AreEqual(GameActionKind.Wait, action?.Kind, $"Town step {step} must not move.");
+            Assert.AreNotEqual("exploring", agent.LastEvidence?.Phase);
+        }
+    }
+
+    [TestMethod]
     public void FindFirst_RefinementCard_SelectsVisibleTitleNotInstruction()
     {
         var labels = new[]
@@ -359,6 +404,17 @@ public sealed class VisualAgentTests
     }
 
     public TestContext TestContext { get; set; } = null!;
+
+    private sealed class SequencedTextReader(IReadOnlyList<IReadOnlyList<VisibleText>> screens) : IFrameTextReader
+    {
+        private int _index;
+
+        public Task<IReadOnlyList<VisibleText>> ReadAsync(FrameObservation frame, CancellationToken cancellationToken = default)
+        {
+            var next = _index < screens.Count ? screens[_index++] : Array.Empty<VisibleText>();
+            return Task.FromResult(next);
+        }
+    }
 
     private sealed class FakeTextReader(IReadOnlyList<VisibleText> lines) : IFrameTextReader
     {
