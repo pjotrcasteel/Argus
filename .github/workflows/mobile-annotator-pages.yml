@@ -71,6 +71,9 @@ jobs:
         run: |
           python3 web/mobile-annotator/publish_m215.py \
             --archive m215-approved-spatial-review.zip --destination _site
+      - name: Verify M2.18 artificial-only source and private-label admission tests
+        run: |
+          python3 -m unittest discover -s tests/m218 -p 'test_player_point_study.py' -v
       - name: Append original-image player-point review routes with ZERO new PNGs
         run: |
           python3 tools/m218/player_point_study.py build \
