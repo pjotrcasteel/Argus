@@ -84,6 +84,37 @@ public sealed class StudyPlannerTests
     }
 
     [TestMethod]
+    public void CreateDevelopment_M214TwentyFourBlindBinsOnThreeRuns_RemainsDeterministicAndUnlabeled()
+    {
+        StudyRun[] runs = [Run("dev-f", 55), Run("dev-g", 55), Run("dev-h", 55)];
+        const string seed = "argus-m214-blind-24-bins-development-only-20261018";
+        var one = StudyPlanner.CreateDevelopment(runs, seed, 24);
+        var two = StudyPlanner.CreateDevelopment(runs.Reverse(), seed, 24);
+
+        Assert.AreEqual("development-only", one.Mode);
+        Assert.AreEqual(24, one.RequestedFramesPerRun);
+        Assert.HasCount(3, one.Assignments);
+        for (var run = 0; run < 3; run++)
+        {
+            var assignment = one.Assignments[run];
+            Assert.AreEqual("development", assignment.Partition);
+            Assert.HasCount(24, assignment.FrameSteps);
+            CollectionAssert.AreEqual(assignment.FrameSteps.ToArray(), two.Assignments[run].FrameSteps.ToArray());
+            var source = runs.Single(x => x.RunId == assignment.RunId).Trace;
+            var reference = StudyPlanner.Template(assignment, source);
+            Assert.IsTrue(reference.Frames.All(x => x.Player.State == "unknown" &&
+                x.Player.Center is null && x.Threats.State == "unknown" && x.Threats.Centers is null));
+            for (var bin = 0; bin < 24; bin++)
+            {
+                var low = bin * source.Frames.Count / 24;
+                var high = (bin + 1) * source.Frames.Count / 24;
+                Assert.IsTrue(assignment.FrameSteps[bin] >= low);
+                Assert.IsTrue(assignment.FrameSteps[bin] < high);
+            }
+        }
+    }
+
+    [TestMethod]
     public void CreateDevelopment_UnsafeAndRepeatedRunIds_RejectsWithoutTouchingHeldOut()
     {
         Assert.ThrowsExactly<InvalidDataException>(() =>

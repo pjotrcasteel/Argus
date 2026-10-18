@@ -573,8 +573,8 @@ jobs:
           assert len(rows) == 8
           assert all(x["run_id"] == "run-local" for x in rows)
           assert [int(x["step"]) for x in rows] == [3, 4, 7, 8, 12, 13, 17, 18]
-          assert all(x["reviewed_player_label"] == "1" for x in rows[:2])
-          assert all(x["reviewed_player_label"] == "0" for x in rows[2:])
+          assert all(x["reviewed_candidate_local_label_v2"] == "1" for x in rows[:2])
+          assert all(x["reviewed_candidate_local_label_v2"] == "0" for x in rows[2:])
           assert all(int(x["player_palette_pixels"]) == 0 for x in rows[4:6])
           assert all(int(x["player_palette_pixels"]) > 0 for x in rows[6:])
           assert "NOT a trained AI" in (root / "player-shadow-hard-negatives.md").read_text() or (
@@ -628,3 +628,50 @@ jobs:
           dotnet run --project src/Argus.Learning.Tool --configuration Release --no-build -- \
             --runs artifacts/ci-learning-synthetic
           cmp artifacts/ci-learning-synthetic/offline-player-learning.json artifacts/m213-first-learning.json
+
+      - name: Verify 24-bin frozen M2.14 blind cohort package without any human or model labels
+        run: |
+          python3 tools/m214/generate_sampling_fixture.py
+          dotnet run --project src/Argus.Study.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-m214 --seed argus-m214-blind-24-bins-development-only-20261018 \
+            --samples 24 --development-only
+          dotnet run --project src/Argus.Study.Quality.Tool --configuration Release --no-build -- \
+            --runs artifacts/ci-m214
+          python3 tools/m26b/mobile_review.py --runs artifacts/ci-m214 --output artifacts/ci-m214-mobile
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path("artifacts/ci-m214")
+          site = Path("artifacts/ci-m214-mobile")
+          plan = json.loads((root / "study-plan.json").read_text())
+          quality = json.loads((root / "study-quality.json").read_text())
+          assert plan["seed"] == "argus-m214-blind-24-bins-development-only-20261018"
+          assert plan["mode"] == "development-only"
+          assert plan["requestedFramesPerRun"] == 24
+          assert quality["status"] == "NOT_EVALUATED"
+          assert sorted(x["runId"] for x in plan["assignments"]) == ["dev-f","dev-g","dev-h"]
+          assert all(x["partition"] == "development" for x in plan["assignments"])
+          sha = set()
+          for assignment in plan["assignments"]:
+              run = assignment["runId"]
+              steps = assignment["frameSteps"]
+              assert len(steps) == len(set(steps)) == 24 and steps == sorted(steps)
+              sha.add(hashlib.sha256((root / run / "trace.jsonl").read_bytes()).hexdigest())
+              labels = json.loads((root / run / "blind-labels.template.json").read_text())
+              assert [x["step"] for x in labels["frames"]] == steps
+              assert all(x["player"] == {"state":"unknown","center":None} and
+                         x["threats"] == {"state":"unknown","centers":None} for x in labels["frames"])
+              page = site / "annoteren" / run
+              assert len(list(page.glob("frame-*.png"))) == 24
+              html = (page / "index.html").read_text()
+              assert "24 echte screenshots" in html
+              assert "threatLocations" not in html and "playerX" not in html
+              assert "run-01" not in html and "run-02" not in html
+              (site / (run + ".js")).write_text(html.split("<script>",1)[1].split("</script>",1)[0])
+          assert len(sha) == 3
+          print("PASS: 72 original images across 3 distinct frozen blind test runs, no predictions/labels.")
+          PY
+          node --check artifacts/ci-m214-mobile/dev-f.js
+          node --check artifacts/ci-m214-mobile/dev-g.js
+          node --check artifacts/ci-m214-mobile/dev-h.js
