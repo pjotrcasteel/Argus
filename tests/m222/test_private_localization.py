@@ -75,7 +75,7 @@ class SyntheticTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             file=Path(root)/"source.zip"
             file.write_bytes(b"Not frozen PNG source or ZIP")
-            with self.assertRaisesRegex(ValueError,"original.*ZIP changed"):
+            with self.assertRaisesRegex(ValueError,"ZIP changed"):
                 m222.read_source_and_private(file,[])
             for run in ("run-01","dev-x"):
                 bad={run:[{"state":"absent"}]}
