@@ -78,6 +78,30 @@ non-force-created `public-annotator-site-m232-development` at commit
 a live GitHub Pages production deployment: a reviewed separate Pages workflow
 migration must still succeed.
 
+## Verified production Pages publication
+
+[PR #72](https://github.com/pjotrcasteel/Argus/pull/72) merged as
+`3a261d96437f57beed6ef777f321d19894ab80e5`, switching Pages only
+to immutable `public-annotator-site-m232-development` and its pinned
+351-file full-tree original SHA validator.
+
+[PR mobile browser validation #39143813391](https://github.com/pjotrcasteel/Argus/actions/runs/39143813391)
+SUCCESS; [PR standard .NET CI #39143813379](https://github.com/pjotrcasteel/Argus/actions/runs/39143813379)
+SUCCESS; and [main production GitHub Pages build/deploy #39143917070](https://github.com/pjotrcasteel/Argus/actions/runs/39143917070)
+**SUCCESS**. Separate assistant-side public GitHub Pages GET was inaccessible,
+so independently tested public HTTP responses are **not claimed**; the
+deployment and actual browser smoke tests are confirmed by GitHub Actions.
+
+The expected production review URLs are now:
+
+- https://pjotrcasteel.github.io/Argus/annoteren/dev-u/
+- https://pjotrcasteel.github.io/Argus/annoteren/dev-v/
+- https://pjotrcasteel.github.io/Argus/annoteren/dev-w/
+
+They begin entirely **UNKNOWN**. Owner labels are local browser files and
+must be supplied privately; no human reference or performance claim is
+included in the published Pages site.
+
 ## Deployment sequencing
 
 1. On the source-pinned PR, require synthetic allowlist tests,
