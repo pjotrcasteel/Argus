@@ -21,6 +21,7 @@ from tools.m219.preserve_public_site import check_site as check_original_public_
 
 SOURCE_ZIP_SHA256 = "a34a268537c500bef7f17c24c5721ad6308d6bd8c2f61634c7f04378a2ee4036"
 SOURCE_TREE_SHA256 = "aec60332d41855b83b5f3ad7b883dafa72b96a116f6926b9b61e12edf4d7fcbc"
+PUBLIC_SITE_TREE_SHA256 = "b2a8212286370191f982f2ff0811d51228bfbb6f40c8c6029711f4a1f3a44207"
 SEED = "argus-m220-independent-blind-player-point-20261018-v1"
 RUNS = ("dev-i", "dev-j", "dev-k")
 EXPECTED_OLD_FILE_COUNT = 123  # 122 original published files + empty .nojekyll
@@ -187,9 +188,12 @@ def verify(site, old_snapshot=None, admitted=None, hashes=None):
     if admitted is not None:
         require(all(files.get(name) == raw for name, raw in admitted.items()),
                 "Source original new reviewer HTML/PNG bytes changed.")
-    print("PASS: allowed 180 static public files; 162 original PNGs; 15 blank reviewers; one manifest; no private data.")
-    return digest("".join(name + "\x00" + digest(raw) + "\n"
+    tree = digest("".join(name + "\x00" + digest(raw) + "\n"
                           for name, raw in sorted(files.items())).encode())
+    require(tree == PUBLIC_SITE_TREE_SHA256,
+            "Public checkpoint bytes differ from approved M2.21 PR #54 immutable site fingerprint.")
+    print("PASS: exact pinned 180-file checkpoint, 162 PNGs and 15 blank reviewers; no private data.")
+    return tree
 
 
 def main():
