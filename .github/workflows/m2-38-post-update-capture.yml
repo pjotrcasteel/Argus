@@ -1,0 +1,175 @@
+name: M2.38 new independent post-update original-game development captures
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/m238/**'
+      - 'tests/m238/**'
+      - '.github/workflows/m2-38-post-update-capture.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/m238/**'
+      - 'tests/m238/**'
+      - '.github/workflows/m2-38-post-update-capture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-blind-source-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free image and web reviewer tests
+        run: |
+          python -m pip install 'Pillow>=11,<13' 'playwright>=1.55,<2'
+          python -m playwright install --with-deps chromium
+      - name: Reproduce SHA-locked independent ORIGINAL PNG, fail-closed source provenance and reviewer with artificial data only
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests/m238 -p 'test_fresh_capture.py' -v
+      - name: Verify complete synthetic touch-aware owner review on mobile Chromium without source inference
+        env:
+          PYTHONPATH: .
+        run: |
+          python - <<'PY'
+          import tempfile
+          from pathlib import Path
+          import sys
+          sys.path.insert(0,"tests/m238")
+          from test_fresh_capture import FreshCaptureSyntheticTests
+          from tools.m238.fresh_capture import freeze
+          trial=FreshCaptureSyntheticTests()
+          trial.setUp()
+          freeze(trial.captures,Path("artifacts/m238-synthetic-review"))
+          trial.tearDown()
+          PY
+          python tests/m238/mobile_smoke.py --site artifacts/m238-synthetic-review
+      - name: Reject committed original game data, predicted player results and owner labels
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          for root in (Path("tools/m238"),Path("tests/m238")):
+              assert not [f for f in root.rglob("*") if f.suffix.lower() in
+                          (".png",".jpg",".zip",".json",".jsonl",".pt",".onnx",".pkl")]
+          text=Path("tools/m238/fresh_capture.py").read_text()
+          ast.parse(text)
+          assert 'ownerGroundTruth": "NONE"' in text
+          assert 'prospectiveSealedSourcesAccessed": False' in text
+          assert 'publicPublicationAuthorized": False' in text
+          assert 'gameVersion": None' in text
+          print("PASS: no real game source screenshot or private owner material in code.")
+          PY
+
+  capture-three-real-browser-sessions:
+    # Do not re-capture on every PR. Perform exactly one independently
+    # controlled M2.38 release capture after its tested main merge.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'M2.38'))
+    needs: test-blind-source-protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 52
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free local PNG decoder
+        run: python -m pip install 'Pillow>=11,<13'
+      - name: Install ordinary local OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+      - name: Restore build and test unchanged black-box ARGUS visual runner
+        run: |
+          dotnet restore Argus.slnx
+          dotnet build Argus.slnx --configuration Release --no-restore
+          dotnet test tests/Argus.Tests/Argus.Tests.csproj --configuration Release --no-build
+      - name: Install Chromium as ordinary external player
+        shell: pwsh
+        run: ./src/Argus.Runner/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Capture three genuinely NEW independent whole-browser process sessions against actual public WyrmForge
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/m238-real-source
+          for run in m238-a m238-b m238-c; do
+            folder="artifacts/m238-real-source/$run"
+            accepted=0
+            for attempt in 1 2; do
+              rm -rf "$folder"
+              started="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+              echo "New original external visual run $run attempt $attempt; no engine/DOM."
+              exit_code=0
+              dotnet run --project src/Argus.Runner --configuration Release --no-build -- \
+                --url https://pjotrcasteel.github.io/Wyrmforge/ \
+                --agent visual --profile examples/wyrmforge.profile.json \
+                --headless --require-combat-vision --width 390 --height 844 \
+                --max-steps 76 --timeout-seconds 190 --output "$folder" || exit_code=$?
+              python -m tools.m238.fresh_capture record \
+                --run "$run" --folder "$folder" --started "$started" \
+                --exit "$exit_code" --revision "$GITHUB_SHA" \
+                --profile examples/wyrmforge.profile.json
+              if python -c "from pathlib import Path; from tools.m238.fresh_capture import verify_run; import sys; r=verify_run(Path(sys.argv[1]),sys.argv[2]); print('Valid actual individual external source',r['runId'],r['frames'])" "$folder" "$run"; then
+                accepted=1
+                break
+              fi
+              echo "Incomplete target $run attempt $attempt: actual game changed or not visually playable. FAIL CLOSED."
+            done
+            if [ "$accepted" -ne 1 ]; then
+              echo "M2.38 NOT_READY: no trustworthy new game source session for $run."
+              exit 1
+            fi
+          done
+          python -m tools.m238.fresh_capture verify --runs artifacts/m238-real-source
+      - name: Freeze three blind, SHA-selected 18-originals plus authentic immediate predecessors per run
+        run: |
+          python -m tools.m238.fresh_capture freeze \
+            --runs artifacts/m238-real-source --output artifacts/m238-private-original-review
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("artifacts/m238-private-original-review")
+          data=json.loads((root/"study-manifest.json").read_text())
+          assert data["researchStatus"]=="NOT_EVALUATED"
+          assert data["runIds"]==["m238-a","m238-b","m238-c"]
+          assert data["originalTargetCount"]==54
+          assert data["originalImmediatePredecessorCount"]==54
+          assert data["gameVersion"] is None
+          assert not data["publicPublicationAuthorized"]
+          assert not data["prospectiveSealedSourcesAccessed"]
+          assert len(list(root.glob("annoteren/*/frame-*.png")))==54
+          assert len(list(root.glob("context/*/prev-for-*.png")))==54
+          assert len(list(root.rglob("*.jsonl")))==0
+          print("PASS 54 original owner-blind post-update targets, unaltered prior originals, no owner truth.")
+          PY
+      - name: Validate actual independent game screenshots in real mobile Chromium review
+        run: |
+          python -m pip install 'playwright>=1.55,<2'
+          python -m playwright install --with-deps chromium
+          python tests/m238/mobile_smoke.py --site artifacts/m238-private-original-review
+      - name: Save immutable real source/run provenance in short-lived PRIVATE workflow artifacts (not GitHub repo/Pages)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m238-real-external-source-no-owner-labels
+          path: artifacts/m238-real-source/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Save original-only private mobile review (NOT published or human-labeled)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m238-private-original-review-not-evaluated
+          path: artifacts/m238-private-original-review/
+          retention-days: 7
+          if-no-files-found: warn

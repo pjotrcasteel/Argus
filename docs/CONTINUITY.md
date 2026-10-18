@@ -592,27 +592,55 @@ game build, not assume the historic menu or WyrmForge version from old traces.
 The deployment/version must be reverified separately; absence of version
 proof is **unknown**, not matched context.
 
-**NEXT M2.37 follow-through — true-original private source validation and fresh independent cohort:**
+**M2.38 — independent post-update original-browser capture and private blind review**
+([PR #80](https://github.com/pjotrcasteel/Argus/pull/80)) adds
+`tools/m238/fresh_capture.py`, exact source-PNG SHA/checksummed
+`trace.jsonl` provenance, 3 separate external Chromium browser sessions,
+and **54 deterministic SHA-seeded original review targets plus 54 authentic
+immediately preceding originals**. No model guesses or player labels enter
+selection; mobile export/import at 320/375/430px is verified on invented
+RGB screenshots. Public CI and review page contain zero original game pixels,
+owner labels, future held-out evidence or game internals. Review output
+remains `NOT_EVALUATED`, and active visual steering is unchanged.
 
-1. Verify GitHub PR #79 and dedicated Python synthetic CI plus standard .NET CI
-   before merging. Existing R/S/T and U/V/W only permit **known-development
-   diagnostics** if original unselected screenshot predecessors are available;
-   old labels and source images stay private, never uploaded to Actions/Pages.
-2. Lock provenance/screenshot source SHA and strict 390x844 RGB capture for
-   three genuinely **NEW** post-WyrmForge-update separate browser sessions.
-   Independently sample original, chronological target screenshots without
-   ever using ARGUS model guesses or game-internal data; annotate by owner
-   blind VISIBLE-center/ABSENT/UNKNOWN after fitting and calibration locks.
-3. Require >=8 truly VISIBLE and >=3 genuinely ABSENT per held independent
-   source run, >=50% shadow-accepted hypotheses within35px and <=25% false
-   presence on ABSENT, **all three new runs**. Report NOT_READY, NO_GO or
-   preliminary research-only GO honestly. The model can still confuse
-   moving enemies with a player; **never activate live player steering**
-   on this alone.
-4. Keep the original M2.23 O/P/Q full prospective ZIP SHA
-   `78ad7059f7c7f352860e4a27fb2660d7fdb5e90d90d615a152755271733e2a5f`
-   **sealed/unopened**, original M2.4 run-01 untouched, and current
-   active ARGUS and WyrmForge gameplay unchanged.
+[Dedicated synthetic/browser PR Actions 39156744202](https://github.com/pjotrcasteel/Argus/actions/runs/39156744202)
+PASS, including 7 generated synthetic-source integrity tests and real mobile
+Chromium label click/round marker/export/import. [Standard .NET 10 CI
+39156744222](https://github.com/pjotrcasteel/Argus/actions/runs/39156744222)
+PASS. These two jobs do NOT assert any *new* real external-game runs yet.
+
+**WyrmForge source/serving caution:** external [PR #120](https://github.com/pjotrcasteel/Wyrmforge/pull/120)
+and [PR #121](https://github.com/pjotrcasteel/Wyrmforge/pull/121)
+changed town/start/Nexus/mobile gameplay flow. At start, WyrmForge main
+was `84cf356c7f6363add86683fde75aaa7ab888c2ef`; browser smoke
+was green and Pages deploy subjob succeeded, but the separate feedback
+collector connection test returned HTTP 403, leaving full deploy workflow
+red. Browser-served version **cannot be attested from GitHub source SHA**;
+M2.38 intentionally records `gameVersion: null`.
+
+**NEXT M2.38 live research continuation:**
+
+1. After tested M2.38 merge, its main-push workflow starts three new
+   independent full-browser external captures (`m238-a/b/c`) automatically,
+   max 2 bounded attempts each. Inspect the actual game behavior/trace
+   to confirm gameplay reached. If new WyrmForge UX prevents entry or the
+   source/image gates fail, document an honest **NOT_READY** and repair only
+   the ARGUS screenshot+ordinary-input navigation on a separate tested PR.
+2. If capture succeeds, retain both 7-day GitHub Actions research artifacts
+   (full source and private blind original review), source SHA manifest and
+   independent screenshot predecessors. No automatic Pages publication,
+   game outcome claim or owner-ground-truth synthesis.
+3. Request genuine owner-blind VISIBLE-center/ABSENT/UNKNOWN labels on frozen
+   originals. Prepare separate disjoint fit/calibration sources (>=4 authentic
+   ABSENT controls from >=2 *other* runs). THEN privately run M2.37
+   chronological original-image replay under frozen thresholds and per
+   held-run acceptance tests: >=8 VISIBLE, >=3 ABSENT, >=50% accepted
+   within35px and <=25% false presence, every new run. No real scoring or
+   runtime activation until source and human-label evidence exists.
+4. Keep original M2.23 O/P/Q full archive sealed (SHA
+   `78ad7059f7c7f352860e4a27fb2660d7fdb5e90d90d615a152755271733e2a5f`),
+   M2.4 old run-01 untouched, and the independent WyrmForge game code
+   unchanged. See [M2.38 detailed protocol](M2-38-POST-UPDATE-CAPTURE.md).
 
 ## Local usage
 
