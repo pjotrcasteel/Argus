@@ -65,11 +65,11 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var isRouteScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.RouteCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
-        if (!isRouteScreen)
-        {
-            _routeNodeSelected = false;
+        // Once the player has selected a visibly connected route marker, the
+        // detail overlay can replace the map title. Do not discard the pending
+        // confirmation merely because OCR no longer sees the old heading.
+        if (!isRouteScreen && !_routeNodeSelected)
             _routeConfirmationAttempts = 0;
-        }
 
         // "Enter Trail" may be visible but disabled until a connected route node is chosen.
         // Locate a circular map marker in screenshot pixels, without coordinates, DOM or map state.
@@ -90,7 +90,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Click, X: node.X, Y: node.Y);
         }
 
-        if (isRouteScreen && _routeNodeSelected)
+        if (_routeNodeSelected)
         {
             if (_routeConfirmationAttempts >= 3)
             {
@@ -102,6 +102,13 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             var confirmation = FilledActionButtonDetector.Detect(observation.PngBytes);
             if (confirmation is null)
             {
+                if (!isRouteScreen)
+                {
+                    // The pending route vanished and no enabled footer exists;
+                    // fail closed instead of clicking an unrelated new screen.
+                    _routeNodeSelected = false;
+                    _routeConfirmationAttempts = 0;
+                }
                 LastEvidence = new AgentEvidence("route", "Waiting for a visibly enabled route confirmation button", 0, names);
                 return new GameAction(GameActionKind.Wait, DurationMs: 550);
             }
