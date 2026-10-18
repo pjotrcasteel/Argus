@@ -63,11 +63,7 @@ jobs:
           python3 tools/m224/publish_development_only.py build \
             --parent _prior_public --archive m223-consented-original-development.zip \
             --output _new_public
-          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            python3 tools/m224/publish_development_only.py verify --site _new_public
-          else
-            echo 'PR preview: original source and old-site integrity verified; whole-site hash shown for pinning.'
-          fi
+          python3 tools/m224/publish_development_only.py verify --site _new_public
           python3 - <<'PY'
           from pathlib import Path
           import json
