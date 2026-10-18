@@ -44,8 +44,12 @@ def descriptor(rgb, x, y):
             and rgb.dtype == np.uint8, "Expected raw 390x844 RGB pixels.")
     require(type(x) is int and type(y) is int and 0 <= x < 390 and 0 <= y < 844,
             "Invalid image pixel sampling center.")
-    patch = np.pad(rgb, ((32, 32), (32, 32), (0, 0)), mode="edge")[
-        y:y + SIZE, x:x + SIZE].astype(np.float32) / 255.
+    padded = np.pad(rgb, ((32, 32), (32, 32), (0, 0)), mode="edge")
+    return _padded_descriptor(padded, x, y)
+
+
+def _padded_descriptor(padded, x, y):
+    patch = padded[y:y + SIZE, x:x + SIZE].astype(np.float32) / 255.
     require(patch.shape == (64, 64, 3), "Patch boundaries invalid.")
     lum = patch[..., 0] * .2126 + patch[..., 1] * .7152 + patch[..., 2] * .0722
     gy, gx = np.gradient(lum)
@@ -93,7 +97,10 @@ class OfflineModel:
 
 def patches(frame, grid=GRID):
     image = frame["rgb"]
-    return np.stack([descriptor(image, x, y) for x, y in grid])
+    require(isinstance(image, np.ndarray) and image.shape == (844, 390, 3)
+            and image.dtype == np.uint8, "Expected genuine RGB screenshots.")
+    padded = np.pad(image, ((32, 32), (32, 32), (0, 0)), mode="edge")
+    return np.stack([_padded_descriptor(padded, x, y) for x, y in grid])
 
 
 def train(frames, *, grid=GRID, negative_grid=NEGATIVE_GRID):
@@ -116,11 +123,12 @@ def train(frames, *, grid=GRID, negative_grid=NEGATIVE_GRID):
             labels.append(1)
         else:
             absent.append(f)
+        padded = np.pad(f["rgb"], ((32, 32), (32, 32), (0, 0)), mode="edge")
         for x, y in negative_grid:
             if p is not None and ((x - p["x"]) ** 2 + (y - p["y"]) ** 2
                                    < EXCLUSION_PIXELS ** 2):
                 continue
-            rows.append(descriptor(f["rgb"], x, y))
+            rows.append(_padded_descriptor(padded, x, y))
             labels.append(0)
     require(len(absent) >= 3, "NOT_READY: calibration requires >=3 whole ABSENT training images.")
     y = np.asarray(labels, dtype=np.float64)
