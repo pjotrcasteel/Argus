@@ -36,6 +36,8 @@ def run():
                     button = page.locator("#export")
                     assert button.is_disabled(), "Unresolved double-present must not export."
                     assert page.locator("select[data-sample]").count() == 2
+                    assert page.locator(".screen img").first.evaluate(
+                        "(img) => img.complete && img.naturalWidth === 390 && img.naturalHeight === 844")
                     for width in (320, 390, 430):
                         page.set_viewport_size({"width": width, "height": 740})
                         positions = page.evaluate("""() => [...document.querySelectorAll('.card')].map(c=>{
