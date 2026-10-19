@@ -32,4 +32,34 @@ public static class ChoiceCardMatcher
 
         return null;
     }
+
+    /// <summary>
+    /// Strict, game-independent backup for an already-confirmed choice screen
+    /// whose tiny category captions were lost by OCR. Only a conspicuous
+    /// title-cased, multiword line within the body of the screenshot qualifies.
+    /// A heading or explanatory sentence must not become a click target.
+    /// </summary>
+    public static VisibleText? FindFirstTitleOnly(
+        IReadOnlyList<VisibleText> lines, int minimumConfidence, int width, int height)
+    {
+        if (width < 200 || height < 350) return null;
+
+        return lines
+            .Where(t => t.Confidence >= minimumConfidence && t.Y >= height * 0.17f &&
+                t.Y < height * 0.85f && t.X >= width * 0.10f && t.X < width * 0.90f)
+            .Where(t => t.Height >= 12 && t.Height <= 42 && t.Width >= 35 && t.Width < width * 0.75f)
+            .Where(t => IsShortTitle(t.Text))
+            .OrderBy(t => t.Y)
+            .FirstOrDefault();
+    }
+
+    private static bool IsShortTitle(string text)
+    {
+        if (text.Length is < 5 or > 48 || text.Any(c => !char.IsLetter(c) && c != ' ' && c != '-'))
+            return false;
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length is < 2 or > 4) return false;
+        return words.All(word => word.Length >= 2 && char.IsUpper(word[0]) &&
+            word.Skip(1).All(c => c == '-' || char.IsLower(c)));
+    }
 }
