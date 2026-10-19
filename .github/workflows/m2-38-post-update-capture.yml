@@ -78,9 +78,10 @@ jobs:
           PY
 
   capture-three-real-browser-sessions:
-    # Do not re-capture on every PR. Perform exactly one independently
-    # controlled M2.38 release capture after its tested main merge.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (contains(github.event.head_commit.message, 'M2.38') || contains(github.event.head_commit.message, 'M2.39')))
+    # Real game captures require an explicit Actions workflow_dispatch.
+    # Do not infer capture intent from squash titles or commit messages.
+    # Ordinary PR/push paths only exercise synthetic source protocol.
+    if: github.event_name == 'workflow_dispatch'
     needs: test-blind-source-protocol
     runs-on: ubuntu-latest
     timeout-minutes: 52

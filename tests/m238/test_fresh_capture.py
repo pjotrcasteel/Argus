@@ -113,6 +113,14 @@ class FreshCaptureSyntheticTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"NOT_READY"):
             m.verify_run(self.captures/"m238-b","m238-b")
 
+    def test_expensive_external_capture_requires_explicit_workflow_dispatch(self):
+        """PRs and commits may validate archives but must not start new browser runs."""
+        workflow = (Path(__file__).resolve().parents[2] /
+                    ".github" / "workflows" / "m2-38-post-update-capture.yml").read_text()
+        self.assertIn("    if: github.event_name == 'workflow_dispatch'", workflow)
+        self.assertNotIn("contains(github.event.head_commit.message", workflow)
+        self.assertIn("capture-three-real-browser-sessions:", workflow)
+
     def test_duplicate_whole_source_traces_not_independent(self):
         source=self.captures/"m238-a"/"trace.jsonl"
         dest=self.captures/"m238-b"/"trace.jsonl"
