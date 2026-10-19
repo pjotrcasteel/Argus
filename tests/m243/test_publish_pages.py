@@ -1,11 +1,11 @@
 """M2.43 synthetic-only append/preserve tests. Never bundle live screenshots in Git."""
-import copy
 import json
-import tempfile
 import unittest
+import sys
 from pathlib import Path
 
-from tests.m238.test_fresh_capture import FreshCaptureSyntheticTests
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "m238"))
+from test_fresh_capture import FreshCaptureSyntheticTests
 from tools.m238.fresh_capture import freeze
 from tools.m243.publish_approved_m238 import publish, verify, approved_base
 
