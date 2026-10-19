@@ -21,12 +21,37 @@
     "Start",
     "Play"
   ],
-  "terminalScreenCues": ["IT DOESN'T END", "THE ARCANE ATLAS", "CODEX UNLOCKED", "Wyrmrealm remembers you"],
-  "choiceScreenCues": ["Refine your magic"],
-  "choiceCardTypes": ["REFINEMENT"],
-  "routeCues": ["Wyrm signs", "Choose your tra", "Choose a connected trail"],
-  "gameplayCues": ["HP", "Health", "Level", "Wave", "XP", "Hunter"],
-  "movementKeys": ["w", "a", "s", "d"],
+  "terminalScreenCues": [
+    "IT DOESN'T END",
+    "THE ARCANE ATLAS",
+    "CODEX UNLOCKED",
+    "Wyrmrealm remembers you"
+  ],
+  "choiceScreenCues": [
+    "Refine your magic"
+  ],
+  "choiceCardTypes": [
+    "REFINEMENT"
+  ],
+  "routeCues": [
+    "Wyrm signs",
+    "Choose your tra",
+    "Choose a connected trail"
+  ],
+  "gameplayCues": [
+    "HP",
+    "Health",
+    "Level",
+    "Wave",
+    "XP",
+    "Hunter"
+  ],
+  "movementKeys": [
+    "w",
+    "a",
+    "s",
+    "d"
+  ],
   "combatTracking": {
     "minimumPlayerPixels": 70,
     "minimumThreatPixels": 75,
@@ -68,5 +93,30 @@
   },
   "minimumTextConfidence": 45,
   "movementMilliseconds": 300,
-  "enableIlluminatedEntryProbe": true
+  "enableIlluminatedEntryProbe": true,
+  "combatHudBar": {
+    "leftPercent": 2,
+    "rightPercent": 75,
+    "topPercent": 3,
+    "bottomPercent": 9,
+    "minimumConsecutivePixels": 14,
+    "fillPalettes": [
+      {
+        "minGreen": 54,
+        "minGreenMinusRed": 6,
+        "minGreenMinusBlue": 6
+      },
+      {
+        "minRed": 80,
+        "minGreen": 40,
+        "minRedMinusGreen": 16,
+        "minGreenMinusBlue": 8
+      },
+      {
+        "minRed": 80,
+        "minRedMinusGreen": 20,
+        "minRedMinusBlue": 20
+      }
+    ]
+  }
 }

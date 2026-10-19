@@ -183,6 +183,23 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 550);
         }
 
+        // A vanished screenshot HUD can indicate an opaque upgrade/menu overlay.
+        // Never keep steering from a stale player-color candidate while OCR is deferred.
+        // Profiles without an explicitly configured HUD witness behave unchanged.
+        if (profile.CombatHudBar is { } bar && (_explorationSteps > 0 || gameplayCue) &&
+            !VisualHudBarWitness.IsVisible(observation.PngBytes, bar))
+        {
+            _trackedPlayer = null;
+            _missedPlayerFrames = 0;
+            _previousCombatFrame = null;
+            _previousCombatObservation = null;
+            _previousFrame = observation.PngBytes;
+            _explorationSteps = 0; // Force full OCR next step; do not guess a menu action.
+            LastEvidence = new AgentEvidence("hud-hidden",
+                "Expected visible combat status bar disappeared; waiting for fresh screenshot and text", 0, names);
+            return new GameAction(GameActionKind.Wait, DurationMs: 350);
+        }
+
         var combat = profile.CombatTracking is null ? null : CombatPixelPerception.Observe(observation.PngBytes,
             profile.CombatTracking, _trackedPlayer);
         if (combat?.Player is { } currentPlayer)

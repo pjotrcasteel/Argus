@@ -8,12 +8,15 @@ public sealed class VisualColorRule
     public int MinBlue { get; init; }
     public int MinBlueMinusRed { get; init; } = -255;
     public int MinBlueMinusGreen { get; init; } = -255;
+    public int MinGreenMinusRed { get; init; } = -255;
+    public int MinGreenMinusBlue { get; init; } = -255;
     public int MinRedMinusGreen { get; init; } = -255;
     public int MinRedMinusBlue { get; init; } = -255;
 
     public bool Matches(byte red, byte green, byte blue) =>
         red >= MinRed && green >= MinGreen && blue >= MinBlue &&
         blue - red >= MinBlueMinusRed && blue - green >= MinBlueMinusGreen &&
+        green - red >= MinGreenMinusRed && green - blue >= MinGreenMinusBlue &&
         red - green >= MinRedMinusGreen && red - blue >= MinRedMinusBlue;
 }
 

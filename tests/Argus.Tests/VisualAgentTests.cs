@@ -561,6 +561,59 @@ public sealed class VisualAgentTests
         Assert.AreEqual(1, VisualMotion.ChooseDirection(empty, 4));
     }
 
+    [TestMethod]
+    public async Task DecideAsync_UpgradeWithoutHudDuringDeferredOcr_PausesAndRechecksInsteadOfMoving()
+    {
+        const int width = 390;
+        const int height = 844;
+        var activePixels = new byte[width * height * 3];
+        for (var x = 20; x < 160; x++)
+        {
+            var i = (46 * width + x) * 3;
+            activePixels[i] = 102;
+            activePixels[i + 1] = 164;
+            activePixels[i + 2] = 102;
+        }
+        var combatFrame = new FrameObservation(DateTimeOffset.UtcNow, width, height,
+            BmpRgb(activePixels, width, height));
+        var upgradeFrame = new FrameObservation(DateTimeOffset.UtcNow, width, height,
+            BmpRgb(new byte[width * height * 3], width, height));
+        var profile = new VisualGameProfile
+        {
+            GameplayCues = ["HP"],
+            ChoiceScreenCues = ["Refine your magic"],
+            CombatHudBar = new VisualHudBarSettings
+            {
+                MinimumConsecutivePixels = 14,
+                FillPalettes = [new VisualColorRule
+                {
+                    MinGreen = 54, MinGreenMinusRed = 6, MinGreenMinusBlue = 6
+                }]
+            }
+        };
+        var labels = new SequencedTextReader(
+        [
+            [new VisibleText("HP 100/100", 19, 57, 100, 17, 95)],
+            [
+                new VisibleText("Refine your magic", 35, 56, 230, 25, 97),
+                new VisibleText("REFINEMENT", 44, 142, 100, 12, 94),
+                new VisibleText("Fleet Step", 93, 196, 140, 21, 95)
+            ]
+        ]);
+        var agent = new VisualGameAgent(labels, profile);
+
+        Assert.AreEqual(GameActionKind.HoldKey,
+            (await agent.DecideAsync(combatFrame, TestContext.CancellationToken))?.Kind);
+        var intercepted = await agent.DecideAsync(upgradeFrame, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Wait, intercepted?.Kind);
+        Assert.AreEqual("hud-hidden", agent.LastEvidence?.Phase);
+        Assert.IsNull(agent.LastEvidence?.Combat);
+
+        var resumed = await agent.DecideAsync(upgradeFrame, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, resumed?.Kind);
+        Assert.AreEqual("choice", agent.LastEvidence?.Phase);
+    }
+
     public TestContext TestContext { get; set; } = null!;
 
     private static byte[] BmpRgb(byte[] rgb, int width, int height)

@@ -866,6 +866,56 @@ The public images are development-only and remain human-unreviewed
 until the owner supplies real JSON exports. Do not treat successful
 publication or mobile browser smoke as player identity accuracy.
 
+**M2.44 — First REAL M2.38 owner review and screenshot-HUD veto (2026-10-19):**
+The owner supplied all three previously requested genuine `m238-a/b/c`
+blind mobile annotation JSON files. The local private M2.41-style admission
+verified exact source SHA and chronological selected frames against all
+220 original browser screenshot PNGs, original traces, 54 frozen
+target PNG copies and 54 immediately preceding originals. All 54
+labels were definitive (VISIBLE or ABSENT), in valid original 390x844
+coordinates; the sole duplicate byte-identical original had consistent
+human truth across source runs. These private labels, exact coordinates,
+per-frame reports and screenshot archives remain OFF GitHub/Pages.
+An offline **development-only** comparison was made against the exact
+already-recorded experimental agent trace predictions (no fitted model,
+retrospective threshold tuning, or future held-out source). This is NOT
+independent validation and no trained player identity claim is allowed.
+
+The comparison exposed a genuine gameplay-state failure: during a
+fullscreen level-up/refinement overlay the normal top health HUD
+disappeared, but expensive OCR had been deferred, and a stale
+palette-based combat candidate was reported while the agent continued
+moving. Two remaining genuine missed-player combat frames require a
+separate perception study; DO NOT silently count route/transition
+screens as classifier misses. The existing profile's 155px cold-start
+screen-center prior cannot on its own establish a player at every
+visible off-center location; preserve conservative temporal continuity
+and abstention until separately validated.
+
+[PR #88](https://github.com/pjotrcasteel/Argus/pull/88)
+implements a **profile-opt-in generic screenshot-only HUD witness**.
+WyrmForge's existing external profile opts into a bounded horizontal
+top status-bar scan with green/amber/red visible fill palettes (the
+authentic HP fill changes color as health declines), and no other game
+is forced into this behavior. If an established combat screenshot
+loses its HUD, ARGUS stops movement, clears stale combat/player
+tracking and forces the next frame to receive fresh OCR. It does
+NOT click blindly, infer enemy identity or access DOM/game source.
+Synthetic .NET MSTest covers colored HUDs, modal absence, outside
+decorations, invalid profiles and a deferred-OCR upgrade transition.
+This is **a code fix, not a claim of improved tested player accuracy**;
+any full-game proof requires a new explicit independent run after CI.
+Keep true owner exports and frozen O/P/Q + old run-01 private/sealed.
+
+**Next engineering slice:** after #88 merges and its code-specific tests
+pass, privately verify the two *genuine* combat-frame missed VISIBLE
+positions using their original screenshot/color-component evidence,
+then design a run-/SHA-disjoint appearance fit/calibration source.
+The historical M2.38 sessions are development-only; never recycle
+these newly reviewed frames as independent holdout. If users next
+supply more review JSONs, use the same direct browser pages, not
+ZIP/local-server setup.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
