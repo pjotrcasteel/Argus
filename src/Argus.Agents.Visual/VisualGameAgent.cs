@@ -58,7 +58,9 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             profile.ChoiceScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
         if (isChoiceScreen)
         {
-            var selected = ChoiceCardMatcher.FindFirst(labels, profile.ChoiceCardTypes, profile.MinimumTextConfidence);
+            var selected = ChoiceCardMatcher.FindFirst(labels, profile.ChoiceCardTypes, profile.MinimumTextConfidence)
+                ?? ChoiceCardMatcher.FindFirstTitleOnly(labels, profile.MinimumTextConfidence,
+                    observation.Width, observation.Height);
             if (selected is null)
             {
                 LastEvidence = new AgentEvidence("choice", "Visible choice screen, but no confidently located card title; waiting", 0, names);
@@ -143,7 +145,9 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         _emptyScans++;
         var gameplayCue = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
-            profile.GameplayCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
+            profile.GameplayCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase))) ||
+            (profile.GameplayCues.Any(cue => string.Equals(cue, "HP", StringComparison.OrdinalIgnoreCase)) &&
+                GameplayHudWitness.IsVisible(labels, observation.Width, observation.Height));
 
         // After a real title click, an otherwise unrecognized town may offer a
         // visual entrance without OCR text. This is a ONE-SHOT uncertain pixel
