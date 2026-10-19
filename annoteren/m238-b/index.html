@@ -1,0 +1,117 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ARGUS — Spelerpositie aanwijzen</title><style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}
+body{margin:0;background:#0c1420;color:#f1f6ff}header{padding:15px;background:#1a273b}
+main{max-width:520px;margin:auto;padding:12px}p{color:#c4d4e9;font-size:14px;line-height:1.5}
+.frame{width:min(100%,390px);aspect-ratio:390/844;position:relative;margin:auto;overflow:hidden;border-radius:10px;border:1px solid #43536b;background:#111}
+.frame img,.overlay{position:absolute;inset:0;width:100%;height:100%;display:block}
+.frame img{object-fit:fill;touch-action:manipulation;cursor:crosshair}
+.overlay{pointer-events:none;overflow:hidden}
+.marker{fill:none;stroke:#ffe16d;stroke-width:3}.halo{fill:none;stroke:#101522;stroke-width:7}
+.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+button{color:#fff;font:600 14px system-ui;min-height:48px;padding:7px;border:1px solid #576c8c;border-radius:10px;background:#2c3d55}
+button.active{border:3px solid #ffe16d;background:#465677}button:disabled{opacity:.4}
+.nav{display:flex;gap:8px;margin-top:9px}.nav button{flex:1}
+#status{color:#a5dbff;font-size:14px;margin:9px 0}.foot{margin-top:20px;padding:12px 0 40px;border-top:1px solid #46566e}
+.foot button{width:100%;margin:8px 0}.foot input{max-width:100%}
+</style></head><body><header><strong id="title">ARGUS — Spelerpositie</strong>
+<p><b>Tik op het midden van de speler</b> als deze zichtbaar is. Anders kies <b>Niet zichtbaar</b>.
+Bij twijfel: <b>Onbekend</b>. Alleen jouw waarneming telt.</p></header><main>
+<div id="status" aria-live="polite"></div><div class="frame">
+<img id="shot" alt="Originele screenshot. Tik op de zichtbare speler.">
+<svg class="overlay" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+<g id="point" visibility="hidden"><circle id="halo" class="halo" cx="195" cy="422" r="15"></circle>
+<circle id="ring" class="marker" cx="195" cy="422" r="15"></circle>
+<path id="cross" stroke="#ffe16d" stroke-width="2" d="M195 410V434M183 422H207"></path></g></svg>
+</div><div class="actions"><button id="visible" type="button">Tik op speler</button>
+<button id="absent" type="button">Niet zichtbaar</button><button id="unknown" type="button">Onbekend</button></div>
+<div class="nav"><button id="previous" type="button">← Vorige</button><button id="next" type="button">Volgende →</button></div>
+<section class="foot"><p>Nieuw blind ontwikkelonderzoek: alles start als Onbekend.
+Je annotaties blijven in dit apparaat, worden nooit automatisch verzonden en veranderen je oude M2.15 beoordelingen niet.</p>
+<button id="download" type="button">Exporteer eigen JSON</button>
+<label for="import">Eerdere JSON terugzetten</label><input id="import" type="file" accept=".json,application/json">
+<p>Dit is referentiedata verzamelen, niet een getrainde speler-AI.</p></section></main>
+<script>
+"use strict";
+const study={"schemaVersion":1,"seed":"argus-m238-post-wyrmforge-121-20261018-original-v1","sourceSeed":"argus-m238-post-wyrmforge-121-20261018-original-v1","runId":"m238-b","partition":"development","images":[{"step":2,"file":"frame-0002.png","sha256":"0be9560743cb0c15e4e10c117e18a23506f5ace50a0e7c7132a6976ec81033a0"},{"step":7,"file":"frame-0007.png","sha256":"fb304c0eca7d7628345a16ce24c1e2cc2aa34364f60622ed73cac3f782d3521c"},{"step":8,"file":"frame-0008.png","sha256":"3fbc2bfdb05a57b70f2bcad1bd8645cdf32c12cc1df43db7901a21cb91768a9f"},{"step":16,"file":"frame-0016.png","sha256":"0ca45e5f0458aaf2216ed13f92d0c62440d9fd15e2382aec0844fbecf0802a95"},{"step":20,"file":"frame-0020.png","sha256":"f0b708a8f5c52e69ea681330aa8297973db5343c18d43774463c703cbdc40210"},{"step":24,"file":"frame-0024.png","sha256":"21c337659aee3668b22767bf9f5967d1f2f381b0f2f29bf5661fa384fc8cd589"},{"step":28,"file":"frame-0028.png","sha256":"8a70d697f6c3554c8f5e381952c749cebe4013224b181173377cdb0a6eaf086b"},{"step":31,"file":"frame-0031.png","sha256":"7fd432c6dc6605769db84fadaed3e052a6d596c091185f43aaa38d37657e8e9b"},{"step":36,"file":"frame-0036.png","sha256":"90d722efa01e7a235253606d44b5efc3f739fc7855f37cfa773045eca154649e"},{"step":39,"file":"frame-0039.png","sha256":"faafde7dcb2b5260c30300e7cdc4d1acd72bc7dab71b666b5054966abb40c46a"},{"step":46,"file":"frame-0046.png","sha256":"727aca255e1fe3b240c25272bc6fda53a23e71c92182be643917b5a7708ed586"},{"step":48,"file":"frame-0048.png","sha256":"a1fe7bcc4a80212c0b16057cab6832702a62c48e0ea89321a220de63e8341666"},{"step":53,"file":"frame-0053.png","sha256":"def783af20584d6369282160d8bee7bcacf4aa6f4298ac18dcc1d29a5f92b6f8"},{"step":58,"file":"frame-0058.png","sha256":"8e0e65b343cef15113615dc276ea4732854394971ad90c5e05f490a31cb738ca"},{"step":59,"file":"frame-0059.png","sha256":"e4fa7d9573a835bdf153e094903fc648161bdbaebc3f514927ed5302250f2fe5"},{"step":65,"file":"frame-0065.png","sha256":"82f565788837fab96de6beb8f5403f0d2db100d3991fdb656121cd851f147071"},{"step":68,"file":"frame-0068.png","sha256":"9fbe34f2fd494eb55e8f80230153ac1d4a33788af6374fc349dc9f8320d8204c"},{"step":73,"file":"frame-0073.png","sha256":"d3ec7712fdf4510ec39ffa7378e2bfa7a4abca0aa44d61a489d856b3ec87ef51"}]};
+const W=390,H=844;
+if(study.partition!=="development"||!/^m238-[abc]$/.test(study.runId)||
+   study.images.length!==18||study.images.some(x=>!/^frame-\d{4}\.png$/.test(x.file)))
+  throw Error("Invalid blind development study.");
+const storageKey="argus-m238-player-point-"+study.seed+"-"+study.runId;
+const images=study.images;
+const el=id=>document.getElementById(id);
+const fresh=()=>images.map(i=>({step:i.step,screenshotSha256:i.sha256,
+                                player:{state:"unknown",center:null}}));
+function goodPlayer(p){
+  if(!p||typeof p!=="object"||Object.keys(p).length!==2||!["visible","absent","unknown"].includes(p.state)||
+     !Object.hasOwn(p,"center"))return false;
+  if(p.state!=="visible")return p.center===null;
+  return p.center!==null&&typeof p.center==="object"&&Object.keys(p.center).length===2&&
+    Number.isInteger(p.center.x)&&Number.isInteger(p.center.y)&&
+    p.center.x>=0&&p.center.x<W&&p.center.y>=0&&p.center.y<H;
+}
+function goodRows(a){return Array.isArray(a)&&a.length===images.length&&a.every((r,i)=>
+  r&&typeof r==="object"&&Object.keys(r).length===3&&r.step===images[i].step&&
+  r.screenshotSha256===images[i].sha256&&goodPlayer(r.player));}
+let frames=fresh(),idx=0;
+try{let p=JSON.parse(localStorage.getItem(storageKey)||"null");if(goodRows(p))frames=p;}catch{}
+function display(){
+  let i=images[idx],p=frames[idx].player;
+  el("shot").src="../"+study.runId+"/"+i.file;
+  el("point").setAttribute("visibility",p.state==="visible"?"visible":"hidden");
+  if(p.state==="visible"){
+    let x=p.center.x,y=p.center.y;
+    for(let id of ["ring","halo"]){el(id).setAttribute("cx",String(x));el(id).setAttribute("cy",String(y));}
+    el("cross").setAttribute("d","M"+x+" "+(y-12)+"V"+(y+12)+"M"+(x-12)+" "+y+"H"+(x+12));
+  }
+  for(let v of ["visible","absent","unknown"]){
+    el(v).classList.toggle("active",p.state===v);
+    el(v).setAttribute("aria-pressed",String(p.state===v));
+  }
+  el("status").textContent=study.runId+" · frame "+(idx+1)+" / "+images.length+" · "+
+    frames.filter(x=>x.player.state!=="unknown").length+" beoordeeld";
+  el("previous").disabled=idx===0;el("next").disabled=idx===images.length-1;
+}
+function save(player){
+  frames[idx]={...frames[idx],player};
+  localStorage.setItem(storageKey,JSON.stringify(frames));display();
+}
+el("shot").addEventListener("click",event=>{
+  let img=el("shot");
+  if(!img.complete||img.naturalWidth!==W||img.naturalHeight!==H)return;
+  let r=img.getBoundingClientRect();
+  let x=Math.round((event.clientX-r.left)*W/r.width),y=Math.round((event.clientY-r.top)*H/r.height);
+  if(x<0||y<0||x>=W||y>=H)return;
+  save({state:"visible",center:{x,y}});
+});
+el("visible").addEventListener("click",()=>el("shot").focus());
+el("absent").addEventListener("click",()=>save({state:"absent",center:null}));
+el("unknown").addEventListener("click",()=>save({state:"unknown",center:null}));
+el("previous").addEventListener("click",()=>{if(idx>0){idx--;display();}});
+el("next").addEventListener("click",()=>{if(idx<images.length-1){idx++;display();}});
+document.addEventListener("keydown",e=>{if(e.target instanceof HTMLInputElement)return;
+  if(e.key==="ArrowLeft")el("previous").click();if(e.key==="ArrowRight")el("next").click();});
+function exportData(){return {schemaVersion:1,studySeed:study.seed,sourceStudySeed:study.sourceSeed,
+   runId:study.runId,partition:"development",frames};}
+el("download").addEventListener("click",()=>{
+  let u=URL.createObjectURL(new Blob([JSON.stringify(exportData(),null,2)],{type:"application/json"}));
+  let a=document.createElement("a");a.href=u;a.download=""+study.runId+"-player-points.json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);
+});
+el("import").addEventListener("change",async e=>{
+  let file=e.target.files[0];if(!file)return;
+  try{
+    if(file.size>100000)throw Error("Te groot");
+    let v=JSON.parse(await file.text());
+    if(v.schemaVersion!==1||v.studySeed!==study.seed||v.sourceStudySeed!==study.sourceSeed||
+       v.runId!==study.runId||v.partition!=="development"||Object.keys(v).length!==6||
+       !goodRows(v.frames))throw Error("Andere of gewijzigde ontwikkelstudie");
+    frames=v.frames;localStorage.setItem(storageKey,JSON.stringify(frames));display();
+  }catch(err){alert("Import geweigerd: "+err.message);}
+  e.target.value="";
+});
+el("title").textContent="ARGUS M2.38 · "+study.runId+" · speler aanwijzen";
+display();
+</script></body></html>
