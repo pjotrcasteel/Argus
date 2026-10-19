@@ -634,15 +634,29 @@ the original screenshot with orientation-aware sparse
 `--psm 12` recognize `START GAME` at genuine image pixels with
 ~96% confidence; `--psm 3` also recognizes it.
 
-[M2.39 focused navigation PR](https://github.com/pjotrcasteel/Argus/pulls)
-changes **only** free screenshot OCR segmentation (11→12),
-adds the source-visible `Start Game` to the external game profile,
-and adds deterministic OCR box/matching regression tests. It does
-not use fixed clicks, modify WyrmForge, touch owner truth, identify
-player in shadow, or claim gameplay improvement before live smoke.
-See [M2.39 independent diagnosis](M2-39-POST-UPDATE-TITLE-OCR.md).
-Next: verify real PR smoke reaches menu input, inspect remaining
-town navigation; only then merge/re-run M2.38 fresh independent cohorts.
+[M2.39 PR #81](https://github.com/pjotrcasteel/Argus/pull/81)
+uses free screenshot OCR automatic page layout (PSM 3), source-visible
+`Start Game` and `First Hunt` profile labels, and screenshot-derived
+route confirmation. The authentic [third PR browser experiment
+39160016344](https://github.com/pjotrcasteel/Argus/actions/runs/39160016344)
+**really navigated** title → town → spell → route → apparent combat,
+with eight screen-derived player candidates at steps 17–24. However,
+after step 25 OCR ran at nearly 10 seconds/frame; deadline halted at
+step 40 with no valid summary, so the **live outcome remained FAIL**.
+
+The 2026-10-19 follow-up on the same PR independently bounds full-frame
+OCR to 3s and footer OCR to 2s, preserves text from a completed pass,
+and scans text every third established exploration frame while still
+observing every frame's pixels/motion. A deterministic test verifies
+terminal-cue recognition within the next sampled frame, at most two
+intervening exploration frames. [.NET PR CI 39239754718](https://github.com/pjotrcasteel/Argus/actions/runs/39239754718)
+passed on the amended branch; new live-browser checks are running and
+**must pass before merging**. This is heuristic smoke reliability, not
+trained player identity, gameplay success or a higher accuracy result.
+See [M2.39 source and limitations](M2-39-POST-UPDATE-TITLE-OCR.md).
+Next: verify full .NET CI **and actual PR smoke** on the final commit,
+then merge and rerun M2.38 fresh independent external-game cohorts;
+do not access sealed O/P/Q or M2.4 held-out run-01.
 
 **NEXT M2.38 live research continuation:**
 
