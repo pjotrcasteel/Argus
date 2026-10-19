@@ -67,5 +67,6 @@
     ]
   },
   "minimumTextConfidence": 45,
-  "movementMilliseconds": 300
+  "movementMilliseconds": 300,
+  "enableIlluminatedEntryProbe": true
 }
