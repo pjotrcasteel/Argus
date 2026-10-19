@@ -116,6 +116,39 @@ A fresh genuine browser run is required after this change.
   old source labels or the live combat steering.
 - Original M2.23 O/P/Q and M2.4 run-01 remain sealed and untouched.
 
+## Third external-browser experiment and bounded OCR remediation (2026-10-19)
+
+The post-#122 PR [browser run 39160016344](https://github.com/pjotrcasteel/Argus/actions/runs/39160016344)
+**actually navigated** the START GAME control (step 1), BEGIN FIRST HUNT (3),
+a primary spell (5), a screenshot-located route marker (7), and an
+enabled route confirmation (9), then entered apparent combat: steps
+17–24 have eight image-derived player candidates and ordinary movement.
+This is evidence of navigation into a combat-like screen, **not**
+verified player identity or success in a hunt. The run still failed:
+after a choice overlay at step 25, repeated OCR operations consumed
+approximately ten seconds each and the bounded 180-second run stopped
+at step 40 before writing a valid summary. [Its unmodified image/trace
+artifact](https://github.com/pjotrcasteel/Argus/actions/runs/39160016344/artifacts/12147544522)
+is the source of the timing diagnosis. DO NOT count this timed-out run as PASS.
+
+The PR now also:
+
+- enforces separate **3-second full-viewport** and **2-second footer**
+  Tesseract budgets instead of one 10-second compound timeout; retains
+  full-page visible text if only the footer scan is too slow;
+- performs OCR on every navigation/route frame but samples every third
+  **already-established exploration** screenshot; all frames still use
+  actual visual pixel observation and motion/steering, with skipped OCR
+  explicitly marked as text scan deferred in trace reasoning;
+- tests that a new terminal label is still recognized on the next
+  sampled frame (at most two intervening exploration frames).
+
+The deliberate cost is up to two extra exploration actions before a
+new choice/result overlay is recognized. It is an **M1 smoke transport
+trade-off**, not a learned perception improvement. These changes must
+be checked by new real-browser Actions and deterministic .NET CI; do
+not change accuracy gates or retroactively re-score earlier failures.
+
 ## Next
 
 Run PR .NET tests **and real external browser smoke**. If genuinely
