@@ -241,6 +241,37 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_CombatTextSampling_DetectsLaterTerminalWithinThreeFrames()
+    {
+        // Only previously established gameplay may defer expensive OCR. Even when
+        // the image contains no detectable player, each frame is still observed.
+        const int width = 390;
+        const int height = 844;
+        var screenshot = BmpRgb(new byte[width * height * 3], width, height);
+        var frame = new FrameObservation(DateTimeOffset.UtcNow, width, height, screenshot);
+        var reader = new SequencedTextReader(
+        [
+            [new VisibleText("HP", 20, 12, 25, 14, 90)],
+            [new VisibleText("VICTORY", 40, 120, 130, 32, 95)]
+        ]);
+        var profile = new VisualGameProfile { GameplayCues = ["HP"], TerminalScreenCues = ["VICTORY"] };
+        var agent = new VisualGameAgent(reader, profile);
+
+        var first = await agent.DecideAsync(frame, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.HoldKey, first?.Kind);
+        for (var i = 0; i < 2; i++)
+        {
+            var deferred = await agent.DecideAsync(frame, TestContext.CancellationToken);
+            Assert.AreEqual(GameActionKind.HoldKey, deferred?.Kind);
+            StringAssert.Contains(agent.LastEvidence!.Reason, "text scan deferred");
+        }
+
+        var fourth = await agent.DecideAsync(frame, TestContext.CancellationToken);
+        Assert.IsNull(fourth);
+        Assert.AreEqual("terminal", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
     public void ParseTsv_LineWords_CombinesTextAndBoundingBoxes()
     {
         const string tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
