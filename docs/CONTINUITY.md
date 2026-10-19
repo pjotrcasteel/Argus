@@ -800,6 +800,41 @@ splits; M2.37 full chronological replay is still NOT_READY. Keep O/P/Q,
 old run-01 and human truth private, sealed, and unchanged. No runtime
 agent behavior change.
 
+**M2.43 — restore direct online iPhone original-development review pages (2026-10-19):**
+The owner explicitly corrected the M2.42 workflow: **ARGUS had already
+agreed to create directly clickable online annotation pages**, as done
+for earlier U/V/W and preceding development runs. The extra ZIP,
+localhost server and manual Python setup were the wrong default for the
+owner. [PR #86](https://github.com/pjotrcasteel/Argus/pull/86)
+restores that existing web-first interaction.
+
+M2.43 uses the authentic original source/review artifacts from
+[Actions 39242924416](https://github.com/pjotrcasteel/Argus/actions/runs/39242924416);
+it first runs the full M2.40 immutable trace/PNG SHA verification,
+then appends only the 54 approved M2.38 original **development** targets
+as three blind mobile review pages to the previously approved
+324-image/24-page public Pages source. Existing URLs, source images and
+owner's previous review work remain untouched. Never publish full
+220-frame sessions, 54 authentic previous-context images, original
+owner JSON, trained model output, historic sealed O/P/Q or old run-01.
+The public development screenshots are intentionally accessible on
+GitHub Pages (previous recorded standing consent and 2026-10-19 explicit
+request); the human labels remain private and local to the user's
+browser until exported.
+
+After a verified Pages deploy, directly send the owner **three links**:
+`https://pjotrcasteel.github.io/Argus/annoteren/m238-a/`,
+`https://pjotrcasteel.github.io/Argus/annoteren/m238-b/`, and
+`https://pjotrcasteel.github.io/Argus/annoteren/m238-c/`.
+Review each 18-shot page on iPhone as before and export one JSON per
+page. Do **not** ask the owner to unzip, start a server, use Python,
+change LAN settings, or manually transfer screenshots again.
+M2.41 private provenance-gated admission handles genuine exported JSON.
+No human truth/model quality claim until the owner has annotated them.
+If Pages deploy is not yet complete, report the exact block instead
+of pretending the links are live. The M2.42 private kit remains optional,
+not the default.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
