@@ -1,0 +1,51 @@
+name: M2.41 synthetic-only private blind review admission
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/m241/**'
+      - 'tests/m238/test_private_owner_admission.py'
+      - '.github/workflows/m2-41-private-blind-owner.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/m241/**'
+      - 'tests/m238/test_private_owner_admission.py'
+      - '.github/workflows/m2-41-private-blind-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-private-admission-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free synthetic original PNG validator
+        run: python -m pip install 'Pillow>=11,<13'
+      - name: Test frozen original SHA admission, unreviewed abstention and owner coordinates on invented PNGs only
+        run: python -m unittest discover -s tests/m238 -p 'test_private_owner_admission.py' -v
+      - name: Refuse any committed original WyrmForge PNGs, owner exports or fitting artifacts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for root in (Path("tools/m241"), Path("tests/m238")):
+              unwanted = [str(p) for p in root.rglob("*")
+                          if p.is_file() and p.suffix.lower() in
+                          {".png", ".jpg", ".jpeg", ".zip", ".json", ".jsonl", ".pt", ".onnx"}]
+              assert not unwanted, unwanted
+          text=Path("tools/m241/admit_blind_owner.py").read_text()
+          assert "tools.m238.validate_archive" in text
+          assert '"m237FullOriginalSequenceReady": False' in text
+          assert '"playerIdentityAccuracyEvaluated": False' in text
+          assert '"ownerCoordinatesIncluded": False' in text
+          print("PASS M2.41 entirely synthetic CI; no owner truth or real images committed.")
+          PY
