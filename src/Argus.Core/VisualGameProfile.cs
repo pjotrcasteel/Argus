@@ -15,6 +15,7 @@ public sealed class VisualGameProfile
     public string[] ChoiceCardTypes { get; init; } = [];
     public string[] MovementKeys { get; init; } = ["w", "a", "s", "d"];
     public CombatVisualSettings? CombatTracking { get; init; } = null;
+    public VisualHudBarSettings? CombatHudBar { get; init; } = null;
     // Optional opt-in visual HUD continuity guard; no game or DOM state is inspected.
     public VisualHudBarSettings? CombatHudBar { get; init; } = null;
     public bool EnableIlluminatedEntryProbe { get; init; } = false;
@@ -28,6 +29,7 @@ public sealed class VisualGameProfile
         if (MovementKeys.Length != 4 || MovementKeys.Any(string.IsNullOrWhiteSpace))
             throw new ArgumentException("MovementKeys must contain four keys in Up, Left, Down, Right order.");
         CombatTracking?.Validate();
+        CombatHudBar?.Validate();
         CombatHudBar?.Validate();
         if (MinimumTextConfidence is < 0 or > 100 || MovementMilliseconds is < 50 or > 1500)
             throw new ArgumentOutOfRangeException(nameof(MovementMilliseconds), "Profile thresholds are outside safety limits.");
