@@ -21,6 +21,9 @@ permissions:
 
 jobs:
   build-approved-review:
+    permissions:
+      contents: write
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -82,6 +85,27 @@ jobs:
           python -m playwright install --with-deps chromium
           python tests/m238/mobile_smoke.py --site _site
           python tests/m232/mobile_smoke.py --site _site
+      - name: Create immutable permanent Git checkpoint of 27 published review pages (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python -m tools.m243.publish_approved_m238 --site _site --verify-only
+          # No force/replacement: historical approved public branches stay preserved.
+          if git ls-remote --exit-code --heads origin public-annotator-site-m238-development; then
+            echo 'Immutable M2.43 public checkpoint already exists; never overwrite.'
+          else
+            git -C _site init -b public-annotator-site-m238-development
+            git -C _site config user.name 'github-actions[bot]'
+            git -C _site config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git -C _site remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+            git -C _site add -A
+            git -C _site commit -m 'Freeze 378 owner-consented public originals and 27 blind reviewer pages'
+            gh auth setup-git
+            git -C _site push origin HEAD:refs/heads/public-annotator-site-m238-development
+            echo 'Created permanent no-force approved original-only public Pages checkpoint.'
+          fi
       - name: Upload vetted Pages build (never private source archive)
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
