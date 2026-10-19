@@ -1,0 +1,77 @@
+name: M2.40 validate frozen real M2.38 screenshots without recapture
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/m238/validate_archive.py'
+      - 'tests/m238/test_archive_revalidation.py'
+      - '.github/workflows/m2-40-archive-revalidation.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/m2-40-archive-revalidation.yml'
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Existing M2.38 GitHub Actions run with untouched original artifacts'
+        required: true
+        default: '39242924416'
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  revalidate-frozen-originals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline image and browser reviewer dependencies
+        run: python -m pip install 'Pillow>=11,<13' 'playwright>=1.55,<2'
+      - name: Prove independent source and frozen review fail closed using synthetic PNGs only
+        run: python -m unittest discover -s tests/m238 -p 'test_archive_revalidation.py' -v
+      - name: Recover original three-run browser source from existing historical workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: argus-m238-real-external-source-no-owner-labels
+          path: artifacts/m238-real-source
+          run-id: ${{ inputs.source_run_id || '39242924416' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Recover original 54-frame blind review from the exact same workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: argus-m238-private-original-review-not-evaluated
+          path: artifacts/m238-private-original-review
+          run-id: ${{ inputs.source_run_id || '39242924416' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Recheck unchanged original PNG bytes, trace SHA, exact blind seed and 54 predecessors
+        run: |
+          python -m tools.m238.validate_archive \
+            --sources artifacts/m238-real-source \
+            --review artifacts/m238-private-original-review
+      - name: Install Chromium for actual frozen-original mobile review
+        run: python -m playwright install --with-deps chromium
+      - name: Real mobile Chromium touch, image, ring, export and import checks on frozen originals
+        run: python tests/m238/mobile_smoke.py --site artifacts/m238-private-original-review
+      - name: Confirm no new gameplay, owner labels or public publication
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("artifacts/m238-private-original-review")
+          m=json.loads((root/"study-manifest.json").read_text())
+          assert m["researchStatus"]=="NOT_EVALUATED"
+          assert m["ownerGroundTruth"]=="NONE"
+          assert m["publicPublicationAuthorized"] is False
+          assert m["prospectiveSealedSourcesAccessed"] is False
+          assert not list(root.rglob("labels.json"))
+          print("PASS: three existing game runs, owner-blind originals only; no recapture or publication.")
+          PY
