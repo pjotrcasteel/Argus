@@ -712,6 +712,26 @@ owner VISIBLE-center/ABSENT/UNKNOWN labels by run; do not fit/tune
 against these all-unknown originals or claim learned identity accuracy.
 Publication on Pages requires explicit owner approval.
 
+**M2.40 workflow safety correction (2026-10-19):** After [PR #82](https://github.com/pjotrcasteel/Argus/pull/82)
+merged as `794eb2b`, [archive-only replay
+39249144593](https://github.com/pjotrcasteel/Argus/actions/runs/39249144593)
+and [.NET main CI 39249144499](https://github.com/pjotrcasteel/Argus/actions/runs/39249144499)
+passed. However the legacy M2.38 real capture job used substring
+matching on the full squash-commit message, which contains the words
+"M2.38" in the description; it unexpectedly launched
+[another main browser capture 39249144665](https://github.com/pjotrcasteel/Argus/actions/runs/39249144665).
+This unintended launch does **not** invalidate original frozen source
+run `39242924416`, and any newly generated frames MUST NOT be silently
+substituted into the SHA-locked M2.38 frozen review.
+
+The safeguard under validation now runs costly external three-session
+capture **only with explicit `workflow_dispatch`**; PR and normal
+main pushes continue free synthetic checks. Regression tests reject
+commit-message-triggered browser capture. No future caller should infer
+a capture instruction from the words in a squash message. [M2.38
+workflow](../.github/workflows/m2-38-post-update-capture.yml) is the
+source of truth. Research owner truth remains ALL_UNKNOWN.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
