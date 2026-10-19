@@ -14,7 +14,7 @@ public sealed class GameplayHudWitnessTests
         Assert.IsTrue(GameplayHudWitness.IsVisible(labels, 390, 844));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("HP")]
     [DataRow("HP 100")]
     [DataRow("HEALTH")]
