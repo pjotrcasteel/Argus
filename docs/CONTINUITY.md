@@ -766,6 +766,40 @@ coverage without treating UNKNOWN as an ABSENT negative, and design a
 separate fit/calibration cohort before M2.37 can claim evaluation.
 Do not publish source PNGs or labels without explicit user approval.
 
+**M2.42 — owner-only authenticated local iPhone review kit (2026-10-19):**
+[PR #85](https://github.com/pjotrcasteel/Argus/pull/85)
+adds a standalone stdlib-only local HTTP server and
+[practical owner setup guide](M2-42-PRIVATE-MOBILE-REVIEW-KIT.md).
+The maintainer-only packer requires the original M2.38 source **and**
+blank-review directories and executes M2.40 full trace/source/original
+PNG SHA verification before generating a separate **private** owner ZIP.
+Its original label UI and all 54 frozen targets + 54 immediately preceding
+screens remain unchanged; the full 220-frame browser source and any owner
+JSON are **not** included in the smaller owner kit. No original bytes
+enter public GitHub, Actions, Pages, or any hosted website.
+
+Owner can unzip and launch `python private_review_server.py`
+on localhost without .NET, third-party Python dependencies or Git.
+Specific trusted private Wi-Fi access from iPhone requires explicit
+`--lan --host <actual private IPv4>`, per-session random token and
+same-site HttpOnly cookie, read-only allowlisted original PNG/page URLs,
+no uploads, no directory listings, no source traces. **Plain LAN HTTP
+is not encrypted and should be used only on a trusted home network**;
+loopback is the default. iPhone screenshot tap geometry, JSON export and
+reimport are tested in real mobile Chromium **with artificial images**,
+not original owner clicks. M2.41 remains responsible for real-source
+owner JSON SHA admission; no accuracy or gameplay success claim.
+
+**Next human dependency:** owner reviews 18 original screenshots each
+in `m238-a`, `m238-b`, `m238-c`; exports three genuine
+`m238-[abc]-player-points.json` files from the private browser (VISIBLE
+center/ABSENT/UNKNOWN, never guess); then run the M2.41 private admission
+on real historical frozen originals. No owner review data are in GitHub
+as of this update. After that, decide fit/calibration/independent test
+splits; M2.37 full chronological replay is still NOT_READY. Keep O/P/Q,
+old run-01 and human truth private, sealed, and unchanged. No runtime
+agent behavior change.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
