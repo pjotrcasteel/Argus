@@ -1,0 +1,122 @@
+name: M2.43 owner-approved original dev review pages
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/m243/**'
+      - 'tests/m243/**'
+      - '.github/workflows/m2-43-review-pages.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/m243/**'
+      - 'tests/m243/**'
+      - '.github/workflows/m2-43-review-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-approved-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate source-independent research gate with synthetic-only original-sized PNGs
+        run: |
+          python -m pip install 'Pillow>=11,<13'
+          python -m unittest discover -s tests/m243 -p 'test_publish_pages.py' -v
+      - name: Restore byte-verified EXISTING approved 324-image 24-page site unchanged
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/public-annotator-site-m232-development:refs/remotes/origin/public-annotator-site-m232-development
+          mkdir -p _site
+          git archive refs/remotes/origin/public-annotator-site-m232-development | tar -xf - -C _site
+          python tools/m233/publish_approved_uvw.py verify --site _site
+      - name: Retrieve ORIGINAL 220-source screenshot artifact from approved existing independent run
+        uses: actions/download-artifact@v4
+        with:
+          name: argus-m238-real-external-source-no-owner-labels
+          path: _original_m238_source
+          run-id: '39242924416'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve ORIGINAL 54 BLIND screenshot review artifact from same existing run
+        uses: actions/download-artifact@v4
+        with:
+          name: argus-m238-private-original-review-not-evaluated
+          path: _original_m238_review
+          run-id: '39242924416'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify both historical source artifacts and append ONLY 54 owner-approved development originals
+        run: |
+          python -m tools.m243.publish_approved_m238 \
+            --site _site \
+            --sources _original_m238_source \
+            --review _original_m238_review
+          python -m tools.m243.publish_approved_m238 --site _site --verify-only
+          python - <<'PY'
+          from pathlib import Path
+          root=Path("_site")
+          assert len(list(root.glob("annoteren/*/frame-*.png")))==378
+          assert len(list(root.glob("annoteren/*/index.html")))==27
+          assert not list(root.rglob("prev-for-*.png"))
+          assert not list(root.rglob("*.jsonl"))
+          assert not list(root.rglob("*labels*"))
+          for name in ("m238-a","m238-b","m238-c"):
+              s=(root/"annoteren"/name/"index.html").read_text().split("<script>",1)[1].split("</script>",1)[0]
+              Path(name+"-script.js").write_text(s)
+          PY
+          for run in m238-a m238-b m238-c; do node --check "${run}-script.js"; done
+      - name: Verify owner mobile touch, 18 originals, VISIBLE/ABSENT/UNKNOWN and JSON export/import in REAL Chromium
+        run: |
+          python -m pip install 'playwright>=1.55,<2'
+          python -m playwright install --with-deps chromium
+          python tests/m238/mobile_smoke.py --site _site
+          python tests/m232/mobile_smoke.py --site _site
+      - name: Upload vetted Pages build (never private source archive)
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-m243-public-approved-site
+          path: _site
+          retention-days: 1
+      - name: Remove private downloaded original source folders before leaving worker
+        if: always()
+        run: |
+          rm -rf _original_m238_source _original_m238_review
+          echo "Only approved 54 public development target frames enter the website artifact."
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build-approved-review
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      contents: read
+      actions: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Download verified original-only approved website
+        uses: actions/download-artifact@v4
+        with:
+          name: argus-m243-public-approved-site
+          path: _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Publish approved mobile pages over HTTPS
+        id: deploy
+        uses: actions/deploy-pages@v4
