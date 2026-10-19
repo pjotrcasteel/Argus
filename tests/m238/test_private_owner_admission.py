@@ -1,6 +1,6 @@
 """M2.41 all-synthetic original-PNG admission, no real human labels on CI."""
 import json
-import tempfile
+import shutil
 import unittest
 from pathlib import Path
 
@@ -113,6 +113,29 @@ class FrozenBlindOwnerAdmissionTests(unittest.TestCase):
         (self.labels / "owner-private-other.json").write_text("{}")
         with self.assertRaisesRegex(ValueError, "unrecognized"):
             audit(self.sources, self.review, self.labels)
+
+    def test_identicalPngAcrossRuns_RejectsContradictoryDefinitiveOwnerLabels(self):
+        frozen = json.loads((self.review / "study-manifest.json").read_text())
+        from_a = frozen["runs"][0]["images"][0]
+        from_b = frozen["runs"][1]["images"][0]
+        a = self.sources / "m238-a" / from_a["file"]
+        b = self.sources / "m238-b" / from_b["file"]
+        b.write_bytes(a.read_bytes())
+        shutil.rmtree(self.review)
+        original.freeze(self.sources, self.review)
+        self.export("m238-a", visible=1)
+        other = self.export("m238-b", visible=1)
+        good = audit(self.sources, self.review, self.labels)
+        self.assertGreaterEqual(good["duplicateObservationsCompared"], 1)
+        record = json.loads(other.read_text())
+        record["frames"][0]["player"] = {"state": "absent", "center": None}
+        other.write_text(json.dumps(record))
+        with self.assertRaisesRegex(ValueError, "Conflicting definitive human truth"):
+            audit(self.sources, self.review, self.labels)
+        record["frames"][0]["player"] = {"state": "unknown", "center": None}
+        other.write_text(json.dumps(record))
+        unknown = audit(self.sources, self.review, self.labels)
+        self.assertEqual("NOT_READY_PARTIAL_OWNER_EXPORTS", unknown["status"])
 
     def test_frozenOriginalEditedAfterReview_RejectsBeforeOpeningLabels(self):
         self.export("m238-a", visible=1)
