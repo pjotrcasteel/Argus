@@ -149,6 +149,56 @@ trade-off**, not a learned perception improvement. These changes must
 be checked by new real-browser Actions and deterministic .NET CI; do
 not change accuracy gates or retroactively re-score earlier failures.
 
+## Fourth browser gate and verified current navigation (2026-10-19)
+
+The public town no longer offers a readable BEGIN FIRST HUNT button.
+On the authentic [390x844 original run 39239754477](https://github.com/pjotrcasteel/Argus/actions/runs/39239754477),
+START GAME succeeded, but the character remained in town and the
+old text-only navigation waited without any route or combat. On its
+actual frame-0003 screenshot the town has a central warm-lit stone gate
+flanked by two separated warm lamps, but there is no actionable OCR
+text. An isolated pixel-only proposal was added under explicit
+`EnableIlluminatedEntryProbe` in the external WyrmForge profile:
+it measures three separate warm connected components in a relative
+upper-image region, clicks the *image-derived* central component at
+most once, and otherwise abstains. It has no game-name checks, DOM or
+hidden state. The proposal is not a universal "gate" classifier:
+the three-lights hypothesis can fail with different layouts, seeds
+or light schemes.
+
+Another actual [public browser run 39241045502](https://github.com/pjotrcasteel/Argus/actions/runs/39241045502)
+confirmed title -> single entry-probe -> spell -> route, but then
+stalled. Its original gameplay screenshot shows health text
+"HP 100/100" at y~57; whole-line OCR confidence falls below 45
+because adjacent glyphs are uncertain. The optional *generic*
+`GameplayHudWitness` now recognizes a complete, plausible numeric
+health fraction near the top of the screen, **only** for profiles
+listing "HP" as a gameplay cue. The malformed/no-fraction, out-of-range
+and misplaced HUD tests abstain. The actual upgrade overlay also
+contains readable titles "Fleet Step" and "Casting Rhythm" but the
+small REFINEMENT category text went missing in OCR. A fallback in
+`ChoiceCardMatcher`, **only inside an already-recognized choice screen**,
+requires a short, well-positioned, title-cased visible OCR line rather
+than guessing a click coordinate. Both changes have negative
+regressions and do not add game-source/DOM shortcuts or human labels.
+
+**Validation of final code head `ac367f68`:**
+- [.NET 10 CI 39242095478](https://github.com/pjotrcasteel/Argus/actions/runs/39242095478): full build and **201/201 deterministic tests PASS**, including the original-pixel HUD and safe no-entry/no-title cases.
+- [Independent real public WyrmForge M1 smoke 39242095441](https://github.com/pjotrcasteel/Argus/actions/runs/39242095441): **PASS** within the bounded window, 57 screenshot observations (steps 0..56), 32 inferred visual player candidates, 2 route clicks, a source-derived warm entry click at step 3, and an actually clicked OCR-visible upgrade title "Runic Ward" at step 35; zero visible terminal stops. Authentic PNG/trace artifact `12182136895` is short-lived. This gate verifies transport/navigation and some screen-derived observations, **not** correct player identity, wins, opponent recognition, good evasion or scientific generalization.
+
+The M2.38 post-update study workflow is extended to perform a single
+three-browser new-original collection on a successfully merged M2.39
+main push (separate runs; bounded attempts, independent SHA validation).
+This does not automatically publish source screenshots to Pages or
+invent any owner labels; private source/review artifacts have seven-day
+retention. If a run fails, the research gate remains **NOT_READY**.
+
+Next: validate the actual 3-run main capture and its source/checksum
+and original screenshot evidence; only then solicit blind owner
+VISIBLE-center/ABSENT/UNKNOWN original-image review for real M2.37
+offline causal-contrastive learning. Sealed O/P/Q, the old run-01 and
+live steering parameters remain untouched.
+
 ## Next
 
 Run PR .NET tests **and real external browser smoke**. If genuinely
