@@ -668,6 +668,50 @@ original blinded targets only when all three are valid, then privately
 request genuine human center/absence review. Sealed O/P/Q and M2.4
 run-01 remain untouched.
 
+**M2.40 — Preserve and revalidate M2.38 post-update originals (2026-10-19):**
+M2.39 merged to main as [83bf308](https://github.com/pjotrcasteel/Argus/commit/83bf30809e8b5a3e669547ebb3d48b255b93b1d2);
+[main CI 39242924468](https://github.com/pjotrcasteel/Argus/actions/runs/39242924468)
+passed. [Main M2.38 external capture 39242924416](https://github.com/pjotrcasteel/Argus/actions/runs/39242924416)
+captured **three independent real public-browser sessions**, with 77
+(m238-a), 77 (m238-b) and 66 (m238-c) original 390x844 PNGs
+(**220 total**). The M2.38 code's real-game and SHA checks passed for
+all three traces; the last mobile-Chromium step alone failed because
+the Python CLI omitted the repository root from `PYTHONPATH`
+(`ModuleNotFoundError: No module named 'tools'`).
+This failure remains honestly red, NOT a successful end-to-end job.
+
+Two seven-day *non-Pages* workflow artifacts were saved: untouched
+[whole-run source 12182281756](https://github.com/pjotrcasteel/Argus/actions/runs/39242924416/artifacts/12182281756)
+and [original-only blind review 12182271830](https://github.com/pjotrcasteel/Argus/actions/runs/39242924416/artifacts/12182271830).
+**They expire 2026-10-26; save both before expiry.** Frozen selection
+contains **54 chronological targets and 54 authentic immediately prior
+images, 53 unique target PNG SHA-256 digests** (one byte-identical
+target). Both original archives have been downloaded separately and
+crosschecked locally: ZIP CRC, three trace SHA digests and each of the
+108 copied original/predecessor image bytes agree with the source
+and frozen manifest. There are NO original human labels, no evaluated
+presence/location accuracy, no model promotion and no established
+game outcome. Sample game shots show combat and the third trace
+contains a visually inferred end overlay; that is not a verified win.
+Version remains `null` in the M2.38 scientific provenance.
+
+[PR #82](https://github.com/pjotrcasteel/Argus/pull/82)
+corrects only the last mobile job's `PYTHONPATH` and adds M2.40
+offline **artifact-only** verification: fail-closed trace/source SHA,
+deterministic original-only selection, exact copied/predecessor PNG
+bytes, privacy constraints and frozen mobile Chromium taps/export/import.
+It obtains both *existing* artifacts from the historical run, never
+relaunches WyrmForge, never touches sealed O/P/Q or old run-01 and never
+publishes screenshots or private labels. Synthetic adversarial tests
+cover tampering. The PR must pass its actual archive replay and
+mobile-browser jobs before merge; a synthetic-only check is insufficient.
+
+**Immediate next:** finish archive-only M2.40 CI, merge on green,
+retain the 54 blind source images privately, and solicit genuine
+owner VISIBLE-center/ABSENT/UNKNOWN labels by run; do not fit/tune
+against these all-unknown originals or claim learned identity accuracy.
+Publication on Pages requires explicit owner approval.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
