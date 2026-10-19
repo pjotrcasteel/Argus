@@ -7,32 +7,26 @@ namespace Argus.Adapters.Browser;
 /// <summary>Local, free, screenshot-only full-page and bounded footer OCR. Requires Tesseract on host.</summary>
 public sealed class TesseractTextReader : IFrameTextReader
 {
+    private static readonly TimeSpan FullFrameBudget = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan FooterBudget = TimeSpan.FromSeconds(2);
+
     public async Task<IReadOnlyList<VisibleText>> ReadAsync(FrameObservation frame, CancellationToken cancellationToken = default)
     {
         var identity = Guid.NewGuid().ToString("N");
         var original = Path.Combine(Path.GetTempPath(), "argus-frame-" + identity + ".png");
         var footerPath = Path.Combine(Path.GetTempPath(), "argus-footer-" + identity + ".bmp");
-        using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        limit.CancelAfter(TimeSpan.FromSeconds(10));
-
         try
         {
-            await File.WriteAllBytesAsync(original, frame.PngBytes, limit.Token);
-            var entire = await ReadOcrAsync(original, 3, limit.Token);
+            await File.WriteAllBytesAsync(original, frame.PngBytes, cancellationToken);
+            var entire = await ReadWithBudgetAsync(original, 3, FullFrameBudget, cancellationToken);
             var footer = FooterOcrImage.FromPng(frame.PngBytes);
             if (footer is null) return entire;
 
             // A second OCR pass over viewport-relative, enlarged original
             // pixels recovers tiny buttons without game-specific coordinates.
-            await File.WriteAllBytesAsync(footerPath, footer.BmpBytes, limit.Token);
-            var smallText = await ReadOcrAsync(footerPath, 6, limit.Token);
+            await File.WriteAllBytesAsync(footerPath, footer.BmpBytes, cancellationToken);
+            var smallText = await ReadWithBudgetAsync(footerPath, 6, FooterBudget, cancellationToken);
             return entire.Concat(smallText.Select(footer.Map)).ToArray();
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            // A slow or temporarily unavailable text pass is never evidence of
-            // player identity. Wait for another real frame, never guess clicks.
-            return [];
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
@@ -43,6 +37,22 @@ public sealed class TesseractTextReader : IFrameTextReader
         {
             if (File.Exists(original)) File.Delete(original);
             if (File.Exists(footerPath)) File.Delete(footerPath);
+        }
+    }
+
+    private static async Task<IReadOnlyList<VisibleText>> ReadWithBudgetAsync(
+        string file, int segmentation, TimeSpan duration, CancellationToken cancellationToken)
+    {
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(duration);
+        try
+        {
+            return await ReadOcrAsync(file, segmentation, budget.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Preserve any previous OCR pass; an expensive screenshot is unknown, not empty game state.
+            return [];
         }
     }
 
