@@ -19,6 +19,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
     private bool _routeNodeSelected;
     private int _routeConfirmationAttempts;
     private bool _settling;
+    private bool _entryProbeTried;
 
     public AgentEvidence? LastEvidence { get; private set; }
 
@@ -143,6 +144,25 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
         _emptyScans++;
         var gameplayCue = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.GameplayCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
+
+        // After a real title click, an otherwise unrecognized town may offer a
+        // visual entrance without OCR text. This is a ONE-SHOT uncertain pixel
+        // proposal, enabled by the external game profile, never a known gate.
+        if (!gameplayCue && _menuClicks > 0 && _explorationSteps == 0 &&
+            !_entryProbeTried && profile.EnableIlluminatedEntryProbe)
+        {
+            var entrance = IlluminatedEntryDetector.Detect(observation.PngBytes);
+            if (entrance is not null)
+            {
+                _entryProbeTried = true;
+                _settling = true;
+                _previousFrame = observation.PngBytes;
+                LastEvidence = new AgentEvidence("entry-probe",
+                    "Trying one unverified illuminated focal affordance from screenshot pixels",
+                    entrance.Confidence, names);
+                return new GameAction(GameActionKind.Click, X: entrance.X, Y: entrance.Y);
+            }
+        }
 
         // No guessed clicks or movement before there is visible evidence of gameplay or a preceding menu transition.
         if (!gameplayCue && _menuClicks == 0 && _explorationSteps == 0)
