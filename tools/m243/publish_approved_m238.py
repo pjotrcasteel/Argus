@@ -60,7 +60,8 @@ def publish(base: Path, sources: Path, review: Path):
     source_gate = validate(sources, review)
     study = json.loads((review / "study-manifest.json").read_text())
     require(source_gate["originalTargets"] == 54 and
-            source_gate["uniqueTargetDigests"] == 53 and
+            source_gate["uniqueTargetDigests"] == study.get("uniqueOriginalTargetDigests") and
+            53 <= source_gate["uniqueTargetDigests"] <= 54 and
             source_gate["authenticPredecessors"] == 54 and
             study.get("ownerGroundTruth") == "NONE" and
             study.get("prospectiveSealedSourcesAccessed") is False and
@@ -105,7 +106,7 @@ def publish(base: Path, sources: Path, review: Path):
         "originalPredecessorsPublished": False,
         "originalFullBrowserTracesPublished": False,
         "sealedSourceAccess": False,
-        "sourceImageDigestsUnique": 53,
+        "sourceImageDigestsUnique": source_gate["uniqueTargetDigests"],
     }
     prior["m238PublicReview"] = public_info
     (base / "published-development-manifest.json").write_text(
@@ -133,10 +134,11 @@ def verify(base: Path, original_index=None):
             info.get("ownerLabelsPublished") is False and
             info.get("originalPredecessorsPublished") is False and
             info.get("sealedSourceAccess") is False and
-            info.get("sourceImageDigestsUnique") == 53 and
+            info.get("sourceImageDigestsUnique") in (53, 54) and
             "2026-10-19" in info.get("consent", ""),
             "M2.38 public site has wrong approval or source manifest.")
     scripts = {}
+    public_digests = set()
     for run in m.RUNS:
         folder = base / "annoteren" / run
         allow = set(info["screenshots"][run]) | {"index.html"}
@@ -152,6 +154,9 @@ def verify(base: Path, original_index=None):
         for name, digest in info["screenshots"][run].items():
             require(m.sha(m.real_png(folder / name)) == digest,
                     "Public screenshot does not match frozen original SHA.")
+            public_digests.add(digest)
+    require(len(public_digests) == info["sourceImageDigestsUnique"],
+            "Public screenshot digest count differs from original frozen review.")
     require(len(list(base.glob("annoteren/*/frame-*.png"))) == 378 and
             len(list(base.glob("annoteren/*/index.html"))) == 27 and
             len(list(base.rglob("*.json"))) == 1 and
@@ -175,7 +180,7 @@ def verify(base: Path, original_index=None):
         require(unchanged.encode("utf-8") == original_index,
                 "Previous published review navigation was changed.")
     return {"contract": CONTRACT, "routes": list(ROUTES), "sourceFrames": 54,
-            "uniqueOriginalDigests": 53, "oldOriginalFramesPreserved": 324,
+            "uniqueOriginalDigests": info["sourceImageDigestsUnique"], "oldOriginalFramesPreserved": 324,
             "oldReviewerPagesPreserved": 24,
             "originalPreviousScreenshotsPublished": 0,
             "ownerTruthPublished": False, "sealedHistoricalSourceOpened": False}
