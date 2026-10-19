@@ -200,6 +200,22 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 350);
         }
 
+        // Missing screenshot HUD indicates a possible full-screen upgrade or menu.
+        // Block stale combat movement and force fresh OCR on the next screenshot.
+        if (_explorationSteps > 0 && profile.CombatHudBar is { } bar &&
+            !VisualHudBarWitness.IsVisible(observation.PngBytes, bar))
+        {
+            _trackedPlayer = null;
+            _missedPlayerFrames = 0;
+            _previousCombatFrame = null;
+            _previousCombatObservation = null;
+            _previousFrame = observation.PngBytes;
+            _explorationSteps = 0;
+            LastEvidence = new AgentEvidence("hud-hidden",
+                "Expected combat status bar disappeared; waiting for a new visual screen check", 0, names);
+            return new GameAction(GameActionKind.Wait, DurationMs: 350);
+        }
+
         var combat = profile.CombatTracking is null ? null : CombatPixelPerception.Observe(observation.PngBytes,
             profile.CombatTracking, _trackedPlayer);
         if (combat?.Player is { } currentPlayer)
