@@ -36,7 +36,15 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 650);
         }
 
-        var labels = await textReader.ReadAsync(observation, cancellationToken);
+        // Fully inspect every entry/route frame. During established exploration,
+        // OCR every third frame: screenshot motion and pixel perception still run
+        // on every frame, while short-lived UI overlays are checked within two
+        // subsequent observations. This prevents busy combat scenes from spending
+        // most of the bounded experiment waiting for external OCR processes.
+        var scanText = _explorationSteps == 0 || _explorationSteps % 3 == 0;
+        var labels = scanText
+            ? await textReader.ReadAsync(observation, cancellationToken)
+            : Array.Empty<VisibleText>();
         var names = labels.Select(t => t.Text).Take(24).ToArray();
         var terminal = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.TerminalScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
@@ -192,7 +200,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             }
             : null;
         var reason = screen is null ? "No confidently located player; " + source : $"Visual player ({screen.PlayerX:0},{screen.PlayerY:0}); {source}";
-        LastEvidence = new AgentEvidence("exploring", reason + "; holding " + key,
+        LastEvidence = new AgentEvidence("exploring", reason + "; holding " + key + (scanText ? "" : "; text scan deferred"),
             screen is null ? 0.2f : MathF.Min(0.65f, combat!.Player!.Confidence), names, motion.Change, screen);
         return new GameAction(GameActionKind.HoldKey, Key: key, DurationMs: profile.MovementMilliseconds);
     }
