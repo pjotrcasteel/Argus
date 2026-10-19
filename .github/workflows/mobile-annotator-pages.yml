@@ -240,7 +240,10 @@ jobs:
           retention-days: 1
 
   deploy:
-    if: github.event_name != 'pull_request'
+    # Retired: the old 24-page, 324-image build must NEVER overwrite
+    # owner-approved M2.43's now-live 27-page, 378-image blind review.
+    # See M2.43 unified authoritative deploy + immutable public checkpoint.
+    if: false
     needs: build-annotator
     runs-on: ubuntu-latest
     environment:
