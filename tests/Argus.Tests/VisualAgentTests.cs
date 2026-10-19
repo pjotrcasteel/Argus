@@ -272,6 +272,65 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_TownAfterStart_UsesOneUnverifiedPixelProbeOnlyWhenOptedIn()
+    {
+        const int width = 390;
+        const int height = 844;
+        var townRgb = new byte[width * height * 3];
+        static void Light(byte[] pixels, int left, int top, int lightWidth)
+        {
+            for (var y = top; y < top + 32; y++)
+            {
+                for (var x = left; x < left + lightWidth; x++)
+                {
+                    var pixel = (y * width + x) * 3;
+                    pixels[pixel] = 220;
+                    pixels[pixel + 1] = 140;
+                    pixels[pixel + 2] = 40;
+                }
+            }
+        }
+
+        Light(townRgb, 49, 199, 20);
+        Light(townRgb, 192, 196, 26);
+        Light(townRgb, 325, 198, 21);
+        var title = new FrameObservation(DateTimeOffset.UtcNow, width, height,
+            BmpRgb(new byte[width * height * 3], width, height));
+        var town = new FrameObservation(DateTimeOffset.UtcNow, width, height, BmpRgb(townRgb, width, height));
+        var reader = new SequencedTextReader([[new VisibleText("START GAME", 115, 759, 121, 10, 96)], []]);
+        var agent = new VisualGameAgent(reader,
+            new VisualGameProfile { MenuActions = ["Start Game"], EnableIlluminatedEntryProbe = true });
+
+        Assert.AreEqual(GameActionKind.Click, (await agent.DecideAsync(title, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(town, TestContext.CancellationToken))?.Kind);
+        var proposal = await agent.DecideAsync(town, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, proposal?.Kind);
+        Assert.AreEqual("entry-probe", agent.LastEvidence?.Phase);
+        Assert.IsTrue(proposal?.X is > 195f and < 215f);
+        Assert.IsTrue(proposal?.Y is > 195f and < 230f);
+
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(town, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(town, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual("transition", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
+    public async Task DecideAsync_NoEntryProbeOptIn_WaitsWithoutSpeculativeTownClick()
+    {
+        const int width = 390;
+        const int height = 844;
+        var frame = new FrameObservation(DateTimeOffset.UtcNow, width, height,
+            BmpRgb(new byte[width * height * 3], width, height));
+        var reader = new SequencedTextReader([[new VisibleText("START GAME", 115, 759, 121, 10, 96)], []]);
+        var agent = new VisualGameAgent(reader, new VisualGameProfile { MenuActions = ["Start Game"] });
+
+        Assert.AreEqual(GameActionKind.Click, (await agent.DecideAsync(frame, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(frame, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(frame, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual("transition", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
     public void ParseTsv_LineWords_CombinesTextAndBoundingBoxes()
     {
         const string tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
