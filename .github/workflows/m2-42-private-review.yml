@@ -1,0 +1,71 @@
+name: M2.42 private phone review kit (synthetic-only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/m242/**'
+      - 'tests/m242/**'
+      - '.github/workflows/m2-42-private-review.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/m242/**'
+      - 'tests/m242/**'
+      - '.github/workflows/m2-42-private-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secure-offline-reviewer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install free synthetic PNG / real mobile Chromium test tools
+        run: |
+          python -m pip install 'Pillow>=11,<13' 'playwright>=1.55,<2'
+          python -m playwright install --with-deps chromium
+      - name: Verify private token interface, strict source integrity and read-only ZIP with fake originals only
+        run: python -m unittest discover -s tests/m242 -p 'test_private_review.py' -v
+      - name: Construct only synthetic full authentic-shape reviewer and exercise actual touch browser
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,"tests/m238")
+          from test_fresh_capture import FreshCaptureSyntheticTests
+          from tools.m238.fresh_capture import freeze
+          from tools.m242.package_private_review import pack
+          from zipfile import ZipFile
+          a=FreshCaptureSyntheticTests()
+          a.setUp()
+          try:
+              review=Path("artifacts/m242-synthetic-review")
+              freeze(a.captures,review)
+              zip_path=Path("artifacts/m242-synthetic-kit.zip")
+              result=pack(a.captures,review,zip_path)
+              assert result["sourceRuns"]==3 and not result["containsOwnerTruth"]
+              with ZipFile(zip_path) as z:
+                  z.extractall("artifacts/m242-extracted")
+          finally:
+              a.tearDown()
+          PY
+          python tests/m242/mobile_private_smoke.py --review artifacts/m242-extracted/argus-m238-private-review
+      - name: Refuse any committed original source, model or owner export
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for root in (Path("tools/m242"),Path("tests/m242")):
+              bad=[str(p) for p in root.rglob("*") if p.is_file() and p.suffix.lower()
+                   in {".png",".jpg",".zip",".json",".jsonl",".pt",".onnx",".pkl"}]
+              assert not bad,bad
+          print("PASS: zero real sources/owner labels committed or published.")
+          PY
