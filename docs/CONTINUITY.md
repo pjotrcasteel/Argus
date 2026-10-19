@@ -835,6 +835,37 @@ If Pages deploy is not yet complete, report the exact block instead
 of pretending the links are live. The M2.42 private kit remains optional,
 not the default.
 
+**M2.43 publication verification and permanent preservation (2026-10-19):**
+[PR #86](https://github.com/pjotrcasteel/Argus/pull/86) merged as
+`953f97be`. Its [main Pages deploy 39257330179](https://github.com/pjotrcasteel/Argus/actions/runs/39257330179)
+reported **success** on 2026-10-19T13:07:51Z, with exact Pages
+environment base `https://pjotrcasteel.github.io/Argus/`.
+This is GitHub's real successful deploy report; a separate external
+crawler cannot independently open the site. The included mobile Chromium
+test *did* serve the complete newly assembled Pages source with the actual
+54 original published target PNGs, verify screenshot loads, tap-position
+markers, run-specific JSON export/import and persistence, while
+preserving the prior owner-approved 324 images and 24 review pages.
+Direct online owner routes are `/annoteren/m238-a/`,
+`/annoteren/m238-b/`, `/annoteren/m238-c/`. This corrects the
+M2.42 local ZIP/server detour; never ask the owner to run Python to label.
+
+**Public image longevity safeguard:** previous
+`mobile-annotator-pages.yml` had its own deployment that could revert
+the site to the obsolete 24-page source after unrelated old code changes.
+The correction disables ONLY that legacy deployment (old builds may
+still validate their historical baseline). The M2.43 Pages workflow
+saves the complete source-verified 378-PNG/27-page approved public site
+to **immutable** Git branch
+`public-annotator-site-m238-development`, never force-pushes, and
+is the authoritative deployment. This keeps the original public images
+available after temporary M2.38 GitHub Actions source artifacts expire
+on 2026-10-26, while **never** committing owner labels, full source
+traces, 54 predecessor-context PNGs, sealed O/P/Q or old run-01.
+The public images are development-only and remain human-unreviewed
+until the owner supplies real JSON exports. Do not treat successful
+publication or mobile browser smoke as player identity accuracy.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
