@@ -634,29 +634,39 @@ the original screenshot with orientation-aware sparse
 `--psm 12` recognize `START GAME` at genuine image pixels with
 ~96% confidence; `--psm 3` also recognizes it.
 
-[M2.39 PR #81](https://github.com/pjotrcasteel/Argus/pull/81)
-uses free screenshot OCR automatic page layout (PSM 3), source-visible
-`Start Game` and `First Hunt` profile labels, and screenshot-derived
-route confirmation. The authentic [third PR browser experiment
-39160016344](https://github.com/pjotrcasteel/Argus/actions/runs/39160016344)
-**really navigated** title → town → spell → route → apparent combat,
-with eight screen-derived player candidates at steps 17–24. However,
-after step 25 OCR ran at nearly 10 seconds/frame; deadline halted at
-step 40 with no valid summary, so the **live outcome remained FAIL**.
+**M2.39 corrected and externally verified on 2026-10-19:** [PR #81](https://github.com/pjotrcasteel/Argus/pull/81)
+restores source-visible START GAME, one opt-in **unverified** warm-lit
+town entry probe, spell/route selection, a narrowly recognized top-of-screen
+numeric HP fraction, and a conservative OCR-only upgrade-title fallback.
+No game DOM/source, fixed click coordinates or private truth are used.
+Gameplay OCR is sampled every third already-established exploration frame
+and full/footer OCR have independent 3s/2s budgets. Keep the experimental
+probe and its confidence limitations explicit: it is not a learned
+gate classifier, improved identification, victory or reliable aiming.
 
-The 2026-10-19 follow-up on the same PR independently bounds full-frame
-OCR to 3s and footer OCR to 2s, preserves text from a completed pass,
-and scans text every third established exploration frame while still
-observing every frame's pixels/motion. A deterministic test verifies
-terminal-cue recognition within the next sampled frame, at most two
-intervening exploration frames. [.NET PR CI 39239754718](https://github.com/pjotrcasteel/Argus/actions/runs/39239754718)
-passed on the amended branch; new live-browser checks are running and
-**must pass before merging**. This is heuristic smoke reliability, not
-trained player identity, gameplay success or a higher accuracy result.
-See [M2.39 source and limitations](M2-39-POST-UPDATE-TITLE-OCR.md).
-Next: verify full .NET CI **and actual PR smoke** on the final commit,
-then merge and rerun M2.38 fresh independent external-game cohorts;
-do not access sealed O/P/Q or M2.4 held-out run-01.
+**Current final code validation:**
+[.NET 10 CI 39242095478](https://github.com/pjotrcasteel/Argus/actions/runs/39242095478)
+passed **201/201 tests**. [Real independent browser smoke
+39242095441](https://github.com/pjotrcasteel/Argus/actions/runs/39242095441)
+**PASS**, 57 recorded screens, 32 pixel-inferred player positions, two
+route interactions, a visually proposed town-entry click and a real
+OCR-title upgrade click ("Runic Ward" at step 35); **0 terminal stops**.
+The previous attempt [39241045502](https://github.com/pjotrcasteel/Argus/actions/runs/39241045502)
+genuinely got stuck on low-confidence numeric HP HUD and tiny category
+captions, demonstrating the bug before this fix. Source screenshots
+and trace from the green technical run were saved in short-lived Actions
+artifact `12182136895`. Smoke evidence is not a measure of identity
+precision, game wins, independent learning or balance quality.
+[Detailed source/limitations](M2-39-POST-UPDATE-TITLE-OCR.md).
+
+The existing M2.38 workflow now opts into **one** three-browser original
+collection when this verified M2.39 squash merges to main, with exact
+provenance and private 7-day non-Pages artifacts. No automatic human
+labels or held-out source access. **Next:** verify the actual resulting
+m238-a/b/c original source/trace checksums and valid play, prepare 54
+original blinded targets only when all three are valid, then privately
+request genuine human center/absence review. Sealed O/P/Q and M2.4
+run-01 remain untouched.
 
 **NEXT M2.38 live research continuation:**
 
