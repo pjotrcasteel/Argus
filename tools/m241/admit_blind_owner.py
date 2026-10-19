@@ -92,7 +92,7 @@ def audit(sources: Path, review: Path, labels: Path | None = None):
     if labels is not None:
         source.require(labels.is_dir() and not labels.is_symlink(),
                        "Private owner label directory missing.")
-        present = {p.name for p in labels.iterdir() if p.is_file()}
+        present = {p.name for p in labels.iterdir()}
         source.require(present <= expected and
                        all((labels / name).is_file() and
                            not (labels / name).is_symlink() for name in present),
@@ -135,8 +135,8 @@ def audit(sources: Path, review: Path, labels: Path | None = None):
         "uniqueOriginalDigests": integrity["uniqueTargetDigests"],
         "originalPredecessors": integrity["authenticPredecessors"],
         "ownerExportsReceived": labelled, "ownerExportsRequired": len(source.RUNS),
-        "reviewedObservations": source.TARGETS * labelled - unknown +
-        source.TARGETS * (len(source.RUNS) - labelled),
+        "reviewedObservations": sum(row["visible"] + row["absent"]
+                                    for row in states.values()),
         "unknownObservations": unknown,
         "duplicateObservationsCompared": duplicate_observations,
         "runs": states,
