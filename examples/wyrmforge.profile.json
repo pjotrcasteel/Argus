@@ -1,7 +1,9 @@
 {
   "name": "WyrmForge visual black-box baseline",
   "menuActions": [
+    "Start Game",
     "Begin First Hunt",
+    "First Hunt",
     "Begin Hunt",
     "Continue Hunt",
     "Arcane Orb",
@@ -65,5 +67,6 @@
     ]
   },
   "minimumTextConfidence": 45,
-  "movementMilliseconds": 300
+  "movementMilliseconds": 300,
+  "enableIlluminatedEntryProbe": true
 }

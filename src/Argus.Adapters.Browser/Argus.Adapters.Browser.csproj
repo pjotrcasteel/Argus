@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="Microsoft.Playwright" Version="1.63.0" />
+    <PackageReference Include="StbImageSharp" Version="2.30.16" />
     <ProjectReference Include="../Argus.Core/Argus.Core.csproj" />
   </ItemGroup>
 </Project>

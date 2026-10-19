@@ -618,6 +618,56 @@ collector connection test returned HTTP 403, leaving full deploy workflow
 red. Browser-served version **cannot be attested from GitHub source SHA**;
 M2.38 intentionally records `gameVersion: null`.
 
+**M2.39 — actual M2.38 real-capture regression diagnosis (2026-10-18):**
+[M2.38 Actions 39157000315](https://github.com/pjotrcasteel/Argus/actions/runs/39157000315)
+finished **FAIL / NOT_READY**: `m238-a` had two independently
+launched external-browser attempts, each 77 original screenshots,
+0 menu clicks, 0 route clicks, 0 player frames, and every step reported
+`unrecognized` / safe waiting. `m238-b/c` were correctly **not**
+attempted; no 54-screen blind review was invented. The exact failed
+source artifact `12147208748` contains actual screenshots/traces,
+7-day retention. Inspected the original screen and trace privately:
+the newly redesigned WyrmForge title has a clearly visible
+`START GAME` gold-filled button but Tesseract sparse-text
+`--psm 11` **omitted its lettering**. Independent local tests on
+the original screenshot with orientation-aware sparse
+`--psm 12` recognize `START GAME` at genuine image pixels with
+~96% confidence; `--psm 3` also recognizes it.
+
+**M2.39 corrected and externally verified on 2026-10-19:** [PR #81](https://github.com/pjotrcasteel/Argus/pull/81)
+restores source-visible START GAME, one opt-in **unverified** warm-lit
+town entry probe, spell/route selection, a narrowly recognized top-of-screen
+numeric HP fraction, and a conservative OCR-only upgrade-title fallback.
+No game DOM/source, fixed click coordinates or private truth are used.
+Gameplay OCR is sampled every third already-established exploration frame
+and full/footer OCR have independent 3s/2s budgets. Keep the experimental
+probe and its confidence limitations explicit: it is not a learned
+gate classifier, improved identification, victory or reliable aiming.
+
+**Current final code validation:**
+[.NET 10 CI 39242095478](https://github.com/pjotrcasteel/Argus/actions/runs/39242095478)
+passed **201/201 tests**. [Real independent browser smoke
+39242095441](https://github.com/pjotrcasteel/Argus/actions/runs/39242095441)
+**PASS**, 57 recorded screens, 32 pixel-inferred player positions, two
+route interactions, a visually proposed town-entry click and a real
+OCR-title upgrade click ("Runic Ward" at step 35); **0 terminal stops**.
+The previous attempt [39241045502](https://github.com/pjotrcasteel/Argus/actions/runs/39241045502)
+genuinely got stuck on low-confidence numeric HP HUD and tiny category
+captions, demonstrating the bug before this fix. Source screenshots
+and trace from the green technical run were saved in short-lived Actions
+artifact `12182136895`. Smoke evidence is not a measure of identity
+precision, game wins, independent learning or balance quality.
+[Detailed source/limitations](M2-39-POST-UPDATE-TITLE-OCR.md).
+
+The existing M2.38 workflow now opts into **one** three-browser original
+collection when this verified M2.39 squash merges to main, with exact
+provenance and private 7-day non-Pages artifacts. No automatic human
+labels or held-out source access. **Next:** verify the actual resulting
+m238-a/b/c original source/trace checksums and valid play, prepare 54
+original blinded targets only when all three are valid, then privately
+request genuine human center/absence review. Sealed O/P/Q and M2.4
+run-01 remain untouched.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new

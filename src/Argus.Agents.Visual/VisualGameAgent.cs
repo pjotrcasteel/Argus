@@ -19,6 +19,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
     private bool _routeNodeSelected;
     private int _routeConfirmationAttempts;
     private bool _settling;
+    private bool _entryProbeTried;
 
     public AgentEvidence? LastEvidence { get; private set; }
 
@@ -36,7 +37,15 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 650);
         }
 
-        var labels = await textReader.ReadAsync(observation, cancellationToken);
+        // Fully inspect every entry/route frame. During established exploration,
+        // OCR every third frame: screenshot motion and pixel perception still run
+        // on every frame, while short-lived UI overlays are checked within two
+        // subsequent observations. This prevents busy combat scenes from spending
+        // most of the bounded experiment waiting for external OCR processes.
+        var scanText = _explorationSteps == 0 || _explorationSteps % 3 == 0;
+        var labels = scanText
+            ? await textReader.ReadAsync(observation, cancellationToken)
+            : Array.Empty<VisibleText>();
         var names = labels.Select(t => t.Text).Take(24).ToArray();
         var terminal = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.TerminalScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
@@ -49,7 +58,9 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             profile.ChoiceScreenCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
         if (isChoiceScreen)
         {
-            var selected = ChoiceCardMatcher.FindFirst(labels, profile.ChoiceCardTypes, profile.MinimumTextConfidence);
+            var selected = ChoiceCardMatcher.FindFirst(labels, profile.ChoiceCardTypes, profile.MinimumTextConfidence)
+                ?? ChoiceCardMatcher.FindFirstTitleOnly(labels, profile.MinimumTextConfidence,
+                    observation.Width, observation.Height);
             if (selected is null)
             {
                 LastEvidence = new AgentEvidence("choice", "Visible choice screen, but no confidently located card title; waiting", 0, names);
@@ -65,11 +76,11 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         var isRouteScreen = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
             profile.RouteCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
-        if (!isRouteScreen)
-        {
-            _routeNodeSelected = false;
+        // Once the player has selected a visibly connected route marker, the
+        // detail overlay can replace the map title. Do not discard the pending
+        // confirmation merely because OCR no longer sees the old heading.
+        if (!isRouteScreen && !_routeNodeSelected)
             _routeConfirmationAttempts = 0;
-        }
 
         // "Enter Trail" may be visible but disabled until a connected route node is chosen.
         // Locate a circular map marker in screenshot pixels, without coordinates, DOM or map state.
@@ -90,7 +101,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Click, X: node.X, Y: node.Y);
         }
 
-        if (isRouteScreen && _routeNodeSelected)
+        if (_routeNodeSelected)
         {
             if (_routeConfirmationAttempts >= 3)
             {
@@ -102,6 +113,13 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             var confirmation = FilledActionButtonDetector.Detect(observation.PngBytes);
             if (confirmation is null)
             {
+                if (!isRouteScreen)
+                {
+                    // The pending route vanished and no enabled footer exists;
+                    // fail closed instead of clicking an unrelated new screen.
+                    _routeNodeSelected = false;
+                    _routeConfirmationAttempts = 0;
+                }
                 LastEvidence = new AgentEvidence("route", "Waiting for a visibly enabled route confirmation button", 0, names);
                 return new GameAction(GameActionKind.Wait, DurationMs: 550);
             }
@@ -127,7 +145,28 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
 
         _emptyScans++;
         var gameplayCue = labels.Any(t => t.Confidence >= profile.MinimumTextConfidence &&
-            profile.GameplayCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase)));
+            profile.GameplayCues.Any(cue => t.Text.Contains(cue, StringComparison.OrdinalIgnoreCase))) ||
+            (profile.GameplayCues.Any(cue => string.Equals(cue, "HP", StringComparison.OrdinalIgnoreCase)) &&
+                GameplayHudWitness.IsVisible(labels, observation.Width, observation.Height));
+
+        // After a real title click, an otherwise unrecognized town may offer a
+        // visual entrance without OCR text. This is a ONE-SHOT uncertain pixel
+        // proposal, enabled by the external game profile, never a known gate.
+        if (!gameplayCue && _menuClicks > 0 && _explorationSteps == 0 &&
+            !_entryProbeTried && profile.EnableIlluminatedEntryProbe)
+        {
+            var entrance = IlluminatedEntryDetector.Detect(observation.PngBytes);
+            if (entrance is not null)
+            {
+                _entryProbeTried = true;
+                _settling = true;
+                _previousFrame = observation.PngBytes;
+                LastEvidence = new AgentEvidence("entry-probe",
+                    "Trying one unverified illuminated focal affordance from screenshot pixels",
+                    entrance.Confidence, names);
+                return new GameAction(GameActionKind.Click, X: entrance.X, Y: entrance.Y);
+            }
+        }
 
         // No guessed clicks or movement before there is visible evidence of gameplay or a preceding menu transition.
         if (!gameplayCue && _menuClicks == 0 && _explorationSteps == 0)
@@ -136,9 +175,11 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             return new GameAction(GameActionKind.Wait, DurationMs: 700);
         }
 
-        if (!gameplayCue && _explorationSteps == 0 && _emptyScans < 3)
+        if (!gameplayCue && _explorationSteps == 0)
         {
-            LastEvidence = new AgentEvidence("transition", "Checking screen after a visible menu selection", 0.3f, names);
+            // A completed menu click is not evidence that gameplay began. A redesigned
+            // title or town screen may still be waiting for a second visible action.
+            LastEvidence = new AgentEvidence("transition", "Waiting for confirmed visible gameplay HUD or menu action", 0.3f, names);
             return new GameAction(GameActionKind.Wait, DurationMs: 550);
         }
 
@@ -183,7 +224,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
             }
             : null;
         var reason = screen is null ? "No confidently located player; " + source : $"Visual player ({screen.PlayerX:0},{screen.PlayerY:0}); {source}";
-        LastEvidence = new AgentEvidence("exploring", reason + "; holding " + key,
+        LastEvidence = new AgentEvidence("exploring", reason + "; holding " + key + (scanText ? "" : "; text scan deferred"),
             screen is null ? 0.2f : MathF.Min(0.65f, combat!.Player!.Confidence), names, motion.Change, screen);
         return new GameAction(GameActionKind.HoldKey, Key: key, DurationMs: profile.MovementMilliseconds);
     }

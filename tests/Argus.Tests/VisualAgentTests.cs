@@ -37,6 +37,109 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_ExternalTitleStartGame_ReadableVisualButton_ClicksActualOcrCenter()
+    {
+        // The updated external title screen uses small black text on gold. The
+        // real M2.38 390x844 screenshot OCR with sparse orientation mode
+        // yielded START (115,759,58,10) and GAME (184,759,52,10).
+        // No screen coordinate may be encoded into the navigation policy.
+        var profile = new VisualGameProfile { MenuActions = ["Start Game", "Begin Hunt"] };
+        var visible = new VisibleText("START GAME", 115, 759, 121, 10, 96);
+        var agent = new VisualGameAgent(new FakeTextReader([visible]), profile);
+
+        var action = await agent.DecideAsync(new FrameObservation(DateTimeOffset.UtcNow, 390, 844, []),
+            TestContext.CancellationToken);
+
+        Assert.IsNotNull(action);
+        Assert.AreEqual(GameActionKind.Click, action.Kind);
+        Assert.AreEqual(175.5f, action.X);
+        Assert.AreEqual(764f, action.Y);
+        Assert.AreEqual("menu", agent.LastEvidence?.Phase);
+        StringAssert.Contains(agent.LastEvidence!.Reason, "START GAME");
+    }
+
+    [TestMethod]
+    public void ParseTsv_NewTitleSparseOcr_WordsMergeIntoClickableLine()
+    {
+        const string tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
+            "5\t1\t2\t1\t1\t1\t115\t759\t58\t10\t96.55\tSTART\n" +
+            "5\t1\t2\t1\t1\t2\t184\t759\t52\t10\t96.88\tGAME\n";
+        var lines = TesseractTsvParser.Parse(tsv);
+        var detected = MenuTextMatcher.FindBest(lines, new VisualGameProfile { MenuActions = ["Start Game"] });
+
+        Assert.IsNotNull(detected);
+        Assert.AreEqual("START GAME", detected.Text);
+        Assert.AreEqual(115, detected.X);
+        Assert.AreEqual(759, detected.Y);
+    }
+
+    [TestMethod]
+    public void FindBest_RedesignedTitleWithArrow_MatchesSourceVisibleStartGame()
+    {
+        // WyrmForge #122 changed the public title while the first live
+        // regression was running. Automatic-page OCR on original pixels
+        // sees START (117,697,56,10) and GAME (183,697,51,10).
+        var lines = new[]
+        {
+            new VisibleText("WYRMFORGE", 55, 106, 280, 30, 91),
+            new VisibleText("START GAME >", 117, 697, 146, 10, 86),
+            new VisibleText("Settings", 140, 770, 89, 15, 93)
+        };
+        var result = MenuTextMatcher.FindBest(lines,
+            new VisualGameProfile { MenuActions = ["Start Game", "Begin First Hunt"] });
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual("START GAME >", result.Text);
+        Assert.AreEqual(190f, result.CenterX);
+        Assert.AreEqual(702f, result.CenterY);
+    }
+
+    [TestMethod]
+    public void FindBest_TownFirstHuntSplitOcr_ClicksObservedPartialButtonText()
+    {
+        // The new Refuge title uses a dark filled control. Original screenshot
+        // OCR sees BE and FIRST HUNT as separate lines, not BEGIN FIRST HUNT.
+        var labels = new[]
+        {
+            new VisibleText("BE", 116, 704, 19, 9, 96),
+            new VisibleText("FIRST HUNT", 174, 704, 100, 9, 96)
+        };
+        var profile = new VisualGameProfile { MenuActions = ["Begin First Hunt", "First Hunt"] };
+
+        var best = MenuTextMatcher.FindBest(labels, profile);
+
+        Assert.IsNotNull(best);
+        Assert.AreEqual("FIRST HUNT", best.Text);
+        Assert.AreEqual(224f, best.CenterX);
+        Assert.AreEqual(708.5f, best.CenterY);
+    }
+
+    [TestMethod]
+    public async Task DecideAsync_TownAfterTitleClick_NoCombatCue_NeverSendsMovement()
+    {
+        var profile = new VisualGameProfile { MenuActions = ["Start Game"], GameplayCues = ["HP", "Wave"] };
+        var screen = new FrameObservation(DateTimeOffset.UtcNow, 390, 844, []);
+        var texts = new SequencedTextReader(
+        [
+            [new VisibleText("START GAME", 115, 759, 121, 10, 96)],
+            [new VisibleText("WYRMFORGE", 56, 124, 271, 24, 90)],
+            [new VisibleText("PUBLIC NICKNAME", 7, 52, 100, 16, 90)],
+            [new VisibleText("FIRST HUNT", 174, 704, 100, 9, 96)],
+            []
+        ]);
+        var agent = new VisualGameAgent(texts, profile);
+        var first = await agent.DecideAsync(screen, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, first?.Kind);
+
+        for (var step = 0; step < 4; step++)
+        {
+            var action = await agent.DecideAsync(screen, TestContext.CancellationToken);
+            Assert.AreEqual(GameActionKind.Wait, action?.Kind, $"Town step {step} must not move.");
+            Assert.AreNotEqual("exploring", agent.LastEvidence?.Phase);
+        }
+    }
+
+    [TestMethod]
     public void FindFirst_RefinementCard_SelectsVisibleTitleNotInstruction()
     {
         var labels = new[]
@@ -138,6 +241,96 @@ public sealed class VisualAgentTests
     }
 
     [TestMethod]
+    public async Task DecideAsync_CombatTextSampling_DetectsLaterTerminalWithinThreeFrames()
+    {
+        // Only previously established gameplay may defer expensive OCR. Even when
+        // the image contains no detectable player, each frame is still observed.
+        const int width = 390;
+        const int height = 844;
+        var screenshot = BmpRgb(new byte[width * height * 3], width, height);
+        var frame = new FrameObservation(DateTimeOffset.UtcNow, width, height, screenshot);
+        var reader = new SequencedTextReader(
+        [
+            [new VisibleText("HP", 20, 12, 25, 14, 90)],
+            [new VisibleText("VICTORY", 40, 120, 130, 32, 95)]
+        ]);
+        var profile = new VisualGameProfile { GameplayCues = ["HP"], TerminalScreenCues = ["VICTORY"] };
+        var agent = new VisualGameAgent(reader, profile);
+
+        var first = await agent.DecideAsync(frame, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.HoldKey, first?.Kind);
+        for (var i = 0; i < 2; i++)
+        {
+            var deferred = await agent.DecideAsync(frame, TestContext.CancellationToken);
+            Assert.AreEqual(GameActionKind.HoldKey, deferred?.Kind);
+            StringAssert.Contains(agent.LastEvidence!.Reason, "text scan deferred");
+        }
+
+        var fourth = await agent.DecideAsync(frame, TestContext.CancellationToken);
+        Assert.IsNull(fourth);
+        Assert.AreEqual("terminal", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
+    public async Task DecideAsync_TownAfterStart_UsesOneUnverifiedPixelProbeOnlyWhenOptedIn()
+    {
+        const int width = 390;
+        const int height = 844;
+        var townRgb = new byte[width * height * 3];
+        static void Light(byte[] pixels, int left, int top, int lightWidth)
+        {
+            for (var y = top; y < top + 32; y++)
+            {
+                for (var x = left; x < left + lightWidth; x++)
+                {
+                    var pixel = (y * width + x) * 3;
+                    pixels[pixel] = 220;
+                    pixels[pixel + 1] = 140;
+                    pixels[pixel + 2] = 40;
+                }
+            }
+        }
+
+        Light(townRgb, 49, 199, 20);
+        Light(townRgb, 192, 196, 26);
+        Light(townRgb, 325, 198, 21);
+        var title = new FrameObservation(DateTimeOffset.UtcNow, width, height,
+            BmpRgb(new byte[width * height * 3], width, height));
+        var town = new FrameObservation(DateTimeOffset.UtcNow, width, height, BmpRgb(townRgb, width, height));
+        var reader = new SequencedTextReader([[new VisibleText("START GAME", 115, 759, 121, 10, 96)], []]);
+        var agent = new VisualGameAgent(reader,
+            new VisualGameProfile { MenuActions = ["Start Game"], EnableIlluminatedEntryProbe = true });
+
+        Assert.AreEqual(GameActionKind.Click, (await agent.DecideAsync(title, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(town, TestContext.CancellationToken))?.Kind);
+        var proposal = await agent.DecideAsync(town, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, proposal?.Kind);
+        Assert.AreEqual("entry-probe", agent.LastEvidence?.Phase);
+        Assert.IsTrue(proposal?.X is > 195f and < 215f);
+        Assert.IsTrue(proposal?.Y is > 195f and < 230f);
+
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(town, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(town, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual("transition", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
+    public async Task DecideAsync_NoEntryProbeOptIn_WaitsWithoutSpeculativeTownClick()
+    {
+        const int width = 390;
+        const int height = 844;
+        var frame = new FrameObservation(DateTimeOffset.UtcNow, width, height,
+            BmpRgb(new byte[width * height * 3], width, height));
+        var reader = new SequencedTextReader([[new VisibleText("START GAME", 115, 759, 121, 10, 96)], []]);
+        var agent = new VisualGameAgent(reader, new VisualGameProfile { MenuActions = ["Start Game"] });
+
+        Assert.AreEqual(GameActionKind.Click, (await agent.DecideAsync(frame, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(frame, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual(GameActionKind.Wait, (await agent.DecideAsync(frame, TestContext.CancellationToken))?.Kind);
+        Assert.AreEqual("transition", agent.LastEvidence?.Phase);
+    }
+
+    [TestMethod]
     public void ParseTsv_LineWords_CombinesTextAndBoundingBoxes()
     {
         const string tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
@@ -150,6 +343,53 @@ public sealed class VisualAgentTests
         Assert.AreEqual("Begin Hunt", result[0].Text);
         Assert.AreEqual(100, result[0].X);
         Assert.AreEqual(100, result[0].Width);
+    }
+
+    [TestMethod]
+    public async Task DecideAsync_RouteDetailHidesOcrHeading_ConfirmsOnlyVisibleEnabledButton()
+    {
+        const int width = 390;
+        const int height = 844;
+        var map = new byte[width * height * 3];
+        var selected = new byte[width * height * 3];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var idx = (y * width + x) * 3;
+                var ring = Math.Abs(Math.Sqrt((x - 155) * (x - 155) + (y - 475) * (y - 475)) - 18) <= 2;
+                map[idx] = ring ? (byte)190 : (byte)30;
+                map[idx + 1] = ring ? (byte)156 : (byte)26;
+                map[idx + 2] = ring ? (byte)228 : (byte)42;
+                var enabled = x >= 16 && x < 374 && y >= 786 && y < 830;
+                selected[idx] = enabled ? (byte)104 : (byte)32;
+                selected[idx + 1] = enabled ? (byte)68 : (byte)22;
+                selected[idx + 2] = enabled ? (byte)129 : (byte)43;
+            }
+        }
+
+        var reader = new SequencedTextReader(
+        [
+            [new VisibleText("Choose your trail", 30, 70, 220, 20, 96)],
+            [new VisibleText("REACHABLE NOW", 20, 700, 150, 18, 97)]
+        ]);
+        var agent = new VisualGameAgent(reader,
+            new VisualGameProfile { RouteCues = ["Choose your trail"] });
+        var initial = new FrameObservation(DateTimeOffset.UtcNow, width, height, BmpRgb(map, width, height));
+        var detail = new FrameObservation(DateTimeOffset.UtcNow, width, height, BmpRgb(selected, width, height));
+
+        var choose = await agent.DecideAsync(initial, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, choose?.Kind);
+        Assert.AreEqual("route", agent.LastEvidence?.Phase);
+
+        var settling = await agent.DecideAsync(detail, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Wait, settling?.Kind);
+
+        var confirm = await agent.DecideAsync(detail, TestContext.CancellationToken);
+        Assert.AreEqual(GameActionKind.Click, confirm?.Kind);
+        Assert.AreEqual(195f, confirm?.X);
+        Assert.IsTrue(confirm?.Y is >= 786f and < 830f);
+        Assert.AreEqual("route", agent.LastEvidence?.Phase);
     }
 
     [TestMethod]
@@ -322,6 +562,55 @@ public sealed class VisualAgentTests
     }
 
     public TestContext TestContext { get; set; } = null!;
+
+    private static byte[] BmpRgb(byte[] rgb, int width, int height)
+    {
+        var stride = (width * 3 + 3) & ~3;
+        using var output = new MemoryStream();
+        using (var writer = new BinaryWriter(output, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write((byte)'B');
+            writer.Write((byte)'M');
+            writer.Write(54 + stride * height);
+            writer.Write(0);
+            writer.Write(54);
+            writer.Write(40);
+            writer.Write(width);
+            writer.Write(height);
+            writer.Write((short)1);
+            writer.Write((short)24);
+            writer.Write(0);
+            writer.Write(stride * height);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            for (var y = height - 1; y >= 0; y--)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var idx = (y * width + x) * 3;
+                    writer.Write(rgb[idx + 2]);
+                    writer.Write(rgb[idx + 1]);
+                    writer.Write(rgb[idx]);
+                }
+                for (var padding = width * 3; padding < stride; padding++)
+                    writer.Write((byte)0);
+            }
+        }
+        return output.ToArray();
+    }
+
+    private sealed class SequencedTextReader(IReadOnlyList<IReadOnlyList<VisibleText>> screens) : IFrameTextReader
+    {
+        private int _index;
+
+        public Task<IReadOnlyList<VisibleText>> ReadAsync(FrameObservation frame, CancellationToken cancellationToken = default)
+        {
+            var next = _index < screens.Count ? screens[_index++] : Array.Empty<VisibleText>();
+            return Task.FromResult(next);
+        }
+    }
 
     private sealed class FakeTextReader(IReadOnlyList<VisibleText> lines) : IFrameTextReader
     {
