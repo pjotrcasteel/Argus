@@ -732,6 +732,40 @@ a capture instruction from the words in a squash message. [M2.38
 workflow](../.github/workflows/m2-38-post-update-capture.yml) is the
 source of truth. Research owner truth remains ALL_UNKNOWN.
 
+**M2.41 — PRIVATE original-owner point admission (2026-10-19, PR #84):**
+[PR #84](https://github.com/pjotrcasteel/Argus/pull/84)
+adds `tools/m241/admit_blind_owner.py` and
+[review instructions](M2-41-PRIVATE-BLIND-OWNER-REVIEW.md).
+M2.40's **same SHA-locked** original source/review sets are checked
+fully before accepting any private mobile JSON from the three actual
+sessions `m238-a/b/c`: frozen study/source seed, original PNG byte-SHA,
+exact target step and order, original (390x844) integer click centers,
+full VISIBLE/ABSENT/UNKNOWN semantics, strict export schema, no unapproved
+files or duplicate keys, and no contradictory definitive human labels
+on the identical screenshot SHA across runs. Missing exports/UNKNOWN
+remain **NOT_READY**, not guessed absences or training labels.
+
+Synthetic only [PR CI](https://github.com/pjotrcasteel/Argus/actions)
+covers owner reference admission including duplicate-PNG conflict;
+no original game screenshots, label files, per-frame results or weights
+may enter GitHub or public Pages. The CLI prints aggregated coverage
+counts only. **No user review JSON received yet; M2.41 has no real
+human accuracy or model-performance result.** A complete 54-point
+human export is development evidence only, **not M2.37 evaluation**:
+those screenshots were sampled, not a complete consecutive sequence;
+M2.37 still needs separate original-image/run-disjoint fitting, true
+whole-ABSENT calibration from >=2 other sessions, and three independent
+full-original held runs with human ground truth. O/P/Q and original
+run-01 remain SEALED; live agent unchanged.
+
+**Immediate next after M2.41 merge:** keep actual original artifacts
+offline and request three genuine `m238-[abc]-player-points.json` exports
+through the private mobile reviewer only. Run the new *local* audited
+source-bound admission, inspect insufficient VISIBLE/ABSENT/UNKNOWN
+coverage without treating UNKNOWN as an ABSENT negative, and design a
+separate fit/calibration cohort before M2.37 can claim evaluation.
+Do not publish source PNGs or labels without explicit user approval.
+
 **NEXT M2.38 live research continuation:**
 
 1. After tested M2.38 merge, its main-push workflow starts three new
