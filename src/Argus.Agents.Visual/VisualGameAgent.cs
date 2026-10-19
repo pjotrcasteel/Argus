@@ -186,7 +186,7 @@ public sealed class VisualGameAgent(IFrameTextReader textReader, VisualGameProfi
         // A vanished screenshot HUD can indicate an opaque upgrade/menu overlay.
         // Never keep steering from a stale player-color candidate while OCR is deferred.
         // Profiles without an explicitly configured HUD witness behave unchanged.
-        if (_explorationSteps > 0 && profile.CombatHudBar is { } bar &&
+        if (profile.CombatHudBar is { } bar && (_explorationSteps > 0 || gameplayCue) &&
             !VisualHudBarWitness.IsVisible(observation.PngBytes, bar))
         {
             _trackedPlayer = null;
